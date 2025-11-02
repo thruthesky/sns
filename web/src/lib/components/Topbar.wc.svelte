@@ -218,12 +218,22 @@
         <!-- 로그인하지 않은 경우 -->
         <!-- 데스크톱 메뉴 -->
         <div class="desktop-menu">
+          <!-- 포럼 버튼 -->
           <a href="/forum/list" class="nav-button">
             <LayoutGrid size={16} />
             <span>{$t('포럼')}</span>
           </a>
-          <a href="/auth/login" class="nav-button">{$t('로그인')}</a>
-          <a href="/auth/signup" class="primary-button">{$t('회원가입')}</a>
+
+          <!-- 채팅 버튼 -->
+          <a href="/chat/list" class="nav-button">
+            <MessageCircle size={16} />
+            <span>{$t('채팅')}</span>
+          </a>
+
+          <!-- 로그인 버튼 -->
+          <a href="/user/login" class="nav-button">{$t('로그인')}</a>
+
+          <!-- 메뉴 아이콘 -->
           <a href="/menu" class="icon-button" title={$t('메뉴')}>
             <Menu size={20} />
           </a>
@@ -231,20 +241,22 @@
 
         <!-- 모바일 메뉴 -->
         <div class="mobile-menu">
+          <!-- 포럼 아이콘 -->
           <a href="/forum/list" class="icon-button" title={$t('포럼')}>
             <LayoutGrid size={20} />
           </a>
-          <a href="/users" class="icon-button" title={$t('사용자찾기')}>
-            <Users size={20} />
-          </a>
-          <a href="/auth/login" class="icon-button" title={$t('채팅')}>
+
+          <!-- 채팅 아이콘 -->
+          <a href="/chat/list" class="icon-button" title={$t('채팅')}>
             <MessageCircle size={20} />
           </a>
-          <a href="/auth/login" class="icon-button" title={$t('로그인')}>
-            <div class="avatar avatar-small">
-              <div class="avatar-fallback avatar-fallback-small">?</div>
-            </div>
+
+          <!-- 로그인 아이콘 -->
+          <a href="/user/login" class="icon-button" title={$t('로그인')}>
+            <User size={20} />
           </a>
+
+          <!-- 메뉴 아이콘 -->
           <a href="/menu" class="icon-button" title={$t('메뉴')}>
             <Menu size={24} />
           </a>

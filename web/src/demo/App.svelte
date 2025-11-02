@@ -9,8 +9,24 @@
   import '../lib/index.js';
   import { t } from '../lib/stores/i18n.js';
 
-  // 홈 화면 컴포넌트 임포트
+  // 페이지 컴포넌트 임포트
   import Home from './Home.svelte';
+  import LoginPage from './LoginPage.svelte';
+
+  // 현재 경로 상태
+  let currentPath = $state(window.location.pathname);
+
+  /**
+   * 경로 변경 감지
+   */
+  function handlePopState() {
+    currentPath = window.location.pathname;
+  }
+
+  // popstate 이벤트 리스너 등록
+  if (typeof window !== 'undefined') {
+    window.addEventListener('popstate', handlePopState);
+  }
 </script>
 
 <!-- 새 레이아웃 적용 -->
@@ -25,9 +41,13 @@
     </p>
   </header>
 
-  <!-- 홈 콘텐츠 -->
+  <!-- 경로에 따라 다른 페이지 표시 -->
   <main class="content">
-    <Home />
+    {#if currentPath === '/user/login'}
+      <LoginPage />
+    {:else}
+      <Home />
+    {/if}
   </main>
 
   <!-- 푸터 -->

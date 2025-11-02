@@ -7,27 +7,10 @@
    */
 
   import { t } from '../lib/stores/i18n.js';
-  import { user } from '../lib/stores/auth.js';
   import { ChevronDown, CheckCircle2, Circle } from 'lucide-svelte';
 
   // 현재 열려있는 아코디언 아이템
   let openAccordionItem = $state(null);
-
-  /**
-   * 로그인 성공 핸들러
-   */
-  function handleLoginSuccess(event) {
-    console.log('Login successful:', event.detail);
-    alert(`로그인 성공!\n전화번호: ${event.detail.phoneNumber}`);
-  }
-
-  /**
-   * 로그인 실패 핸들러
-   */
-  function handleLoginError(event) {
-    console.error('Login error:', event.detail);
-    alert(`로그인 실패: ${event.detail.error}`);
-  }
 
   /**
    * 아코디언 아이템 토글
@@ -156,27 +139,6 @@
       {$t('home.description.part2')}
     </p>
   </div>
-
-  <!-- 전화번호 로그인 섹션 -->
-  {#if !$user}
-    <section class="section login-section">
-      <h2 class="section-title">{$t('로그인')}</h2>
-      <p class="login-description">
-        전화번호로 간편하게 로그인하세요.
-      </p>
-      <phone-login
-        onlogin-success={handleLoginSuccess}
-        onlogin-error={handleLoginError}
-      ></phone-login>
-    </section>
-  {:else}
-    <section class="section welcome-section">
-      <h2 class="section-title">환영합니다!</h2>
-      <p class="welcome-message">
-        {$user.phoneNumber}로 로그인하셨습니다.
-      </p>
-    </section>
-  {/if}
 
   <!-- AI 시대의 진실 (Accordion) -->
   <section class="section">
@@ -313,32 +275,6 @@
   /* 히어로 섹션 */
   .hero-section {
     margin-bottom: 3rem;
-  }
-
-  /* 로그인 섹션 */
-  .login-section {
-    background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%);
-    border: 1px solid #c4b5fd;
-  }
-
-  .login-description {
-    font-size: 1rem;
-    color: #6b7280;
-    margin-bottom: 1.5rem;
-    text-align: center;
-  }
-
-  /* 환영 섹션 */
-  .welcome-section {
-    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-    border: 1px solid #6ee7b7;
-  }
-
-  .welcome-message {
-    font-size: 1.125rem;
-    color: #065f46;
-    margin: 0;
-    font-weight: 500;
   }
 
   .hero-title {
