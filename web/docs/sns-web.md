@@ -9,10 +9,10 @@ SNS 웹 개발 지침
 
 ## 관련 문서
 
-- [SNS 프로젝트 전체 개요](../sns.md) - 서비스 기획 및 전체 개요
+- [SNS 프로젝트 전체 개요](../../docs/sns.md) - 서비스 기획 및 전체 개요
 - [Svelte Custom Elements 개발 가이드](./sns-custom-elements.md) - Custom Elements 개발 상세 가이드
 - [프로젝트 개발 지침](../../CLAUDE.md) - 전체 프로젝트 개발 워크플로우 및 규칙
-- [웹 프로젝트 README](../../web/README.md) - 웹 프로젝트 사용법 및 설정
+- [웹 프로젝트 README](../README.md) - 웹 프로젝트 사용법 및 설정
 
 ### 외부 문서
 - [Svelte 5 Custom Elements 공식 문서](https://svelte.dev/docs/svelte/custom-elements)

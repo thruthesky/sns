@@ -236,7 +236,7 @@ npm install
 
 - [웹 개발 지침](./sns-web.md) - 웹 개발 워크플로우 및 규칙
 - [Svelte Custom Elements 개발 가이드](./sns-custom-elements.md) - Custom Elements 개발 상세 가이드
-- [웹 프로젝트 README](../../web/README.md) - 프로젝트 상세 설명 및 기능
+- [웹 프로젝트 README](../README.md) - 프로젝트 상세 설명 및 기능
 
 ### 외부 문서
 

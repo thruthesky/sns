@@ -24,12 +24,12 @@ SNS 개발 지침
 sns/
 ├── docs/                           # 프로젝트 문서
 │   ├── sns.md                      # SNS 전체 개요 및 기획
-│   ├── web/                        # 웹 개발 문서
-│   │   ├── sns-web.md              # 웹 개발 지침
-│   │   └── sns-custom-elements.md  # Svelte Custom Elements 개발 상세 가이드
 │   └── app/                        # 앱 개발 문서
 │       └── sns-app.md              # Flutter 앱 개발 지침
 ├── web/                            # 웹 프로젝트 (Svelte 5 Custom Elements)
+│   ├── docs/                       # 웹 개발 문서
+│   │   ├── sns-web.md              # 웹 개발 지침
+│   │   └── sns-custom-elements.md  # Svelte Custom Elements 개발 상세 가이드
 │   ├── src/
 │   │   ├── lib/                    # 라이브러리 소스
 │   │   └── demo/                   # 개발/테스트 앱
@@ -43,8 +43,8 @@ sns/
 - **소스 코드 위치**: `/web` 폴더
 - **작업 폴더**: `./web` 폴더에서 소스 코드 작업 및 빌드
 - **참고 문서**:
-  - [docs/web/sns-web.md](docs/web/sns-web.md)
-  - [docs/web/sns-custom-elements.md](docs/web/sns-custom-elements.md)
+  - [web/docs/sns-web.md](web/docs/sns-web.md)
+  - [web/docs/sns-custom-elements.md](web/docs/sns-custom-elements.md)
 
 ## 앱 개발
 
@@ -86,7 +86,7 @@ sns/
 
 ## 🌐 웹 개발 문서
 
-### [docs/web/sns-web.md](docs/web/sns-web.md) - 웹 개발 지침
+### [web/docs/sns-web.md](web/docs/sns-web.md) - 웹 개발 지침
 
 **포함 내용**:
 - 웹 개발 워크플로우 및 필수 체크사항
@@ -100,7 +100,7 @@ sns/
 - ✅ 웹 프로젝트의 전반적인 개발 방향을 이해하고자 할 때
 - ✅ Custom Elements 개발 가이드로 이동하기 전 기본 지침 확인 시
 
-### [docs/web/sns-custom-elements.md](docs/web/sns-custom-elements.md) - Svelte Custom Elements 개발 상세 가이드
+### [web/docs/sns-custom-elements.md](web/docs/sns-custom-elements.md) - Svelte Custom Elements 개발 상세 가이드
 
 **포함 내용**:
 - Svelte 5 Runes (`$state`, `$derived`, `$effect` 등) 사용법
@@ -119,7 +119,7 @@ sns/
 - ✅ Firebase 연동 방법을 구현할 때
 - ✅ Web Components의 props, 이벤트, 슬롯 처리 방법을 찾을 때
 
-### [docs/web/sns-web-quick-start.md](docs/web/sns-web-quick-start.md) - 웹 개발 퀵 스타트
+### [web/docs/sns-web-quick-start.md](web/docs/sns-web-quick-start.md) - 웹 개발 퀵 스타트
 
 **포함 내용**:
 - 개발 환경 설정 (Node.js, 패키지 설치)
@@ -135,7 +135,7 @@ sns/
 - ✅ 다른 개발자에게 프로젝트 시작 방법을 안내할 때
 - ✅ Firebase 초기 설정이 필요할 때
 
-### [docs/web/sns-web-project-flow.md](docs/web/sns-web-project-flow.md) - 웹 프로젝트 플로우
+### [web/docs/sns-web-project-flow.md](web/docs/sns-web-project-flow.md) - 웹 프로젝트 플로우
 
 **포함 내용**:
 - 전체 프로젝트 구조 및 파일 간 관계
@@ -153,7 +153,7 @@ sns/
 - ✅ Vite 설정이나 진입점을 수정해야 할 때
 - ✅ 데모 앱과 라이브러리 빌드의 차이를 이해하고자 할 때
 
-### [docs/web/sns-web-deploy.md](docs/web/sns-web-deploy.md) - 웹 배포 가이드
+### [web/docs/sns-web-deploy.md](web/docs/sns-web-deploy.md) - 웹 배포 가이드
 
 **포함 내용**:
 - 배포 전 체크리스트
@@ -162,7 +162,7 @@ sns/
   - 데모 앱 빌드 (`build:demo`) - HTML, JS, CSS 생성
 - 빌드 흐름도 및 파일 변환 과정
 - 최종 빌드 결과물 구조
-- GitHub Pages 배포 방법 (수동 배포 / gh-pages 패키지)
+- GitHub Pages 배포 방법 (수동 배포 / gh-pages 패키지 / GitHub Actions 자동 배포)
 - 문제 해결 가이드 (빌드 실패, 404 에러, 환경 변수 등)
 - 추가 배포 옵션 (Vercel, Netlify)
 
@@ -170,8 +170,30 @@ sns/
 - ✅ 프로젝트를 프로덕션 환경에 배포할 때
 - ✅ 빌드 명령어와 결과물을 이해하고자 할 때
 - ✅ GitHub Pages, Vercel, Netlify 등에 배포할 때
+- ✅ GitHub Actions CI/CD 자동 배포를 설정할 때
 - ✅ 빌드 관련 문제를 해결해야 할 때
 - ✅ 환경 변수 설정 방법을 확인할 때
+
+### [web/docs/sns-web-i18n.md](web/docs/sns-web-i18n.md) - 웹 국제화(i18n) 개발 가이드
+
+**포함 내용**:
+- 국제화(i18n) 개요 및 지원 언어 (한국어, 영어, 일본어, 중국어)
+- 다국어 지원 전략 (자동 감지, 수동 선택, 언어 파일 관리)
+- i18n 프로젝트 구조 및 파일 구성
+- 언어별 JSON 번역 파일 작성 방법
+- i18n 로직 구현 (`createI18n`, `detectLocale`, `normalize`)
+- 번역 함수 사용법 및 변수 치환
+- Svelte Custom Element에서 i18n 사용 예시
+- HTML에서 `lang` 속성으로 언어 전달
+- 동적 언어 변경 구현 (언어 선택기)
+
+**참고 시점**:
+- ✅ **다국어 지원을 구현할 때 필수로 참고**
+- ✅ 번역 문자열을 추가하거나 수정할 때
+- ✅ 새로운 언어를 추가할 때
+- ✅ Custom Element에 i18n을 통합할 때
+- ✅ 언어 선택기 UI를 구현할 때
+- ✅ 브라우저 언어 자동 감지 로직을 이해하고자 할 때
 
 ---
 
@@ -200,11 +222,12 @@ sns/
 
 #### 웹 개발자용
 1. **[docs/sns.md](docs/sns.md)** - 전체 프로젝트 이해
-2. **[docs/web/sns-web-quick-start.md](docs/web/sns-web-quick-start.md)** - 개발 환경 설정
-3. **[docs/web/sns-web.md](docs/web/sns-web.md)** - 웹 개발 워크플로우 확인
-4. **[docs/web/sns-custom-elements.md](docs/web/sns-custom-elements.md)** - Custom Elements 개발 (개발 중 항상 참고)
-5. **[docs/web/sns-web-project-flow.md](docs/web/sns-web-project-flow.md)** - 프로젝트 구조 파악
-6. **[docs/web/sns-web-deploy.md](docs/web/sns-web-deploy.md)** - 배포 시 참고
+2. **[web/docs/sns-web-quick-start.md](web/docs/sns-web-quick-start.md)** - 개발 환경 설정
+3. **[web/docs/sns-web.md](web/docs/sns-web.md)** - 웹 개발 워크플로우 확인
+4. **[web/docs/sns-custom-elements.md](web/docs/sns-custom-elements.md)** - Custom Elements 개발 (개발 중 항상 참고)
+5. **[web/docs/sns-web-project-flow.md](web/docs/sns-web-project-flow.md)** - 프로젝트 구조 파악
+6. **[web/docs/sns-web-i18n.md](web/docs/sns-web-i18n.md)** - 다국어 지원 구현 (i18n)
+7. **[web/docs/sns-web-deploy.md](web/docs/sns-web-deploy.md)** - 배포 시 참고
 
 #### 앱 개발자용
 1. **[docs/sns.md](docs/sns.md)** - 전체 프로젝트 이해
@@ -217,6 +240,7 @@ sns/
 | 프로젝트 처음 시작 | `sns-web-quick-start.md` |
 | 컴포넌트 개발 | `sns-custom-elements.md` (필수) |
 | 프로젝트 구조 이해 | `sns-web-project-flow.md` |
+| 다국어 지원 구현 | `sns-web-i18n.md` (필수) |
 | 빌드 & 배포 | `sns-web-deploy.md` |
 | 전체 서비스 컨셉 확인 | `sns.md` |
 | 워크플로우 확인 | `sns-web.md` |

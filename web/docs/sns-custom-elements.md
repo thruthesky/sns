@@ -1135,10 +1135,10 @@ Firebase Console에서 자주 쿼리하는 필드에 인덱스를 추가합니�
 ## 관련 문서
 
 ### 프로젝트 문서
-- [SNS 프로젝트 전체 개요](../sns.md) - 서비스 기획 및 전체 개요
+- [SNS 프로젝트 전체 개요](../../docs/sns.md) - 서비스 기획 및 전체 개요
 - [웹 개발 지침](./sns-web.md) - 웹 개발 워크플로우
 - [프로젝트 개발 지침](../../CLAUDE.md) - 전체 프로젝트 개발 워크플로우 및 규칙
-- [웹 프로젝트 README](../../web/README.md) - 웹 프로젝트 사용법 및 설정
+- [웹 프로젝트 README](../README.md) - 웹 프로젝트 사용법 및 설정
 
 ### Svelte 공식 문서
 - [Svelte 5 Custom Elements 공식 문서](https://svelte.dev/docs/svelte/custom-elements)
