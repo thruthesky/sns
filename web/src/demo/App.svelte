@@ -42,16 +42,6 @@
 
 <!-- 새 레이아웃 적용 -->
 <sns-layout>
-  <!-- 헤더 -->
-  <header class="header">
-    <h1 class="title">
-      {$t('데모제목')}
-    </h1>
-    <p class="subtitle">
-      {$t('데모부제')}
-    </p>
-  </header>
-
   <!-- 경로에 따라 다른 페이지 표시 -->
   <main class="content">
     {#if currentPath === '/user/login'}
@@ -103,25 +93,6 @@
 </sns-layout>
 
 <style>
-  /* 헤더 */
-  .header {
-    text-align: center;
-    margin-bottom: 2rem;
-  }
-
-  .title {
-    font-size: 2rem;
-    font-weight: bold;
-    margin: 0 0 0.5rem 0;
-    color: #111827;
-  }
-
-  .subtitle {
-    font-size: 1rem;
-    color: #6b7280;
-    margin: 0;
-  }
-
   /* 콘텐츠 */
   .content {
     max-width: 800px;
@@ -144,13 +115,4 @@
   }
 
   /* 반응형 */
-  @media (max-width: 640px) {
-    .title {
-      font-size: 1.5rem;
-    }
-
-    .subtitle {
-      font-size: 0.875rem;
-    }
-  }
 </style>

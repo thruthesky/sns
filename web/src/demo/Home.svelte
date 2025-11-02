@@ -140,6 +140,33 @@
     </p>
   </div>
 
+  <!-- 기술 스택 -->
+  <section class="section techstack-section">
+    <h2 class="section-title">{$t('home.techStack.title')}</h2>
+    <div class="techstack-grid">
+      <!-- Svelte -->
+      <div class="techstack-item">
+        <div class="techstack-icon svelte-icon">⚡</div>
+        <h3 class="techstack-name">{$t('home.techStack.svelte')}</h3>
+        <p class="techstack-description">{$t('home.techStack.svelteDesc')}</p>
+      </div>
+
+      <!-- Flutter -->
+      <div class="techstack-item">
+        <div class="techstack-icon flutter-icon">📱</div>
+        <h3 class="techstack-name">{$t('home.techStack.flutter')}</h3>
+        <p class="techstack-description">{$t('home.techStack.flutterDesc')}</p>
+      </div>
+
+      <!-- Firebase -->
+      <div class="techstack-item">
+        <div class="techstack-icon firebase-icon">🔥</div>
+        <h3 class="techstack-name">{$t('home.techStack.firebase')}</h3>
+        <p class="techstack-description">{$t('home.techStack.firebaseDesc')}</p>
+      </div>
+    </div>
+  </section>
+
   <!-- AI 시대의 진실 (Accordion) -->
   <section class="section">
     <h2 class="section-title">{$t('home.aiTruth.title')}</h2>
@@ -277,6 +304,78 @@
     margin-bottom: 3rem;
   }
 
+  /* 기술 스택 섹션 */
+  .techstack-section {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    border: 1px solid #d1d5db;
+  }
+
+  .techstack-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: flex-start;
+  }
+
+  .techstack-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 0.75rem 0.875rem;
+    background: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+    transition: all 0.2s ease;
+    border: 1px solid #f0f0f0;
+    flex: 0 1 auto;
+    min-width: 170px;
+  }
+
+  .techstack-item:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.08);
+    border-color: #e5e7eb;
+  }
+
+  .techstack-icon {
+    font-size: 1.75rem;
+    margin-bottom: 0.375rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  }
+
+  .techstack-icon.svelte-icon {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  }
+
+  .techstack-icon.flutter-icon {
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  }
+
+  .techstack-icon.firebase-icon {
+    background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%);
+  }
+
+  .techstack-name {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #111827;
+    margin: 0 0 0.125rem 0;
+  }
+
+  .techstack-description {
+    font-size: 0.7rem;
+    color: #6b7280;
+    line-height: 1.35;
+    margin: 0;
+  }
+
   .hero-title {
     font-size: 2.5rem;
     font-weight: 800;
@@ -311,8 +410,13 @@
     padding: 2rem;
     background: white;
     border-radius: 1rem;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     border: 1px solid #e5e7eb;
+    transition: all 0.3s ease;
+  }
+
+  .section:hover {
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
   }
 
   .section-title {
@@ -320,25 +424,30 @@
     font-weight: 700;
     margin: 0 0 1.5rem 0;
     color: #111827;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
   }
 
   /* 아코디언 */
   .accordion {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0.625rem;
   }
 
   .accordion-item {
     border: 1px solid #e5e7eb;
-    border-radius: 0.5rem;
+    border-radius: 0.625rem;
     overflow: hidden;
-    transition: all 0.2s;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    background: white;
   }
 
   .accordion-item:hover {
     border-color: #d1d5db;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.08);
+    transform: translateY(-1px);
   }
 
   .accordion-trigger {
@@ -346,37 +455,43 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1rem 1.25rem;
-    background: transparent;
+    padding: 0.95rem 1.25rem;
+    background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
     border: none;
     cursor: pointer;
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: 600;
     color: #111827;
     text-align: left;
-    transition: background-color 0.2s;
+    transition: all 0.25s ease;
   }
 
   .accordion-trigger:hover {
-    background: #f9fafb;
+    background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
   }
 
   .accordion-trigger[aria-expanded="true"] {
-    background: #f3f4f6;
+    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
   }
 
   .accordion-title {
     flex: 1;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
 
   .accordion-icon {
     display: flex;
-    color: #6b7280;
-    transition: transform 0.3s ease;
+    color: #9ca3af;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    margin-left: 0.75rem;
   }
 
   .accordion-icon.open {
     transform: rotate(180deg);
+    color: #667eea;
   }
 
   .accordion-content {
@@ -384,6 +499,7 @@
     color: #374151;
     line-height: 1.7;
     animation: slideDown 0.3s ease-out;
+    background: #fafbfc;
   }
 
   @keyframes slideDown {
@@ -403,23 +519,27 @@
 
   .gpl-badge {
     display: inline-block;
-    margin-top: 0.75rem;
-    padding: 0.5rem 1rem;
-    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    margin-top: 0.875rem;
+    padding: 0.5rem 0.875rem;
+    background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+    border: 1px solid #86efac;
     border-radius: 0.5rem;
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     font-weight: 600;
-    color: #065f46;
+    color: #166534;
+    box-shadow: 0 2px 4px rgba(34, 197, 94, 0.1);
   }
 
   .hint {
-    margin-top: 0.75rem;
+    margin-top: 0.875rem;
     padding: 0.75rem 1rem;
-    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-    border-left: 3px solid #3b82f6;
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    border-left: 4px solid #667eea;
     border-radius: 0.5rem;
-    font-size: 0.875rem;
-    color: #1e40af;
+    font-size: 0.8125rem;
+    color: #1e3a8a;
+    line-height: 1.6;
+    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.08);
   }
 
   /* TODO 리스트 */
@@ -585,6 +705,31 @@
 
     .todo-subitems {
       margin-left: 1.5rem;
+    }
+
+    .techstack-grid {
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    .techstack-item {
+      min-width: 150px;
+      padding: 0.6rem 0.75rem;
+    }
+
+    .techstack-icon {
+      width: 38px;
+      height: 38px;
+      font-size: 1.5rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .techstack-name {
+      font-size: 0.825rem;
+    }
+
+    .techstack-description {
+      font-size: 0.65rem;
     }
   }
 
