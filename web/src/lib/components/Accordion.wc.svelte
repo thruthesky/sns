@@ -105,46 +105,46 @@
 </script>
 
 <!-- 아코디언 컨테이너 -->
-<div class="accordion w-full space-y-4">
+<div class="accordion">
   {#each parsedItems as item, index}
     <!-- 아코디언 아이템 -->
-    <div class="accordion-item border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow">
+    <div class="accordion-item">
       <!-- 아코디언 트리거 (헤더) -->
       <button
-        class="accordion-trigger w-full px-6 py-4 flex items-center justify-between text-left bg-gradient-to-r from-blue-50 to-purple-50 hover:from-blue-100 hover:to-purple-100 transition-all"
+        class="accordion-trigger"
         onclick={() => toggleItem(index)}
         aria-expanded={isOpen(index)}
       >
-        <div class="flex items-center gap-3 flex-1">
+        <div class="trigger-content">
           <!-- 아이콘 -->
           {#if item.icon}
-            <div class="text-2xl bg-white rounded-full w-10 h-10 flex items-center justify-center shadow-sm">
+            <div class="icon-container">
               {item.icon}
             </div>
           {/if}
           <!-- 제목 -->
-          <span class="text-lg font-semibold text-gray-800">{item.title}</span>
+          <span class="title">{item.title}</span>
         </div>
         <!-- Chevron 아이콘 (열림/닫힘 표시) -->
         <div
-          class="chevron transition-transform duration-200"
+          class="chevron"
           class:rotate-180={isOpen(index)}
         >
-          <ChevronDown size={20} class="text-gray-600" />
+          <ChevronDown size={20} />
         </div>
       </button>
 
       <!-- 아코디언 콘텐츠 -->
       {#if isOpen(index)}
-        <div class="accordion-content px-6 py-4 bg-white border-t border-gray-100">
-          <p class="text-gray-700 leading-relaxed mb-3">{item.content}</p>
+        <div class="accordion-content">
+          <p class="content-text">{item.content}</p>
           {#if item.hint}
-            <p class="text-sm text-blue-600 bg-blue-50 px-4 py-2 rounded-md border border-blue-200">
+            <p class="hint-box">
               {item.hint}
             </p>
           {/if}
           {#if item.gpl}
-            <p class="text-sm text-green-600 bg-green-50 px-4 py-2 rounded-md border border-green-200 mt-2">
+            <p class="gpl-box">
               {item.gpl}
             </p>
           {/if}
@@ -157,34 +157,130 @@
 <style>
   /**
    * 아코디언 스타일
-   * Tailwind CSS를 사용하므로 추가 스타일은 최소화
+   * Tailwind CSS 클래스를 순수 CSS로 변환
    */
+
+  /* 아코디언 컨테이너 */
+  .accordion {
+    width: 100%; /* w-full */
+    display: flex;
+    flex-direction: column;
+    gap: 1rem; /* space-y-4 */
+  }
+
+  /* 아코디언 아이템 */
+  .accordion-item {
+    border: 1px solid #e5e7eb; /* border border-gray-200 */
+    border-radius: 0.5rem; /* rounded-lg */
+    overflow: hidden;
+    background-color: #ffffff; /* bg-white */
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* shadow-sm */
+    transition: box-shadow 0.3s ease; /* transition-shadow */
+  }
+
+  .accordion-item:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* hover:shadow-md */
+  }
+
+  /* 아코디언 트리거 (헤더) */
+  .accordion-trigger {
+    width: 100%; /* w-full */
+    padding: 1rem 1.5rem; /* px-6 py-4 */
+    display: flex; /* flex */
+    align-items: center; /* items-center */
+    justify-content: space-between; /* justify-between */
+    text-align: left; /* text-left */
+    background: linear-gradient(to right, #eff6ff, #faf5ff); /* bg-gradient-to-r from-blue-50 to-purple-50 */
+    transition: all 0.3s ease; /* transition-all */
+    cursor: pointer;
+    border: none;
+    font-family: inherit;
+  }
+
+  .accordion-trigger:hover {
+    background: linear-gradient(to right, #dbeafe, #f3e8ff); /* hover:from-blue-100 hover:to-purple-100 */
+  }
+
+  .accordion-trigger:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+  }
+
+  /* 트리거 콘텐츠 (아이콘 + 제목) */
+  .trigger-content {
+    display: flex; /* flex */
+    align-items: center; /* items-center */
+    gap: 0.75rem; /* gap-3 */
+    flex: 1; /* flex-1 */
+  }
+
+  /* 아이콘 컨테이너 */
+  .icon-container {
+    font-size: 1.5rem; /* text-2xl */
+    background-color: #ffffff; /* bg-white */
+    border-radius: 9999px; /* rounded-full */
+    width: 2.5rem; /* w-10 */
+    height: 2.5rem; /* h-10 */
+    display: flex; /* flex */
+    align-items: center; /* items-center */
+    justify-content: center; /* justify-center */
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* shadow-sm */
+  }
+
+  /* 제목 */
+  .title {
+    font-size: 1.125rem; /* text-lg */
+    font-weight: 600; /* font-semibold */
+    color: #1f2937; /* text-gray-800 */
+  }
+
+  /* Chevron 아이콘 */
   .chevron {
-    transition: transform 0.2s ease-in-out;
+    transition: transform 0.2s ease-in-out; /* transition-transform duration-200 */
+    color: #4b5563; /* text-gray-600 */
   }
 
   .rotate-180 {
     transform: rotate(180deg);
   }
 
-  /* 버튼 기본 스타일 초기화 */
-  button {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-family: inherit;
-  }
-
-  button:focus {
-    outline: 2px solid #3b82f6;
-    outline-offset: 2px;
-  }
-
-  /* 콘텐츠 애니메이션 */
+  /* 아코디언 콘텐츠 */
   .accordion-content {
+    padding: 1rem 1.5rem; /* px-6 py-4 */
+    background-color: #ffffff; /* bg-white */
+    border-top: 1px solid #f3f4f6; /* border-t border-gray-100 */
     animation: slideDown 0.2s ease-out;
   }
 
+  /* 콘텐츠 텍스트 */
+  .content-text {
+    color: #374151; /* text-gray-700 */
+    line-height: 1.625; /* leading-relaxed */
+    margin-bottom: 0.75rem; /* mb-3 */
+  }
+
+  /* 힌트 박스 */
+  .hint-box {
+    font-size: 0.875rem; /* text-sm */
+    color: #2563eb; /* text-blue-600 */
+    background-color: #eff6ff; /* bg-blue-50 */
+    padding: 0.5rem 1rem; /* px-4 py-2 */
+    border-radius: 0.375rem; /* rounded-md */
+    border: 1px solid #bfdbfe; /* border border-blue-200 */
+  }
+
+  /* GPL 박스 */
+  .gpl-box {
+    font-size: 0.875rem; /* text-sm */
+    color: #16a34a; /* text-green-600 */
+    background-color: #f0fdf4; /* bg-green-50 */
+    padding: 0.5rem 1rem; /* px-4 py-2 */
+    border-radius: 0.375rem; /* rounded-md */
+    border: 1px solid #bbf7d0; /* border border-green-200 */
+    margin-top: 0.5rem; /* mt-2 */
+  }
+
+  /* 콘텐츠 애니메이션 */
   @keyframes slideDown {
     from {
       opacity: 0;
