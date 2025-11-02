@@ -248,7 +248,8 @@ sns/
 4. **[docs/sns-custom-elements.md](docs/sns-custom-elements.md)** - Custom Elements 개발 (개발 중 항상 참고)
 5. **[docs/sns-web-project-flow.md](docs/sns-web-project-flow.md)** - 프로젝트 구조 파악
 6. **[docs/sns-web-i18n.md](docs/sns-web-i18n.md)** - 다국어 지원 구현 (i18n)
-7. **[docs/sns-web-deploy.md](docs/sns-web-deploy.md)** - 배포 시 참고
+7. **[docs/sns-web-security.md](docs/sns-web-security.md)** - Firebase 보안 규칙 (필수)
+8. **[docs/sns-web-deploy.md](docs/sns-web-deploy.md)** - 배포 시 참고
 
 #### 앱 개발자용
 1. **[../docs/sns.md](../docs/sns.md)** - 전체 프로젝트 이해
@@ -262,6 +263,7 @@ sns/
 | 컴포넌트 개발 | `sns-custom-elements.md` (필수) |
 | 프로젝트 구조 이해 | `sns-web-project-flow.md` |
 | 다국어 지원 구현 | `sns-web-i18n.md` (필수) |
+| Firebase 보안 규칙 | `sns-web-security.md` (필수) |
 | 빌드 & 배포 | `sns-web-deploy.md` |
 | 전체 서비스 컨셉 확인 | `sns.md` |
 | 워크플로우 확인 | `sns-web.md` |
@@ -271,6 +273,7 @@ sns/
 ## ⚠️ 중요 참고사항
 
 - 모든 웹 개발 작업 시 **반드시** `sns-custom-elements.md` 문서를 참고해야 합니다
+- **Firebase 보안 규칙** (`sns-web-security.md`)은 **필수 문서**입니다. AppCheck는 비용이 매우 비싸므로 완전한 Security Rules를 구현해야 합니다
 - 각 문서에 명시된 워크플로우는 **필수적으로** 준수해야 합니다
 - 문서 간 상호 참조 링크를 활용하여 관련 정보를 빠르게 찾을 수 있습니다
 - 소스 코드 작성 시 한글 주석을 상세하게 작성해야 합니다
