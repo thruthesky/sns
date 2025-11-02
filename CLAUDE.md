@@ -14,6 +14,14 @@ SNS 개발 지침
   - [ ] 각 기술 스택에 맞는 MCP 를 활용해야 한다.
 
 
+# 프로젝트 구조
+
+- [ ] 프로젝트 구조 및 파일 배치에 관한 지침은 docs/project-structure.md 문서를 참고 해야 한다.
+- [ ] 웹 개발 작업은 docs/sns-web.md 문서를 참고 해야 한다.
+  - [ ] 웹 프로젝트 소스 코드는 /web 폴더에 위치한다.
+- [ ] 앱 개발 작업은 docs/sns-app.md 문서를 참고 해야 한다.
+  - [ ] 앱 프로젝트 소스 코드는 /app 폴더에 위치한다.
+
 
 # MCP 목록
 - [ ] Svelte MCP 문서: https://svelte.dev/docs/mcp/overview

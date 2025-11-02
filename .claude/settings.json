@@ -7,6 +7,8 @@
             "Edit(*)",
             "Write",
             "Write(*)",
+            "Bash",
+            "Bash(tree:*)",
             "MultiEdit",
             "mcp__svelte",
             "mcp__svelte__:*",
@@ -20,6 +22,9 @@
             "Bash(mkdir:*)",
             "Bash(rm:*)",
             "Bash(rg:*)",
+            "Bash(npx)",
+            "Bash(npx :*)",
+            "Bash(npx tailwindcss:*)",
             "Bash(find:*)",
             "Bash(git add:*)",
             "Bash(git commit:*)",
@@ -78,7 +83,8 @@
             "Edit(//.claude/**)",
             "Skill(philgo-api)",
             "Skill(file-upload)",
-            "Bash(git submodule:*)"
+            "Bash(git submodule:*)",
+            "Bash(npx tailwindcss:*)"
         ],
         "deny": [],
         "defaultMode": "default"

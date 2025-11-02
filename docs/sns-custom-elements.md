@@ -5,6 +5,283 @@ SNS 커스텀 엘리먼트 개발 지침
 # 워크플로우
 - [ ] 커스텀 엘리먼트 개발 할 때에는 항상(반드시) Svelte의 [커스텀 엘리먼트 문서](https://svelte.dev/docs/svelte/custom-elements)를 참고 해야 하며 개발자에게 이 문서를 참고한다고 알려줍니다.
 
+---
+
+# 개발 환경 선택: SvelteKit vs Vite 라이브러리 모드
+
+Svelte 5 Custom Elements를 개발할 때 두 가지 접근 방식이 있습니다:
+
+## 1. SvelteKit (풀스택 프레임워크)
+
+**사용 시기:**
+- 서버 사이드 렌더링(SSR)이 필요한 경우
+- 라우팅, API 엔드포인트 등 풀스택 기능이 필요한 경우
+- 복잡한 멀티 페이지 애플리케이션 개발 시
+
+**장점:**
+- 라우팅, SSR, API 엔드포인트 등 풀스택 기능 제공
+- 통합된 개발 경험
+
+**단점:**
+- Custom Elements 개발에는 과도한 기능
+- 빌드가 상대적으로 무겁고 복잡함
+- 순수 Web Components 라이브러리로는 부적합
+
+## 2. Vite 라이브러리 모드 (권장 ✅)
+
+**사용 시기:**
+- 재사용 가능한 Web Components 라이브러리 개발
+- 여러 플랫폼(www.philgo.com, www.sonub.com 등)에서 사용할 컴포넌트
+- 프레임워크 독립적인 컴포넌트가 필요한 경우
+
+**장점:**
+- ✅ **경량**: SvelteKit의 불필요한 기능 제외
+- ✅ **빠른 빌드**: 라이브러리 모드에 최적화
+- ✅ **간단한 설정**: 복잡한 프레임워크 설정 불필요
+- ✅ **재사용성**: 어떤 프레임워크에서도 사용 가능한 Web Components
+- ✅ **다중 출력 형식**: ESM, UMD, IIFE 등 다양한 형식으로 빌드 가능
+- ✅ **NPM 배포 용이**: 라이브러리로 패키징 및 배포 최적화
+
+**단점:**
+- SSR 미지원 (하지만 Custom Elements는 원래 클라이언트 전용)
+- 라우팅 등 프레임워크 기능 없음 (하지만 불필요)
+
+---
+
+# Vite 라이브러리 모드로 프로젝트 설정하기
+
+## 프로젝트 구조
+
+```
+web/                                # 프로젝트 루트
+├── src/
+│   ├── lib/                        # 라이브러리 소스
+│   │   ├── components/             # Web Components
+│   │   │   ├── LoginForm.wc.svelte
+│   │   │   ├── PostList.wc.svelte
+│   │   │   └── ...
+│   │   ├── stores/                 # 공유 스토어
+│   │   │   ├── auth.js
+│   │   │   └── database.js
+│   │   ├── utils/                  # 유틸리티
+│   │   │   └── firebase.js
+│   │   └── index.js                # 라이브러리 진입점
+│   └── demo/                       # 개발/테스트 앱
+│       ├── index.html
+│       ├── main.js
+│       ├── App.svelte
+│       └── app.css
+├── dist/                           # 빌드 출력 (gitignore)
+│   ├── sns-components.es.js        # ESM 빌드
+│   └── sns-components.umd.js       # UMD 빌드
+├── package.json
+├── vite.config.js                  # 라이브러리 빌드 설정
+├── vite.demo.config.js             # 개발 서버 설정
+├── svelte.config.js
+└── tailwind.config.js
+```
+
+## 1. 프로젝트 초기화
+
+```bash
+# Vite + Svelte 프로젝트 생성
+npm create vite@latest web -- --template svelte
+cd web
+
+# 기본 패키지 설치
+npm install
+
+# Firebase 및 Tailwind CSS 설치
+npm install firebase
+npm install -D tailwindcss postcss autoprefixer
+
+# Svelte 5 업그레이드 (필요 시)
+npm install -D svelte@5.43.2
+
+# Tailwind 초기화
+npx tailwindcss init -p
+```
+
+## 2. 폴더 구조 생성
+
+```bash
+mkdir -p src/lib/components src/lib/stores src/lib/utils src/demo
+```
+
+## 3. 설정 파일 작성
+
+### vite.config.js (라이브러리 빌드 설정)
+
+```javascript
+import { defineConfig } from 'vite'
+import { svelte } from '@sveltejs/vite-plugin-svelte'
+import { resolve } from 'path'
+
+export default defineConfig({
+  plugins: [
+    svelte({
+      compilerOptions: {
+        customElement: true,  // Custom Elements 모드
+      },
+      include: /\.wc\.svelte$/  // .wc.svelte 파일에만 적용
+    })
+  ],
+  build: {
+    lib: {
+      entry: resolve(__dirname, 'src/lib/index.js'),
+      name: 'SNSComponents',
+      formats: ['es', 'umd'],
+      fileName: (format) => `sns-components.${format}.js`
+    },
+    rollupOptions: {
+      external: ['firebase'],  // 외부 의존성
+      output: {
+        globals: {
+          firebase: 'firebase'
+        }
+      }
+    }
+  }
+})
+```
+
+### vite.demo.config.js (개발 서버 설정)
+
+```javascript
+import { defineConfig } from 'vite'
+import { svelte } from '@sveltejs/vite-plugin-svelte'
+
+export default defineConfig({
+  plugins: [
+    svelte({
+      compilerOptions: {
+        customElement: true,
+      },
+      include: /\.wc\.svelte$/
+    })
+  ],
+  root: 'src/demo',
+  build: {
+    outDir: '../../dist-demo'
+  },
+  server: {
+    port: 5173,
+    open: true
+  }
+})
+```
+
+### svelte.config.js
+
+```javascript
+import { vitePreprocess } from '@sveltejs/vite-plugin-svelte'
+
+export default {
+  preprocess: vitePreprocess(),
+  compilerOptions: {
+    customElement: true,
+  }
+}
+```
+
+### tailwind.config.js
+
+```javascript
+export default {
+  content: [
+    './src/**/*.{html,js,svelte,ts}',
+    './src/**/*.wc.svelte',
+    './index.html'
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}
+```
+
+### package.json 수정
+
+```json
+{
+  "name": "@sns/web-components",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "./dist/sns-components.umd.js",
+  "module": "./dist/sns-components.es.js",
+  "exports": {
+    ".": {
+      "import": "./dist/sns-components.es.js",
+      "require": "./dist/sns-components.umd.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "dev": "vite --config vite.demo.config.js",
+    "build": "vite build",
+    "preview": "vite preview --config vite.demo.config.js"
+  }
+}
+```
+
+## 4. 개발 워크플로우
+
+### 개발 모드 실행
+
+```bash
+npm run dev
+```
+
+- 개발 서버가 `http://localhost:5173`에서 시작됩니다
+- `src/demo/` 폴더의 데모 앱이 실행됩니다
+- Hot Module Replacement (HMR) 지원
+
+### 라이브러리 빌드
+
+```bash
+npm run build
+```
+
+- `dist/` 폴더에 빌드 결과물이 생성됩니다
+- ESM 및 UMD 형식으로 빌드됩니다
+
+### 빌드 결과물 사용
+
+```html
+<!-- HTML에서 ESM 모듈로 사용 -->
+<script type="module" src="./dist/sns-components.es.js"></script>
+
+<login-form></login-form>
+<post-list path="posts" limit="10"></post-list>
+```
+
+## 5. 주요 특징
+
+### ✅ 명명 규칙
+
+- **Web Components**: `*.wc.svelte` (예: `LoginForm.wc.svelte`)
+- **일반 Svelte 컴포넌트**: `*.svelte` (예: `Helper.svelte`)
+
+### ✅ 라이브러리 진입점 (src/lib/index.js)
+
+```javascript
+// Custom Elements 자동 등록
+import './components/LoginForm.wc.svelte';
+import './components/PostList.wc.svelte';
+
+// 유틸리티 export
+export { auth, database } from './utils/firebase.js';
+export { user, signIn, signOut } from './stores/auth.js';
+export { writeData, readData, pushData } from './stores/database.js';
+```
+
+### ✅ 데모 앱 (src/demo/)
+
+- 개발 및 테스트를 위한 독립적인 앱
+- Web Components를 실제로 사용하는 예제
+- 빌드 결과물에는 포함되지 않음
+
+---
 
 # Svelte 커스텀 엘리먼트 개요
 
