@@ -21,8 +21,8 @@
   import { database } from '../utils/firebase.js';
   import { ref, onValue, off } from 'firebase/database';
 
-  // Props
-  let { path = 'posts', limit = 10 } = $props();
+  // Props (HTML 속성은 항상 문자열로 전달됨)
+  let { path = 'posts', limit = '10' } = $props();
 
   // 반응형 상태
   let posts = $state([]);
@@ -104,16 +104,31 @@
   }
 
   /**
+   * 키보드 이벤트 핸들러 (접근성)
+   * @param {KeyboardEvent} event - 키보드 이벤트
+   * @param {Object} post - 게시물 객체
+   */
+  function handleKeyPress(event, post) {
+    // Enter 또는 Space 키로 게시물 클릭 가능
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      handlePostClick(post);
+    }
+  }
+
+  /**
    * 타임스탬프를 읽기 쉬운 형식으로 변환
-   * @param {number} timestamp - Unix 타임스탬프 (밀리초)
+   * @param {number|string} timestamp - Unix 타임스탬프 (밀리초)
    * @returns {string} 포맷된 날짜 문자열
    */
   function formatDate(timestamp) {
     if (!timestamp) return '';
 
-    const date = new Date(timestamp);
+    // HTML 속성은 문자열로 전달되므로 숫자로 변환
+    const ts = typeof timestamp === 'string' ? Number(timestamp) : timestamp;
+    const date = new Date(ts);
     const now = new Date();
-    const diffMs = now - date;
+    const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
@@ -153,7 +168,17 @@
     <!-- 게시물 목록 -->
     <div class="posts">
       {#each posts as post (post.id)}
-        <article class="post-card" onclick={() => handlePostClick(post)}>
+        <!-- svelte-ignore a11y_no_noninteractive_element_to_interactive_role -->
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
+        <!-- 게시물 카드 전체를 클릭 가능하게 만드는 것은 일반적인 UI 패턴입니다 -->
+        <article
+          class="post-card"
+          role="button"
+          tabindex="0"
+          onclick={() => handlePostClick(post)}
+          onkeydown={(e) => handleKeyPress(e, post)}
+          aria-label="게시물: {post.title || post.content || '제목 없음'}"
+        >
           <!-- 게시물 헤더 -->
           <div class="post-header">
             <div class="author-info">

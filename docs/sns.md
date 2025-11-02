@@ -245,4 +245,18 @@ connectedRef.on('value', (snapshot) => {
 - 본 문서는 **기획 단계**의 문서이며, 개발 진행에 따라 업데이트됩니다.
 - 세부 기술 스펙 및 API 설계는 별도 문서로 관리합니다.
 
+---
+
+## 관련 문서
+
+### 웹 개발
+- [웹 개발 지침](web/sns-web.md) - 웹 개발 전반에 관한 지침
+- [Svelte Custom Elements 개발 가이드](web/sns-custom-elements.md) - Svelte 5 Custom Elements 개발 상세 가이드
+
+### 앱 개발
+- [Flutter 앱 개발 지침](app/sns-app.md) - Flutter 모바일 앱 개발 지침
+
+### 프로젝트 루트
+- [프로젝트 개발 지침](../CLAUDE.md) - 전체 프로젝트 개발 워크플로우 및 규칙
+
 

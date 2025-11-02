@@ -3,10 +3,15 @@ SNS 개발 지침
 - 반드시 아래의 [워크플로우](#워크플로우)를 따라야 한다.
 
 # 워크플로우
-- [ ] docs/*.md 또는 docs/**/*.md 파일을 먼저 참고하여, 개발자에게 어떤 문서를 참고하는지 알려준다.
-- [ ] 각 문서 docs/*.md 또는 docs/**/*.md 파일에 명시된 워크플로를 준수해야 한다.
-- [ ] 웹 개발을 할 때에는 sns.md 와 sns-custom-elements.md 문서를 반드시 참고해야 한다.
-- [ ] 모바일 앱 개발을 할 때에는 sns.md 와 sns-app.md 문서를 반드시 참고해야 한다.
+- [ ] 프로젝트 루트의 docs/ 폴더에 있는 관련 문서를 먼저 참고하여, 개발자에게 어떤 문서를 참고하는지 알려준다.
+- [ ] 각 문서에 명시된 워크플로를 준수해야 한다.
+- [ ] **웹 개발**을 할 때에는 다음 문서를 반드시 참고해야 한다:
+  - [ ] [docs/sns.md](docs/sns.md) - SNS 프로젝트 전체 개요 및 기획
+  - [ ] [docs/web/sns-web.md](docs/web/sns-web.md) - 웹 개발 지침
+  - [ ] [docs/web/sns-custom-elements.md](docs/web/sns-custom-elements.md) - Svelte Custom Elements 개발 상세 가이드
+- [ ] **모바일 앱 개발**을 할 때에는 다음 문서를 반드시 참고해야 한다:
+  - [ ] [docs/sns.md](docs/sns.md) - SNS 프로젝트 전체 개요 및 기획
+  - [ ] [docs/app/sns-app.md](docs/app/sns-app.md) - Flutter 앱 개발 지침
 - [ ] 웹 개발 할 때에는 항상 [Svelte MCP 문서](https://svelte.dev/docs/mcp/overview)를 참고해야 한다.
 - [ ] 소스 코드 수정 할 때 유의 사항:
   - [ ] 반드시 한글로 상세한 설명을 작성해야 한다.
@@ -16,11 +21,41 @@ SNS 개발 지침
 
 # 프로젝트 구조
 
-- [ ] 프로젝트 구조 및 파일 배치에 관한 지침은 docs/project-structure.md 문서를 참고 해야 한다.
-- [ ] 웹 개발 작업은 docs/sns-web.md 문서를 참고 해야 한다.
-  - [ ] 웹 프로젝트 소스 코드는 /web 폴더에 위치한다.
-- [ ] 앱 개발 작업은 docs/sns-app.md 문서를 참고 해야 한다.
-  - [ ] 앱 프로젝트 소스 코드는 /app 폴더에 위치한다.
+앱과 웹을 하나의 저장소에서 관리하는 모노레포(Monorepo) 구조를 따릅니다.
+
+## 디렉토리 구조
+
+```
+sns/
+├── docs/                           # 프로젝트 문서
+│   ├── sns.md                      # SNS 전체 개요 및 기획
+│   ├── web/                        # 웹 개발 문서
+│   │   ├── sns-web.md              # 웹 개발 지침
+│   │   └── sns-custom-elements.md  # Svelte Custom Elements 개발 상세 가이드
+│   └── app/                        # 앱 개발 문서
+│       └── sns-app.md              # Flutter 앱 개발 지침
+├── web/                            # 웹 프로젝트 (Svelte 5 Custom Elements)
+│   ├── src/
+│   │   ├── lib/                    # 라이브러리 소스
+│   │   └── demo/                   # 개발/테스트 앱
+│   └── dist/                       # 빌드 출력
+└── app/                            # 모바일 앱 프로젝트 (Flutter)
+    └── lib/                        # Flutter 소스
+```
+
+## 웹 개발
+
+- **소스 코드 위치**: `/web` 폴더
+- **작업 폴더**: `./web` 폴더에서 소스 코드 작업 및 빌드
+- **참고 문서**:
+  - [docs/web/sns-web.md](docs/web/sns-web.md)
+  - [docs/web/sns-custom-elements.md](docs/web/sns-custom-elements.md)
+
+## 앱 개발
+
+- **소스 코드 위치**: `/app` 폴더
+- **작업 폴더**: `./app` 폴더에서 소스 코드 작업 및 빌드
+- **참고 문서**: [docs/app/sns-app.md](docs/app/sns-app.md)
 
 
 # MCP 목록
