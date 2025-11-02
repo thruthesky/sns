@@ -1,0 +1,548 @@
+<svelte:options customElement="sns-topbar" />
+
+<script>
+  /**
+   * 탑바 컴포넌트 (Web Component)
+   *
+   * 모든 페이지 상단에 고정되어 표시되는 네비게이션 바입니다.
+   * 사용자의 displayName과 photoUrl을 RTDB에서 실시간으로 감시하여 표시합니다.
+   *
+   * 사용법:
+   * <sns-topbar></sns-topbar>
+   */
+
+  import { Menu, MessageCircle, Users, User, LogOut, LayoutGrid } from 'lucide-svelte';
+  import { user, signOut } from '../stores/auth.js';
+  import { t } from '../stores/i18n.js';
+  import { onMount } from 'svelte';
+
+  // 반응형 상태
+  let dropdownOpen = $state(false);
+  let logoRef = $state(null);
+
+  /**
+   * 로고 애니메이션 트리거 함수
+   */
+  function triggerLogoAnimation() {
+    if (logoRef) {
+      // 기존 애니메이션 클래스 제거 (재트리거 가능하도록)
+      logoRef.classList.remove('logo-animate-active');
+
+      // 리플로우를 강제로 발생시켜 애니메이션 재시작
+      void logoRef.offsetWidth;
+
+      // 애니메이션 클래스 추가
+      logoRef.classList.add('logo-animate-active');
+
+      // 애니메이션 완료 후 클래스 제거
+      setTimeout(() => {
+        logoRef?.classList.remove('logo-animate-active');
+      }, 600);
+    }
+  }
+
+  /**
+   * 로그아웃 핸들러
+   */
+  async function handleLogout() {
+    const result = await signOut();
+    if (result.success) {
+      // 로그아웃 성공 이벤트 발생
+      const event = new CustomEvent('logout-success', {
+        bubbles: true,
+        composed: true
+      });
+      dispatchEvent(event);
+    }
+    dropdownOpen = false;
+  }
+
+  /**
+   * 사용자 이름의 첫 글자를 가져옴 (아바타 표시용)
+   */
+  function getUserInitial() {
+    if ($user?.displayName) {
+      return $user.displayName.charAt(0).toUpperCase();
+    }
+    if ($user?.email) {
+      return $user.email.charAt(0).toUpperCase();
+    }
+    return 'U';
+  }
+
+  /**
+   * 드롭다운 토글
+   */
+  function toggleDropdown() {
+    dropdownOpen = !dropdownOpen;
+  }
+
+  /**
+   * 드롭다운 외부 클릭 시 닫기
+   */
+  function handleClickOutside(event) {
+    const dropdown = document.querySelector('.dropdown-menu');
+    const trigger = document.querySelector('.dropdown-trigger');
+
+    if (dropdown && !dropdown.contains(event.target) && !trigger?.contains(event.target)) {
+      dropdownOpen = false;
+    }
+  }
+
+  // 로고 애니메이션 - 로딩 후 1회 자동 수행, 매 10초마다 반복
+  onMount(() => {
+    // 로딩 완료 후 500ms 후 1회 자동 실행
+    const initialTimer = setTimeout(() => {
+      triggerLogoAnimation();
+    }, 500);
+
+    // 매 10초마다 실행
+    const intervalTimer = setInterval(() => {
+      triggerLogoAnimation();
+    }, 10000);
+
+    // 외부 클릭 감지
+    document.addEventListener('click', handleClickOutside);
+
+    // 클린업 함수
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(intervalTimer);
+      document.removeEventListener('click', handleClickOutside);
+    };
+  });
+</script>
+
+<!-- 탑바 -->
+<header class="topbar">
+  <div class="container">
+    <!-- 왼쪽: 로고 -->
+    <a href="/" class="logo-link" bind:this={logoRef}>
+      <div class="logo">
+        {#each $t('프로젝트_명칭').split('') as char, i}
+          <span class="logo-char logo-char-{i + 1}">{char}</span>
+        {/each}
+      </div>
+    </a>
+
+    <!-- 오른쪽: 네비게이션 -->
+    <nav class="nav">
+      {#if $user}
+        <!-- 데스크톱 메뉴 -->
+        <div class="desktop-menu">
+          <!-- 포럼 버튼 -->
+          <a href="/forum/list" class="nav-button">
+            <LayoutGrid size={16} />
+            <span>{$t('포럼')}</span>
+          </a>
+
+          <!-- 채팅 버튼 -->
+          <a href="/chat/list" class="nav-button">
+            <MessageCircle size={16} />
+            <span>{$t('채팅')}</span>
+          </a>
+
+          <!-- 사용자 찾기 버튼 -->
+          <a href="/users" class="nav-button">
+            <Users size={16} />
+            <span>{$t('사용자찾기')}</span>
+          </a>
+
+          <!-- 프로필 드롭다운 -->
+          <div class="dropdown">
+            <button
+              class="profile-button dropdown-trigger"
+              onclick={toggleDropdown}
+              type="button"
+            >
+              <div class="avatar">
+                {#if $user?.photoURL}
+                  <img src={$user.photoURL} alt="프로필" class="avatar-image" />
+                {:else}
+                  <div class="avatar-fallback">{getUserInitial()}</div>
+                {/if}
+              </div>
+              <span class="profile-name">
+                {$user?.displayName || $user?.email}
+              </span>
+            </button>
+
+            {#if dropdownOpen}
+              <div class="dropdown-menu">
+                <div class="dropdown-label">{$t('내계정')}</div>
+                <div class="dropdown-divider"></div>
+                <a href="/profile" class="dropdown-item">
+                  <User size={16} />
+                  <span>{$t('프로필수정')}</span>
+                </a>
+                <div class="dropdown-divider"></div>
+                <button class="dropdown-item" onclick={handleLogout} type="button">
+                  <LogOut size={16} />
+                  <span>{$t('로그아웃')}</span>
+                </button>
+              </div>
+            {/if}
+          </div>
+
+          <!-- 메뉴 아이콘 -->
+          <a href="/menu" class="icon-button" title={$t('메뉴')}>
+            <Menu size={24} />
+          </a>
+        </div>
+
+        <!-- 모바일 메뉴 -->
+        <div class="mobile-menu">
+          <a href="/forum/list" class="icon-button" title={$t('포럼')}>
+            <LayoutGrid size={20} />
+          </a>
+          <a href="/users" class="icon-button" title={$t('사용자찾기')}>
+            <Users size={20} />
+          </a>
+          <a href="/chat/list" class="icon-button" title={$t('채팅')}>
+            <MessageCircle size={20} />
+          </a>
+          <a href="/profile" class="icon-button" title={$t('프로필')}>
+            <div class="avatar avatar-small">
+              {#if $user?.photoURL}
+                <img src={$user.photoURL} alt={$t('프로필')} class="avatar-image" />
+              {:else}
+                <div class="avatar-fallback avatar-fallback-small">{getUserInitial()}</div>
+              {/if}
+            </div>
+          </a>
+          <a href="/menu" class="icon-button" title={$t('메뉴')}>
+            <Menu size={24} />
+          </a>
+        </div>
+      {:else}
+        <!-- 로그인하지 않은 경우 -->
+        <!-- 데스크톱 메뉴 -->
+        <div class="desktop-menu">
+          <a href="/forum/list" class="nav-button">
+            <LayoutGrid size={16} />
+            <span>{$t('포럼')}</span>
+          </a>
+          <a href="/auth/login" class="nav-button">{$t('로그인')}</a>
+          <a href="/auth/signup" class="primary-button">{$t('회원가입')}</a>
+          <a href="/menu" class="icon-button" title={$t('메뉴')}>
+            <Menu size={20} />
+          </a>
+        </div>
+
+        <!-- 모바일 메뉴 -->
+        <div class="mobile-menu">
+          <a href="/forum/list" class="icon-button" title={$t('포럼')}>
+            <LayoutGrid size={20} />
+          </a>
+          <a href="/users" class="icon-button" title={$t('사용자찾기')}>
+            <Users size={20} />
+          </a>
+          <a href="/auth/login" class="icon-button" title={$t('채팅')}>
+            <MessageCircle size={20} />
+          </a>
+          <a href="/auth/login" class="icon-button" title={$t('로그인')}>
+            <div class="avatar avatar-small">
+              <div class="avatar-fallback avatar-fallback-small">?</div>
+            </div>
+          </a>
+          <a href="/menu" class="icon-button" title={$t('메뉴')}>
+            <Menu size={24} />
+          </a>
+        </div>
+      {/if}
+    </nav>
+  </div>
+</header>
+
+<style>
+  /* 탑바 */
+  .topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    border-bottom: 1px solid #e5e7eb;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    background-color: white;
+  }
+
+  /* 컨테이너 */
+  .container {
+    max-width: 1280px;
+    margin: 0 auto;
+    display: flex;
+    height: 4rem;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1rem;
+  }
+
+  /* 로고 */
+  .logo-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .logo {
+    font-size: 1.25rem;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+  }
+
+  .logo-char {
+    display: inline-block;
+    transition: transform 0.3s ease;
+  }
+
+  .logo-animate-active .logo-char-1 {
+    animation: bounce 0.3s ease;
+  }
+
+  .logo-animate-active .logo-char-2 {
+    animation: bounce 0.3s ease 0.075s;
+  }
+
+  .logo-animate-active .logo-char-3 {
+    animation: bounce 0.3s ease 0.15s;
+  }
+
+  @keyframes bounce {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-0.25rem);
+    }
+  }
+
+  .logo-link:hover .logo-char {
+    transform: translateY(-0.25rem);
+  }
+
+  .logo-link:hover .logo-char-2 {
+    transition-delay: 0.075s;
+  }
+
+  .logo-link:hover .logo-char-3 {
+    transition-delay: 0.15s;
+  }
+
+  /* 네비게이션 */
+  .nav {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  /* 데스크톱 메뉴 */
+  .desktop-menu {
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  @media (min-width: 768px) {
+    .desktop-menu {
+      display: flex;
+    }
+  }
+
+  /* 모바일 메뉴 */
+  .mobile-menu {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  @media (min-width: 768px) {
+    .mobile-menu {
+      display: none;
+    }
+  }
+
+  /* 네비게이션 버튼 */
+  .nav-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: transparent;
+    color: inherit;
+    border: none;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.2s;
+  }
+
+  .nav-button:hover {
+    background-color: #f3f4f6;
+  }
+
+  /* 주요 버튼 */
+  .primary-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background-color: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.2s;
+  }
+
+  .primary-button:hover {
+    background-color: #2563eb;
+  }
+
+  /* 아이콘 버튼 */
+  .icon-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
+    background: transparent;
+    color: inherit;
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.2s;
+  }
+
+  .icon-button:hover {
+    background-color: #f3f4f6;
+  }
+
+  /* 프로필 버튼 */
+  .profile-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: transparent;
+    color: inherit;
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+
+  .profile-button:hover {
+    background-color: #f3f4f6;
+  }
+
+  /* 프로필 이름 */
+  .profile-name {
+    display: none;
+    font-size: 0.875rem;
+  }
+
+  @media (min-width: 1024px) {
+    .profile-name {
+      display: inline-block;
+    }
+  }
+
+  /* 아바타 */
+  .avatar {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #e5e7eb;
+  }
+
+  .avatar-small {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+
+  .avatar-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .avatar-fallback {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #6b7280;
+  }
+
+  .avatar-fallback-small {
+    font-size: 0.625rem;
+  }
+
+  /* 드롭다운 */
+  .dropdown {
+    position: relative;
+  }
+
+  .dropdown-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.5rem);
+    min-width: 12rem;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.375rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    padding: 0.5rem;
+    z-index: 50;
+  }
+
+  .dropdown-label {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #111827;
+  }
+
+  .dropdown-divider {
+    height: 1px;
+    background-color: #e5e7eb;
+    margin: 0.25rem 0;
+  }
+
+  .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    background: transparent;
+    color: inherit;
+    border: none;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+    text-align: left;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.2s;
+  }
+
+  .dropdown-item:hover {
+    background-color: #f3f4f6;
+  }
+</style>

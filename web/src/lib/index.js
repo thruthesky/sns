@@ -17,6 +17,15 @@
 import './components/LoginForm.wc.svelte';
 import './components/PostList.wc.svelte';
 
+// 레이아웃 컴포넌트
+import './components/Topbar.wc.svelte';
+import './components/LeftSidebar.wc.svelte';
+import './components/RightSidebar.wc.svelte';
+import './components/Layout.wc.svelte';
+
+// UI 컴포넌트
+import './components/Accordion.wc.svelte';
+
 // Firebase 유틸리티 내보내기
 export { auth, database } from './utils/firebase.js';
 
