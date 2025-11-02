@@ -16,12 +16,12 @@ Svelte 5 Custom Elements를 사용한 재사용 가능한 소셜 네트워크 �
 
 ## 📦 포함된 컴포넌트
 
-### `<login-form>`
-Firebase Authentication을 사용한 로그인/회원가입 폼입니다.
+### `<phone-login>`
+Firebase Phone Authentication을 사용한 전화번호 로그인 폼입니다.
 
 **사용법:**
 ```html
-<login-form></login-form>
+<phone-login></phone-login>
 ```
 
 **이벤트:**
@@ -74,7 +74,7 @@ web/
 ├── src/
 │   ├── lib/                        # 라이브러리 소스
 │   │   ├── components/             # Web Components
-│   │   │   ├── LoginForm.wc.svelte
+│   │   │   ├── PhoneLogin.wc.svelte
 │   │   │   └── PostList.wc.svelte
 │   │   ├── stores/                 # 공유 스토어
 │   │   │   ├── auth.js
@@ -105,10 +105,12 @@ web/
 <head>
   <!-- 라이브러리 로드 -->
   <script type="module" src="./dist/sns-components.es.js"></script>
+  <!-- Google reCAPTCHA (Phone Login에 필요) -->
+  <script src="https://www.google.com/recaptcha/api.js?render=explicit" async defer></script>
 </head>
 <body>
   <!-- 컴포넌트 사용 -->
-  <login-form></login-form>
+  <phone-login></phone-login>
   <post-list path="posts" limit="10"></post-list>
 </body>
 </html>
@@ -136,17 +138,26 @@ await signOut();
 
 ## 🔧 Firebase 설정
 
-프로젝트 루트에 `.env` 파일을 생성하고 Firebase 설정을 추가하세요:
+현재 라이브러리는 환경 변수가 아닌 정적 설정 파일을 사용합니다.  
+Firebase 콘솔에서 **Project settings → Your apps → SDK setup and configuration → Config** 값을 확인한 뒤, 다음 파일을 수정하세요.
 
-```env
-VITE_FIREBASE_API_KEY=your_api_key
-VITE_FIREBASE_AUTH_DOMAIN=your_auth_domain
-VITE_FIREBASE_DATABASE_URL=your_database_url
-VITE_FIREBASE_PROJECT_ID=your_project_id
-VITE_FIREBASE_STORAGE_BUCKET=your_storage_bucket
-VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-VITE_FIREBASE_APP_ID=your_app_id
+- 경로: `src/config/firebase.web-config.js`
+- 수정 방법: 기본으로 포함된 객체의 값을 자신의 프로젝트 값으로 교체
+
+```js
+// src/config/firebase.web-config.js
+export const firebaseConfig = {
+  apiKey: 'YOUR_API_KEY',
+  authDomain: 'YOUR_PROJECT.firebaseapp.com',
+  databaseURL: 'https://YOUR_PROJECT-default-rtdb.firebaseio.com',
+  projectId: 'YOUR_PROJECT',
+  storageBucket: 'YOUR_PROJECT.appspot.com',
+  messagingSenderId: 'YOUR_SENDER_ID',
+  appId: 'YOUR_APP_ID'
+};
 ```
+
+여러 환경(개발/운영 등)을 나눠야 한다면, 파일을 환경별로 분리하거나 번들 과정에서 원하는 설정 파일을 선택하도록 스크립트를 구성하면 됩니다.
 
 ## ✨ 주요 특징
 

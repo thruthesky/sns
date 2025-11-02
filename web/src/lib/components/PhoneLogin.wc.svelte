@@ -17,6 +17,17 @@
    * - login-error: 로그인 실패 시 발생
    */
 
+  // Google reCAPTCHA 전역 객체 타입 선언
+  // reCAPTCHA는 외부 스크립트(https://www.google.com/recaptcha/api.js)에서 로드되며
+  // window.grecaptcha 객체를 전역으로 노출합니다.
+  /**
+   * @typedef {Object} GreCaptcha
+   * @property {function(number): void} reset - reCAPTCHA 위젯을 초기화하여 재사용 가능하게 만듦
+   * @property {function(string): number} render - reCAPTCHA 위젯을 렌더링하고 위젯 ID 반환
+   * @property {function(number): void} execute - reCAPTCHA 실행
+   * @property {function(number): string} getResponse - reCAPTCHA 응답 토큰 가져오기
+   */
+
   import { auth } from '../utils/firebase.js';
   import {
     signInWithPhoneNumber,
@@ -46,32 +57,131 @@
   let error = $state('');
   let recaptchaVerifier = $state(null);
   let confirmationResult = $state(null);
+  let recaptchaWidgetId = $state(undefined); // reCAPTCHA 위젯 ID 저장
+  let recaptchaContainer = $state(null); // reCAPTCHA 컨테이너 DOM 요소 참조
 
   /**
    * reCAPTCHA 초기화
-   * 컴포넌트 마운트 시 실행
+   * PHP 코드의 setupRecaptcha 로직을 Svelte로 변환
+   *
+   * 중요: Web Component의 Shadow DOM에서는 ID로 요소를 찾을 수 없으므로
+   * DOM 요소 참조를 직접 전달해야 합니다.
+   */
+  function setupRecaptcha() {
+    return new Promise((resolve, reject) => {
+      try {
+        // reCAPTCHA 컨테이너가 없으면 초기화 불가
+        if (!recaptchaContainer) {
+          const containerError = new Error('reCAPTCHA 컨테이너를 찾을 수 없습니다.');
+          console.error(containerError);
+          error = 'reCAPTCHA 초기화에 실패했습니다.';
+          reject(containerError);
+          return;
+        }
+
+        // 기존 reCAPTCHA 인스턴스가 있으면 정리
+        if (recaptchaVerifier) {
+          // 이미 렌더링된 경우 reset만 수행
+          // @ts-expect-error - grecaptcha는 Google reCAPTCHA 외부 스크립트에서 제공하는 전역 객체
+          if (recaptchaWidgetId !== undefined && typeof window.grecaptcha !== 'undefined') {
+            try {
+              // @ts-expect-error - grecaptcha.reset()은 Google reCAPTCHA API 메서드
+              window.grecaptcha.reset(recaptchaWidgetId);
+              console.log('reCAPTCHA reset completed');
+              resolve(recaptchaWidgetId);
+              return;
+            } catch (e) {
+              console.warn('Failed to reset reCAPTCHA:', e);
+            }
+          }
+
+          // reset이 실패하면 clear 시도
+          try {
+            recaptchaVerifier.clear();
+            recaptchaVerifier = null;
+            recaptchaWidgetId = undefined;
+          } catch (e) {
+            console.warn('Failed to clear reCAPTCHA:', e);
+          }
+        }
+
+        // 새 reCAPTCHA 인스턴스 생성 - Light DOM 컨테이너의 ID를 사용하여 참조
+        // invisible reCAPTCHA 설정: 사용자에게 보이지 않으며, 자동으로 백그라운드에서 검증됨
+        // Google reCAPTCHA는 document.getElementById()를 사용하므로 Light DOM의 컨테이너가 필요
+        recaptchaVerifier = new RecaptchaVerifier(auth, recaptchaContainer.id, {
+          size: 'invisible', // invisible 모드 활성화 - 사용자 상호작용 없이 자동 검증
+          callback: (response) => {
+            // reCAPTCHA 통과 시 자동 호출 (토큰 발급)
+            console.log('reCAPTCHA verified (invisible mode)');
+          },
+          'expired-callback': () => {
+            // 토큰 만료 시 호출: reset 또는 재생성
+            console.warn('reCAPTCHA expired. Resetting...');
+            // @ts-expect-error - grecaptcha는 Google reCAPTCHA 외부 스크립트에서 제공하는 전역 객체
+            if (typeof window.grecaptcha !== 'undefined' && recaptchaWidgetId !== undefined) {
+              // 가장 빠른 방법: 위젯 리셋
+              // @ts-expect-error - grecaptcha.reset()은 Google reCAPTCHA API 메서드
+              window.grecaptcha.reset(recaptchaWidgetId);
+            } else {
+              // 상황에 따라 상태가 꼬일 수 있으므로, 안전하게 재생성
+              setupRecaptcha();
+            }
+          }
+        });
+
+        // 사전 렌더링하여, 첫 클릭 지연 줄이기
+        recaptchaVerifier
+          .render()
+          .then((widgetId) => {
+            recaptchaWidgetId = widgetId;
+            console.log('reCAPTCHA rendered with widgetId:', widgetId);
+            resolve(widgetId);
+          })
+          .catch((renderError) => {
+            console.error('Failed to render reCAPTCHA:', renderError);
+            error = 'reCAPTCHA 초기화에 실패했습니다.';
+            reject(renderError);
+          });
+      } catch (e) {
+        console.error('reCAPTCHA 초기화 실패:', e);
+        error = 'reCAPTCHA 초기화에 실패했습니다.';
+        reject(e);
+      }
+    });
+  }
+
+  /**
+   * 컴포넌트 마운트 시 초기화
    */
   onMount(() => {
-    try {
-      // reCAPTCHA 검증기 초기화
-      recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        size: 'normal',
-        callback: (response) => {
-          // reCAPTCHA 성공
-          console.log('reCAPTCHA verified');
-        },
-        'expired-callback': () => {
-          // reCAPTCHA 만료
-          error = 'reCAPTCHA가 만료되었습니다. 페이지를 새로고침해주세요.';
-        }
-      });
+    // Light DOM(document.body)에 reCAPTCHA 컨테이너 생성
+    // Web Component의 Shadow DOM 외부에 배치하여 Google reCAPTCHA가 접근 가능하도록 함
+    // Google reCAPTCHA는 document.getElementById()를 사용하므로 Light DOM 필수
+    const lightDomContainer = document.createElement('div');
+    lightDomContainer.id = 'recaptcha-container-' + Math.random().toString(36).substr(2, 9);
+    lightDomContainer.className = 'recaptcha-container-light-dom';
+    lightDomContainer.style.cssText = `
+      position: absolute;
+      top: -9999px;
+      left: -9999px;
+      width: auto;
+      height: auto;
+      pointer-events: none;
+    `;
+    document.body.appendChild(lightDomContainer);
 
-      // reCAPTCHA 렌더링
-      recaptchaVerifier.render();
-    } catch (e) {
-      console.error('reCAPTCHA 초기화 실패:', e);
-      error = 'reCAPTCHA 초기화에 실패했습니다.';
-    }
+    // recaptchaContainer를 Light DOM의 요소로 설정
+    recaptchaContainer = lightDomContainer;
+
+    // reCAPTCHA 초기화 실행
+    setupRecaptcha();
+
+    // 정리: 컴포넌트 언마운트 시 Light DOM 요소 제거
+    return () => {
+      if (lightDomContainer && lightDomContainer.parentNode) {
+        lightDomContainer.parentNode.removeChild(lightDomContainer);
+      }
+    };
   });
 
   /**
@@ -88,6 +198,12 @@
   /**
    * SMS 인증 코드 전송
    * Firebase signInWithPhoneNumber 호출
+   *
+   * invisible reCAPTCHA 동작 방식:
+   * - signInWithPhoneNumber 호출 시 자동으로 reCAPTCHA 검증이 시작됨
+   * - 사용자에게는 보이지 않으며, 백그라운드에서 자동으로 검증됨
+   * - 검증이 성공하면 SMS가 전송됨
+   * - 의심스러운 활동이 감지되면 사용자에게 챌린지(이미지 선택 등)가 표시될 수 있음
    */
   async function sendVerificationCode() {
     error = '';
@@ -107,13 +223,14 @@
       console.log('Sending verification code to:', fullPhoneNumber);
 
       // Firebase Phone Auth - SMS 전송
+      // invisible reCAPTCHA는 이 함수 호출 시 자동으로 실행되어 백그라운드에서 검증됨
       confirmationResult = await signInWithPhoneNumber(
         auth,
         fullPhoneNumber,
         recaptchaVerifier
       );
 
-      console.log('Verification code sent successfully');
+      console.log('Verification code sent successfully (invisible reCAPTCHA verified)');
 
       // SMS 코드 입력 단계로 이동
       step = 'code';
@@ -255,9 +372,6 @@
           </p>
         </div>
 
-        <!-- reCAPTCHA 컨테이너 -->
-        <div id="recaptcha-container" class="recaptcha-container"></div>
-
         <!-- 에러 메시지 -->
         {#if error}
           <div class="error-message">
@@ -357,6 +471,21 @@
         </div>
       </div>
     {/if}
+
+    <!-- reCAPTCHA 컨테이너 (invisible 모드) -->
+    <!--
+      중요: reCAPTCHA 컨테이너는 항상 DOM에 존재해야 합니다.
+      조건부 블록({#if step === 'phone'}) 밖에 위치하여 step 변경 시에도
+      DOM에서 제거되지 않도록 합니다.
+
+      ID를 사용하여 RecaptchaVerifier 초기화 시 안정적으로 컨테이너를 참조합니다.
+
+      invisible reCAPTCHA 동작 방식:
+      - 사용자에게 보이지 않으며, 백그라운드에서 자동으로 검증됨
+      - 의심스러운 활동 감지 시에만 사용자에게 챌린지가 표시됨
+      - reCAPTCHA 배지는 페이지 우측 하단에 자동으로 표시됨
+    -->
+    <div id="recaptcha-container" bind:this={recaptchaContainer} class="recaptcha-container"></div>
   </div>
 </div>
 
@@ -502,10 +631,17 @@
   }
 
   /* reCAPTCHA 컨테이너 */
+  /* invisible reCAPTCHA는 사용자에게 보이지 않도록 설정 */
+  /* 중요: 컨테이너는 최소 크기를 유지하면서 화면 밖으로 위치 */
+  /* display: none이나 visibility: hidden은 사용하면 안됨 - reCAPTCHA가 "제거된 것"으로 간주 */
   .recaptcha-container {
-    margin-bottom: 1.5rem;
-    display: flex;
-    justify-content: center;
+    position: absolute;
+    top: -9999px;
+    left: -9999px;
+    width: auto;
+    height: auto;
+    pointer-events: none;
+    /* invisible 모드에서는 reCAPTCHA 배지만 페이지 우측 하단에 자동으로 표시됨 */
   }
 
   /* 에러 메시지 */

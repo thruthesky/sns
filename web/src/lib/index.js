@@ -14,7 +14,6 @@
 
 // Web Components 가져오기
 // .wc.svelte 파일을 import하면 자동으로 customElements.define() 호출됨
-import './components/LoginForm.wc.svelte';
 import './components/PostList.wc.svelte';
 import './components/PhoneLogin.wc.svelte';
 

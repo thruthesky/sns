@@ -40,11 +40,11 @@ src/lib/components/*.wc.svelte
 ```
 vite.config.js (library mode)
   -> build.lib.entry = src/lib/index.js
-    -> components/LoginForm.wc.svelte (customElement 등록)
+    -> components/PhoneLogin.wc.svelte (customElement 등록)
     -> components/PostList.wc.svelte (customElement 등록)
     -> stores/*, utils/firebase.js 재노출
 ```
-- `vite.config.js`는 `customElement: true` 옵션을 `.wc.svelte` 파일에만 적용하여, `LoginForm`/`PostList`가 자동으로 `customElements.define()` 됩니다.
+- `vite.config.js`는 `customElement: true` 옵션을 `.wc.svelte` 파일에만 적용하여, `PhoneLogin`/`PostList`가 자동으로 `customElements.define()` 됩니다.
 - 번들 결과물은 `dist/sns-components.es.js`(ESM)와 `dist/sns-components.umd.js`이며, Firebase 패키지는 외부 의존성으로 분리됩니다.
 - 라이브러리를 불러오는 프로젝트는 HTML에서 `<script type="module" src=".../sns-components.es.js"></script>` 형태로 삽입하면 Custom Element가 전역에 등록됩니다.
 
@@ -54,7 +54,7 @@ vite.demo.config.js (root=src/demo)
   -> src/demo/index.html
     -> src/demo/main.js
       -> src/demo/App.svelte
-        -> <login-form> / <post-list> Custom Element 사용
+        -> <phone-login> / <post-list> Custom Element 사용
 ```
 - `vite.demo.config.js` : 데모 루트를 `src/demo`로 지정하고, 동일하게 `.wc.svelte`만 Custom Element로 컴파일합니다. `envDir`를 프로젝트 루트로 돌려 Firebase 환경 변수를 공유합니다.
 - `src/demo/index.html` : 데모 전용 `#app` 노드를 만들고 `./main.js`를 로드합니다.
@@ -63,20 +63,24 @@ vite.demo.config.js (root=src/demo)
   1. `import '../lib/index.js'`로 라이브러리 엔트리를 즉시 로드하며 Firebase와 Custom Element를 초기화합니다.
   2. `user` 스토어를 구독해 로그인 상태를 표시하고, `signOut` 함수를 버튼에 바인딩합니다.
   3. 탭 UI(`login`, `posts`, `about`)를 구성해 각 Custom Element를 시연합니다.
-  4. `<login-form>`의 `login-success`/`login-error` 이벤트를 받아 상태 메시지를 업데이트합니다.
+  4. `<phone-login>`의 `login-success`/`login-error` 이벤트를 받아 상태 메시지를 업데이트합니다.
   5. `<post-list>`에서 게시물 클릭 시 `post-click` 이벤트로 상세 정보를 띄웁니다.
 
 ## 5. 각 주요 컴포넌트/스토어 상세 흐름
-### 5.1 `<login-form>` (`src/lib/components/LoginForm.wc.svelte`)
+### 5.1 `<phone-login>` (`src/lib/components/PhoneLogin.wc.svelte`)
 ```
-폼 제출
-  -> signIn 또는 signUp (src/lib/stores/auth.js)
-    -> Firebase Auth API
-      -> 성공 시 CustomEvent('login-success')
-      -> 실패 시 CustomEvent('login-error')
+전화번호 입력 및 인증 코드 요청
+  -> setupRecaptcha() - Google reCAPTCHA 초기화
+  -> signInWithPhoneNumber (Firebase Phone Authentication)
+    -> 인증 코드 SMS 발송
+      -> 사용자가 인증 코드 입력
+        -> confirmationResult.confirm(verificationCode)
+          -> 성공 시 CustomEvent('login-success')
+          -> 실패 시 CustomEvent('login-error')
 ```
-- Rune 기반 `email`, `password`, `displayName`, `loading` 상태로 폼 입력을 관리합니다.
-- `isSignUpMode`로 로그인/회원가입 모드를 전환하고, 성공하면 폼 데이터를 초기화합니다.
+- Rune 기반 `phoneNumber`, `verificationCode`, `step`, `loading` 상태로 인증 플로우를 관리합니다.
+- Google reCAPTCHA를 Shadow DOM 내부에서 초기화하기 위해 `bind:this`로 DOM 요소 참조를 직접 전달합니다.
+- 2단계 인증 플로우: 1) 전화번호 입력 → 2) 인증 코드 입력
 - 이벤트는 `bubbles: true`, `composed: true` 설정으로 Shadow DOM 바깥에서도 수신 가능합니다.
 
 ### 5.2 인증 스토어 (`src/lib/stores/auth.js`)
@@ -120,8 +124,8 @@ setupPresence(userId)
 
 ## 6. 초기 화면 렌더링 요약
 - **Vite 기본 엔트리** : `App.svelte`가 Svelte/Vite 로고 + Counter 버튼을 출력합니다. 이는 라이브러리 코드와 별개이며, 프로젝트 템플릿 확인 용도입니다.
-- **데모 엔트리** : `App.svelte`가 바로 `<login-form>` 탭을 보여주며, 로그인 이벤트에 따라 `<post-list>` 탭으로 이동합니다. 로그인하지 않은 상태라도 탭 이동은 가능하고, 게시물 보기에서는 경고 메시지를 표시합니다.
-- **라이브러리 소비자** : 외부 프로젝트에서 `<login-form>`이나 `<post-list>`를 DOM에 배치하면, import 시점에 Firebase가 초기화되고 동일한 흐름으로 작동합니다.
+- **데모 엔트리** : `App.svelte`가 바로 `<phone-login>` 탭을 보여주며, 로그인 이벤트에 따라 `<post-list>` 탭으로 이동합니다. 로그인하지 않은 상태라도 탭 이동은 가능하고, 게시물 보기에서는 경고 메시지를 표시합니다.
+- **라이브러리 소비자** : 외부 프로젝트에서 `<phone-login>`이나 `<post-list>`를 DOM에 배치하면, import 시점에 Firebase가 초기화되고 동일한 흐름으로 작동합니다.
 
 ## 7. 실행 및 테스트 팁
 - `npm run dev` : 데모 앱을 실행하여 Custom Element를 실시간 확인합니다.

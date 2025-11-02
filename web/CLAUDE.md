@@ -43,14 +43,14 @@ sns/
 - **소스 코드 위치**: `/web` 폴더
 - **작업 폴더**: `./web` 폴더에서 소스 코드 작업 및 빌드
 - **참고 문서**:
-  - [web/docs/sns-web.md](web/docs/sns-web.md)
-  - [web/docs/sns-custom-elements.md](web/docs/sns-custom-elements.md)
+  - [docs/sns-web.md](docs/sns-web.md)
+  - [docs/sns-custom-elements.md](docs/sns-custom-elements.md)
 
 ## 앱 개발
 
 - **소스 코드 위치**: `/app` 폴더
 - **작업 폴더**: `./app` 폴더에서 소스 코드 작업 및 빌드
-- **참고 문서**: [docs/app/sns-app.md](docs/app/sns-app.md)
+- **참고 문서**: [../docs/app/sns-app.md](../docs/app/sns-app.md)
 
 
 # MCP 목록
@@ -66,7 +66,7 @@ sns/
 
 ## 📚 전체 프로젝트 문서
 
-### [docs/sns.md](docs/sns.md) - SNS 프로젝트 전체 개요 및 기획
+### [../docs/sns.md](../docs/sns.md) - SNS 프로젝트 전체 개요 및 기획
 
 **포함 내용**:
 - 로컬 기반 소셜 모임 서비스의 전체 컨셉 및 목적
@@ -86,7 +86,7 @@ sns/
 
 ## 🌐 웹 개발 문서
 
-### [web/docs/sns-web.md](web/docs/sns-web.md) - 웹 개발 지침
+### [docs/sns-web.md](docs/sns-web.md) - 웹 개발 지침
 
 **포함 내용**:
 - 웹 개발 워크플로우 및 필수 체크사항
@@ -100,7 +100,7 @@ sns/
 - ✅ 웹 프로젝트의 전반적인 개발 방향을 이해하고자 할 때
 - ✅ Custom Elements 개발 가이드로 이동하기 전 기본 지침 확인 시
 
-### [web/docs/sns-custom-elements.md](web/docs/sns-custom-elements.md) - Svelte Custom Elements 개발 상세 가이드
+### [docs/sns-custom-elements.md](docs/sns-custom-elements.md) - Svelte Custom Elements 개발 상세 가이드
 
 **포함 내용**:
 - Svelte 5 Runes (`$state`, `$derived`, `$effect` 등) 사용법
@@ -119,7 +119,7 @@ sns/
 - ✅ Firebase 연동 방법을 구현할 때
 - ✅ Web Components의 props, 이벤트, 슬롯 처리 방법을 찾을 때
 
-### [web/docs/sns-web-quick-start.md](web/docs/sns-web-quick-start.md) - 웹 개발 퀵 스타트
+### [docs/sns-web-quick-start.md](docs/sns-web-quick-start.md) - 웹 개발 퀵 스타트
 
 **포함 내용**:
 - 개발 환경 설정 (Node.js, 패키지 설치)
@@ -135,7 +135,7 @@ sns/
 - ✅ 다른 개발자에게 프로젝트 시작 방법을 안내할 때
 - ✅ Firebase 초기 설정이 필요할 때
 
-### [web/docs/sns-web-project-flow.md](web/docs/sns-web-project-flow.md) - 웹 프로젝트 플로우
+### [docs/sns-web-project-flow.md](docs/sns-web-project-flow.md) - 웹 프로젝트 플로우
 
 **포함 내용**:
 - 전체 프로젝트 구조 및 파일 간 관계
@@ -153,7 +153,7 @@ sns/
 - ✅ Vite 설정이나 진입점을 수정해야 할 때
 - ✅ 데모 앱과 라이브러리 빌드의 차이를 이해하고자 할 때
 
-### [web/docs/sns-web-deploy.md](web/docs/sns-web-deploy.md) - 웹 배포 가이드
+### [docs/sns-web-deploy.md](docs/sns-web-deploy.md) - 웹 배포 가이드
 
 **포함 내용**:
 - 배포 전 체크리스트
@@ -174,7 +174,7 @@ sns/
 - ✅ 빌드 관련 문제를 해결해야 할 때
 - ✅ 환경 변수 설정 방법을 확인할 때
 
-### [web/docs/sns-web-i18n.md](web/docs/sns-web-i18n.md) - 웹 국제화(i18n) 개발 가이드
+### [docs/sns-web-i18n.md](docs/sns-web-i18n.md) - 웹 국제화(i18n) 개발 가이드
 
 **포함 내용**:
 - 국제화(i18n) 개요 및 지원 언어 (한국어, 영어, 일본어, 중국어)
@@ -195,11 +195,32 @@ sns/
 - ✅ 언어 선택기 UI를 구현할 때
 - ✅ 브라우저 언어 자동 감지 로직을 이해하고자 할 때
 
+### [docs/sns-web-security.md](docs/sns-web-security.md) - Firebase 보안 규칙 개발 가이드
+
+**포함 내용**:
+- AppCheck의 비용 문제 및 보안 규칙 필요성
+- Firebase Security Rules 개요 및 권한 조건
+- Realtime Database 보안 규칙 구현 방법
+- 인증 기반 접근 제어 (Authentication-based Access Control)
+- 필드 검증 및 데이터 무결성 보장
+- 보안 규칙 배포 및 테스트 방법
+- Rate Limiting 및 악의적 요청 차단 전략
+- 비용 최적화 기법
+
+**참고 시점**:
+- ✅ **Firebase 보안을 설계할 때 필수로 참고**
+- ✅ 새로운 데이터 경로를 생성할 때
+- ✅ AppCheck의 비용 문제를 이해하고자 할 때
+- ✅ 악의적 요청으로부터 보호해야 할 때
+- ✅ 사용자별 권한 제어를 구현할 때
+- ✅ 데이터 검증 규칙을 작성할 때
+- ✅ 프로덕션 환경에 배포하기 전에
+
 ---
 
 ## 📱 앱 개발 문서
 
-### [docs/app/sns-app.md](docs/app/sns-app.md) - Flutter 앱 개발 지침
+### [../docs/app/sns-app.md](../docs/app/sns-app.md) - Flutter 앱 개발 지침
 
 **포함 내용**:
 - Flutter 앱 개발 워크플로우
@@ -221,17 +242,17 @@ sns/
 ### 개발 시작 시 권장 문서 읽기 순서
 
 #### 웹 개발자용
-1. **[docs/sns.md](docs/sns.md)** - 전체 프로젝트 이해
-2. **[web/docs/sns-web-quick-start.md](web/docs/sns-web-quick-start.md)** - 개발 환경 설정
-3. **[web/docs/sns-web.md](web/docs/sns-web.md)** - 웹 개발 워크플로우 확인
-4. **[web/docs/sns-custom-elements.md](web/docs/sns-custom-elements.md)** - Custom Elements 개발 (개발 중 항상 참고)
-5. **[web/docs/sns-web-project-flow.md](web/docs/sns-web-project-flow.md)** - 프로젝트 구조 파악
-6. **[web/docs/sns-web-i18n.md](web/docs/sns-web-i18n.md)** - 다국어 지원 구현 (i18n)
-7. **[web/docs/sns-web-deploy.md](web/docs/sns-web-deploy.md)** - 배포 시 참고
+1. **[../docs/sns.md](../docs/sns.md)** - 전체 프로젝트 이해
+2. **[docs/sns-web-quick-start.md](docs/sns-web-quick-start.md)** - 개발 환경 설정
+3. **[docs/sns-web.md](docs/sns-web.md)** - 웹 개발 워크플로우 확인
+4. **[docs/sns-custom-elements.md](docs/sns-custom-elements.md)** - Custom Elements 개발 (개발 중 항상 참고)
+5. **[docs/sns-web-project-flow.md](docs/sns-web-project-flow.md)** - 프로젝트 구조 파악
+6. **[docs/sns-web-i18n.md](docs/sns-web-i18n.md)** - 다국어 지원 구현 (i18n)
+7. **[docs/sns-web-deploy.md](docs/sns-web-deploy.md)** - 배포 시 참고
 
 #### 앱 개발자용
-1. **[docs/sns.md](docs/sns.md)** - 전체 프로젝트 이해
-2. **[docs/app/sns-app.md](docs/app/sns-app.md)** - Flutter 앱 개발 가이드
+1. **[../docs/sns.md](../docs/sns.md)** - 전체 프로젝트 이해
+2. **[../docs/app/sns-app.md](../docs/app/sns-app.md)** - Flutter 앱 개발 가이드
 
 ### 상황별 참고 문서
 
@@ -253,3 +274,83 @@ sns/
 - 각 문서에 명시된 워크플로우는 **필수적으로** 준수해야 합니다
 - 문서 간 상호 참조 링크를 활용하여 관련 정보를 빠르게 찾을 수 있습니다
 - 소스 코드 작성 시 한글 주석을 상세하게 작성해야 합니다
+
+---
+
+# 테스트 계정 정보
+
+## e2e 테스트용 임시 로그인 계정
+
+개발 모드 및 e2e 테스트에서 사용할 수 있는 Firebase 전화번호 인증 테스트 계정입니다.
+
+**중요**: 이 계정들은 Firebase Console에서 "Authentication > Sign-in method > Phone"의 **테스트 전화번호** 섹션에 등록되어 있어야 합니다.
+
+### 테스트 계정 1
+- **국가 번호**: +1 (미국)
+- **전화번호**: 1111111111
+- **SMS 인증 코드**: 111111
+
+### 테스트 계정 2
+- **국가 번호**: +1 (미국)
+- **전화번호**: 2222222222
+- **SMS 인증 코드**: 222222
+
+### 테스트 계정 3
+- **국가 번호**: +1 (미국)
+- **전화번호**: 3333333333
+- **SMS 인증 코드**: 333333
+
+### 사용 방법
+
+1. **수동 테스트 시**:
+   - 개발 서버 실행: `npm run dev`
+   - `<phone-login>` 컴포넌트에서 위의 전화번호 중 하나를 선택
+   - 국가 번호를 +1로 설정
+   - 전화번호 입력 (예: 1111111111)
+   - "인증 코드 전송" 클릭
+   - SMS 인증 코드 입력 (예: 111111)
+   - 로그인 완료
+
+2. **e2e 테스트 시**:
+   ```javascript
+   // Playwright 예제
+   await page.locator('select#country-code').selectOption('+1');
+   await page.locator('input#phone-number').fill('1111111111');
+   await page.locator('button:has-text("인증 코드 전송")').click();
+   await page.locator('input#verification-code').fill('111111');
+   await page.locator('button:has-text("로그인")').click();
+   ```
+
+3. **Jest/Vitest 단위 테스트 시**:
+   ```javascript
+   const testAccount = {
+     countryCode: '+1',
+     phoneNumber: '1111111111',
+     verificationCode: '111111'
+   };
+   ```
+
+### 주의사항
+
+- ⚠️ **프로덕션 환경에서는 절대 사용하지 마세요**
+- ⚠️ 테스트 전화번호는 Firebase Console에서 미리 등록되어 있어야 합니다
+- ⚠️ 실제 SMS가 전송되지 않으며, reCAPTCHA 검증도 자동으로 통과됩니다
+- ⚠️ 보안상 실제 사용자가 이 번호로 로그인할 수 없도록 Firebase 보안 규칙을 설정해야 합니다
+
+
+## 경로
+
+본 항목은 각 페이지(메뉴)의 경로를 설명합니다. 이 경로를 바탕으로 네비게이션 및 라우팅을 하고, 테스트 및 각종 자동화 스크립트에서 활용할 수 있습니다.
+- `/` - 홈 페이지
+- `/menu` - 메뉴 페이지
+- `/user/login` - 로그인 페이지
+- `/user/profile` - 사용자 프로필 페이지
+- `/post/list` - 게시물 목록 페이지
+- `/post/detail/:id` - 게시물 상세 페이지 (`:id`는 게시물 고유 ID)
+- `/settings` - 설정 페이지
+- `/about` - 앱 정보 페이지
+- `/help` - 도움말 페이지
+- `/terms` - 이용 약관 페이지
+- `/privacy` - 개인정보 처리방침 페이지
+- `/contact` - 문의하기 페이지
+- `/chat/list` - 채팅 목록 페이지

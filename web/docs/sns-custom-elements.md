@@ -57,7 +57,7 @@ web/                                # 프로젝트 루트
 ├── src/
 │   ├── lib/                        # 라이브러리 소스
 │   │   ├── components/             # Web Components
-│   │   │   ├── LoginForm.wc.svelte
+│   │   │   ├── PhoneLogin.wc.svelte
 │   │   │   ├── PostList.wc.svelte
 │   │   │   └── ...
 │   │   ├── stores/                 # 공유 스토어
@@ -250,8 +250,10 @@ npm run build
 ```html
 <!-- HTML에서 ESM 모듈로 사용 -->
 <script type="module" src="./dist/sns-components.es.js"></script>
+<!-- Google reCAPTCHA (Phone Login에 필요) -->
+<script src="https://www.google.com/recaptcha/api.js?render=explicit" async defer></script>
 
-<login-form></login-form>
+<phone-login></phone-login>
 <post-list path="posts" limit="10"></post-list>
 ```
 
@@ -259,14 +261,14 @@ npm run build
 
 ### ✅ 명명 규칙
 
-- **Web Components**: `*.wc.svelte` (예: `LoginForm.wc.svelte`)
+- **Web Components**: `*.wc.svelte` (예: `PhoneLogin.wc.svelte`)
 - **일반 Svelte 컴포넌트**: `*.svelte` (예: `Helper.svelte`)
 
 ### ✅ 라이브러리 진입점 (src/lib/index.js)
 
 ```javascript
 // Custom Elements 자동 등록
-import './components/LoginForm.wc.svelte';
+import './components/PhoneLogin.wc.svelte';
 import './components/PostList.wc.svelte';
 
 // 유틸리티 export
@@ -610,110 +612,32 @@ export async function signOut() {
 }
 ```
 
-### 2. 로그인 컴포넌트 예제
+### 2. 전화번호 로그인 컴포넌트
 
-```svelte
-<!-- src/components/LoginForm.svelte -->
-<svelte:options customElement="login-form" />
+프로젝트에는 Firebase Phone Authentication을 사용하는 `<phone-login>` 컴포넌트가 포함되어 있습니다.
+
+**사용 예:**
+```html
+<!-- Google reCAPTCHA 스크립트 필요 -->
+<script src="https://www.google.com/recaptcha/api.js?render=explicit" async defer></script>
+
+<!-- 전화번호 로그인 컴포넌트 -->
+<phone-login></phone-login>
 
 <script>
-  import { signIn } from '$lib/stores/auth';
+  // 로그인 성공 이벤트 처리
+  document.querySelector('phone-login').addEventListener('login-success', (e) => {
+    console.log('로그인 성공:', e.detail);
+  });
 
-  let email = $state('');
-  let password = $state('');
-  let error = $state('');
-  let loading = $state(false);
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    loading = true;
-    error = '';
-
-    const result = await signIn(email, password);
-
-    if (!result.success) {
-      error = result.error;
-    }
-
-    loading = false;
-  }
+  // 로그인 실패 이벤트 처리
+  document.querySelector('phone-login').addEventListener('login-error', (e) => {
+    console.error('로그인 실패:', e.detail);
+  });
 </script>
-
-<form onsubmit={handleSubmit}>
-  <div>
-    <label for="email">이메일</label>
-    <input
-      id="email"
-      type="email"
-      bind:value={email}
-      required
-      disabled={loading}
-    />
-  </div>
-
-  <div>
-    <label for="password">비밀번호</label>
-    <input
-      id="password"
-      type="password"
-      bind:value={password}
-      required
-      disabled={loading}
-    />
-  </div>
-
-  {#if error}
-    <p class="error">{error}</p>
-  {/if}
-
-  <button type="submit" disabled={loading}>
-    {loading ? '로그인 중...' : '로그인'}
-  </button>
-</form>
-
-<style>
-  form {
-    max-width: 400px;
-    margin: 0 auto;
-  }
-
-  div {
-    margin-bottom: 1rem;
-  }
-
-  label {
-    display: block;
-    margin-bottom: 0.5rem;
-  }
-
-  input {
-    width: 100%;
-    padding: 0.5rem;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-  }
-
-  .error {
-    color: red;
-    margin: 0.5rem 0;
-  }
-
-  button {
-    width: 100%;
-    padding: 0.75rem;
-    background-color: #007bff;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-  }
-
-  button:disabled {
-    background-color: #ccc;
-    cursor: not-allowed;
-  }
-</style>
 ```
+
+**참고:** 전화번호 로그인 컴포넌트의 전체 구현은 `src/lib/components/PhoneLogin.wc.svelte` 파일을 참고하세요.
 
 ### 3. 인증 가드 컴포넌트
 
@@ -732,7 +656,7 @@ export async function signOut() {
 {:else}
   <div class="unauthorized">
     <p>로그인이 필요합니다.</p>
-    <login-form></login-form>
+    <phone-login></phone-login>
   </div>
 {/if}
 
@@ -1137,7 +1061,7 @@ Firebase Console에서 자주 쿼리하는 필드에 인덱스를 추가합니�
 ### 프로젝트 문서
 - [SNS 프로젝트 전체 개요](../../docs/sns.md) - 서비스 기획 및 전체 개요
 - [웹 개발 지침](./sns-web.md) - 웹 개발 워크플로우
-- [프로젝트 개발 지침](../../CLAUDE.md) - 전체 프로젝트 개발 워크플로우 및 규칙
+- [프로젝트 개발 지침](../CLAUDE.md) - 전체 프로젝트 개발 워크플로우 및 규칙
 - [웹 프로젝트 README](../README.md) - 웹 프로젝트 사용법 및 설정
 
 ### Svelte 공식 문서
