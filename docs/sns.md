@@ -244,6 +244,5 @@ connectedRef.on('value', (snapshot) => {
 
 - 본 문서는 **기획 단계**의 문서이며, 개발 진행에 따라 업데이트됩니다.
 - 세부 기술 스펙 및 API 설계는 별도 문서로 관리합니다.
-- UI/UX 디자인은 [앱 디자인 가이드](../apps/app-design.md)를 참고합니다.
 
 
