@@ -1,20 +1,48 @@
 name: Deploy to GitHub Pages
+
+# main 브랜치에 push 시 자동으로 빌드 및 배포
 on:
   push:
     branches: [main]
+
+# gh-pages 브랜치에 쓰기 권한 부여
 permissions:
   contents: write
+
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      # 1단계: 저장소 코드 체크아웃
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2단계: Node.js 환경 설정
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: cd web && npm ci && npm run build
-      - name: Deploy
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      # 3단계: 의존성 설치
+      - name: Install dependencies
+        working-directory: ./web
+        run: npm ci
+
+      # 4단계: 프로젝트 빌드 (라이브러리 + 데모 앱)
+      - name: Build project
+        working-directory: ./web
+        run: npm run build
+
+      # 5단계: GitHub Pages에 배포
+      - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./web/dist
+          # gh-pages 브랜치로 배포
+          publish_branch: gh-pages
+          # 커밋 메시지
+          commit_message: 'Deploy: ${{ github.event.head_commit.message }}'

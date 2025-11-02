@@ -252,7 +252,7 @@ git push origin gh-pages
 - 몇 분 후 사이트가 `https://[username].github.io/[repository-name]/`에 배포됩니다
 - **Actions** 탭에서 배포 진행 상황을 확인할 수 있습니다
 
-### 방법 2: gh-pages 패키지 사용 (권장)
+### 방법 2: gh-pages 패키지 사용
 
 더 편리한 자동 배포를 위해 `gh-pages` 패키지를 사용할 수 있습니다.
 
@@ -285,6 +285,138 @@ npm run deploy
 이 명령어는 자동으로:
 1. 프로젝트를 빌드하고
 2. `dist/` 폴더의 내용을 `gh-pages` 브랜치에 푸시합니다
+
+### 방법 3: GitHub Actions 자동 배포 (권장) ⭐
+
+GitHub Actions를 사용하면 `main` 브랜치에 코드를 push할 때마다 자동으로 빌드하고 배포합니다.
+
+#### 1단계: 워크플로우 파일 확인
+
+프로젝트에는 이미 `.github/workflows/gh-pages.yaml` 파일이 설정되어 있습니다:
+
+```yaml
+name: Deploy to GitHub Pages
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: cd web && npm ci && npm run build
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./web/dist
+```
+
+**워크플로우 동작 과정**:
+
+1. **트리거**: `main` 브랜치에 push 이벤트 발생
+2. **체크아웃**: 저장소 코드를 가져옴
+3. **Node.js 설정**: Node.js 20 버전 설치
+4. **빌드**: `web` 폴더로 이동하여 의존성 설치 및 빌드 실행
+   - `npm ci`: package-lock.json을 기준으로 의존성 클린 설치
+   - `npm run build`: 라이브러리와 데모 앱 모두 빌드
+5. **배포**: `web/dist` 폴더 내용을 `gh-pages` 브랜치에 푸시
+
+#### 2단계: GitHub Pages 설정
+
+**최초 1회만 설정**하면 됩니다:
+
+1. GitHub 저장소 페이지로 이동
+2. **Settings** 탭 클릭
+3. 왼쪽 메뉴에서 **Pages** 클릭
+4. **Source** 섹션에서:
+   - **Branch**: `gh-pages` 선택
+   - **Folder**: `/ (root)` 선택
+5. **Save** 버튼 클릭
+
+#### 3단계: 자동 배포 사용하기
+
+이제 코드를 수정하고 `main` 브랜치에 push하면 자동으로 배포됩니다:
+
+```bash
+# 코드 수정 후
+git add .
+git commit -m "Update components"
+git push origin main
+```
+
+#### 4단계: 배포 상태 확인
+
+1. GitHub 저장소의 **Actions** 탭으로 이동
+2. "Deploy to GitHub Pages" 워크플로우의 실행 상태 확인
+3. 모든 단계가 성공하면 ✅ 녹색 체크 표시
+4. 실패하면 ❌ 빨간색 X 표시 (로그를 클릭하여 에러 확인)
+
+**배포 소요 시간**: 일반적으로 2-3분 정도 소요됩니다.
+
+#### 5단계: 배포된 사이트 확인
+
+배포가 완료되면 다음 URL에서 확인할 수 있습니다:
+
+```
+https://[사용자명].github.io/[저장소명]/
+```
+
+예: `https://withcenter.github.io/sns/`
+
+#### 자동 배포 장점
+
+✅ **편리함**: 코드 push만 하면 자동으로 배포
+✅ **일관성**: 항상 동일한 환경에서 빌드
+✅ **추적성**: Actions 탭에서 배포 이력 확인 가능
+✅ **안전성**: 빌드 실패 시 자동으로 배포 중단
+
+#### 주의사항
+
+⚠️ **환경 변수 관리**
+
+`.env` 파일은 Git에 커밋되지 않으므로, 프로덕션 환경에서는 다음 중 하나의 방법을 사용하세요:
+
+**방법 1: GitHub Secrets 사용**
+
+1. GitHub 저장소의 **Settings** > **Secrets and variables** > **Actions** 로 이동
+2. **New repository secret** 클릭
+3. 각 환경 변수를 추가 (예: `VITE_FIREBASE_API_KEY`)
+4. 워크플로우 파일에서 환경 변수로 주입:
+
+```yaml
+- run: cd web && npm ci && npm run build
+  env:
+    VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+    VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+    # 나머지 환경 변수들...
+```
+
+**방법 2: 공개 설정값 사용**
+
+프로덕션 전용 Firebase 프로젝트를 생성하고, 해당 설정값을 코드에 직접 포함:
+
+```javascript
+// src/lib/utils/firebase.js
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "프로덕션_API_KEY",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "프로덕션_AUTH_DOMAIN",
+  // ...
+};
+```
+
+⚠️ **빌드 실패 디버깅**
+
+Actions 탭에서 실패한 워크플로우를 클릭하면 상세 로그를 볼 수 있습니다:
+
+1. 실패한 워크플로우 클릭
+2. 실패한 job 클릭
+3. 실패한 step을 펼쳐서 에러 메시지 확인
 
 ---
 
