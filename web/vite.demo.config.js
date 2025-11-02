@@ -26,8 +26,11 @@ export default defineConfig({
   // root가 'src/demo'이므로 envDir로 상위 폴더를 명시해야 함
   envDir: resolve(__dirname, '.'),
   // 빌드 출력 폴더 (데모 앱용)
+  // root가 'src/demo'이므로 상대 경로는 src/demo 기준
+  // ../../dist는 프로젝트 루트의 dist 폴더를 가리킴
   build: {
-    outDir: '../../dist-demo'
+    outDir: '../../dist',
+    emptyOutDir: false  // 라이브러리 빌드 결과물을 지우지 않음
   },
   // 개발 서버 설정
   server: {

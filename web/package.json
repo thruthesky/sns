@@ -17,7 +17,9 @@
   ],
   "scripts": {
     "dev": "vite --config vite.demo.config.js",
-    "build": "vite build",
+    "build": "npm run build:lib && npm run build:demo",
+    "build:lib": "vite build",
+    "build:demo": "vite build --config vite.demo.config.js",
     "preview": "vite preview --config vite.demo.config.js"
   },
   "devDependencies": {
