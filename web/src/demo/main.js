@@ -6,10 +6,12 @@
  */
 
 import './app.css';
+import { mount } from 'svelte';
 import App from './App.svelte';
 
-// Svelte 앱 마운트
-const app = new App({
+// Svelte 5에서는 mount 함수를 사용하여 컴포넌트를 마운트합니다
+// new App()은 더 이상 사용되지 않습니다
+const app = mount(App, {
   target: document.getElementById('app'),
 });
 
