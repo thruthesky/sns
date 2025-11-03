@@ -52,22 +52,19 @@
   }
 </script>
 
-<!-- 사용자 목록 페이지 -->
-<div class="user-list-page">
-  <!-- 사용자 목록 (무한 스크롤) -->
-  <!--
-    임시로 nickname으로 정렬합니다.
-    실제로는 Firebase 데이터에 createdAt 필드를 추가하고 indexOn을 설정한 후
-    orderBy="createdAt"으로 변경해야 합니다.
-  -->
-  <div class="list-container">
-    <DatabaseListView
-      path="users"
-      pageSize={8}
-      orderBy="createdAt"
-      threshold={300}
-      reverse={false}
-    >
+<!-- 사용자 목록 (무한 스크롤) -->
+<!--
+  임시로 nickname으로 정렬합니다.
+  실제로는 Firebase 데이터에 createdAt 필드를 추가하고 indexOn을 설정한 후
+  orderBy="createdAt"으로 변경해야 합니다.
+-->
+<DatabaseListView
+  path="users"
+  pageSize={8}
+  orderBy="createdAt"
+  threshold={300}
+  reverse={false}
+>
       <!-- 개별 사용자 카드 -->
       {#snippet item(itemData)}
         <div
@@ -174,41 +171,9 @@
           <p>모든 사용자를 불러왔습니다.</p>
         </div>
       {/snippet}
-    </DatabaseListView>
-  </div>
-</div>
+</DatabaseListView>
 
 <style>
-  /* ============================================================================
-     페이지 컨테이너
-     ============================================================================ */
-  .user-list-page {
-    max-width: 800px;
-    margin: 0 auto;
-    /* 토바를 제외한 전체 화면 높이로 설정 (토바 높이: 4rem) */
-    height: calc(100vh - 4rem);
-    display: flex;
-    flex-direction: column;
-    padding: 1rem;
-    box-sizing: border-box;
-  }
-
-  /* ============================================================================
-     리스트 컨테이너
-     ============================================================================ */
-  .list-container {
-    background-color: #ffffff;
-    border: 1px solid #e5e7eb;
-    border-radius: 0.5rem;
-    /* 내부 스크롤 활성화 */
-    overflow-y: auto;
-    overflow-x: hidden;
-    /* 남은 공간을 모두 차지하도록 설정 */
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-  }
-
   /* ============================================================================
      사용자 카드
      ============================================================================ */
@@ -423,14 +388,6 @@
      반응형 (모바일)
      ============================================================================ */
   @media (max-width: 640px) {
-    .user-list-page {
-      padding: 1rem 0.5rem;
-    }
-
-    .page-header h1 {
-      font-size: 1.5rem;
-    }
-
     .user-card {
       flex-direction: column;
       align-items: flex-start;
