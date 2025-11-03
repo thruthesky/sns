@@ -8,8 +8,6 @@
 
   import { t } from "../lib/stores/i18n.js";
   import { ChevronDown, CheckCircle2, Circle } from "lucide-svelte";
-  import { rtdb } from "../lib/utils/firebase-realtime-database.svelte.js";
-  import { login } from "../lib/utils/firebase-login-user.svelte.js";
 
   // 현재 열려있는 아코디언 아이템
   let openAccordionItem = $state(null);
@@ -115,10 +113,6 @@
     "home.overview.badge3",
     "home.overview.badge4",
   ];
-
-  // Firebase RTDB 사용자 데이터 가져오기
-  // ⚠️ 중요: destructuring하지 않고 객체 자체를 사용해야 반응성이 유지됩니다
-  const userRtdb = rtdb("/users/apple");
 </script>
 
 <div class="home">
@@ -143,32 +137,6 @@
       {$t("home.description.part2")}
     </p>
   </div>
-
-  {#if login.loading}
-    <p>⏳ 로딩 중...</p>
-
-    <!-- 로그인 상태 -->
-  {:else if login.isAuthenticated}
-    <div class="user-info">
-      <h2>환영합니다!</h2>
-
-      <!-- RTDB 사용자 데이터 (users/<uid>) -->
-      <div class="user-data-section">
-        <h3>RTDB 사용자 데이터 (users/{login.uid}):</h3>
-        <pre>{JSON.stringify(login.data, null, 2)}</pre>
-      </div>
-
-      <!-- 개별 필드 표시 -->
-      <p>UID: {login.uid}</p>
-      <p>Email: {login.email}</p>
-      <p>전화번호: {login.phoneNumber}</p>
-    </div>
-
-    <!-- 로그아웃 상태 -->
-  {:else}
-    <p>로그인이 필요합니다.</p>
-    <a href="/user/login">로그인하기</a>
-  {/if}
 
   <!-- 기술 스택 -->
   <section class="section techstack-section">
