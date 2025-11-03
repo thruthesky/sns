@@ -14,6 +14,7 @@
   import LoginPage from './LoginPage.svelte';
   import Menu from './Menu.svelte';
   import UserProfile from './UserProfile.svelte';
+  import UserList from './UserList.svelte';
   import PostListPage from './PostListPage.svelte';
   import PostDetail from './PostDetail.svelte';
   import ChatList from './ChatList.svelte';
@@ -53,6 +54,9 @@
     {:else if currentPath === '/user/profile'}
       <!-- 사용자 프로필 페이지 -->
       <UserProfile />
+    {:else if currentPath === '/user/list'}
+      <!-- 사용자 목록 페이지 -->
+      <UserList />
     {:else if currentPath === '/post/list'}
       <!-- 게시물 목록 페이지 -->
       <PostListPage />
