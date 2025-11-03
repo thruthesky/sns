@@ -183,13 +183,14 @@
      페이지 컨테이너
      ============================================================================ */
   .user-list-page {
-    padding: 2rem 1rem;
     max-width: 800px;
     margin: 0 auto;
     /* 토바를 제외한 전체 화면 높이로 설정 (토바 높이: 4rem) */
-    min-height: calc(100vh - 4rem);
+    height: calc(100vh - 4rem);
     display: flex;
     flex-direction: column;
+    padding: 1rem;
+    box-sizing: border-box;
   }
 
   /* ============================================================================
@@ -199,7 +200,9 @@
     background-color: #ffffff;
     border: 1px solid #e5e7eb;
     border-radius: 0.5rem;
-    overflow: hidden;
+    /* 내부 스크롤 활성화 */
+    overflow-y: auto;
+    overflow-x: hidden;
     /* 남은 공간을 모두 차지하도록 설정 */
     flex: 1;
     display: flex;
