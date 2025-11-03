@@ -7,9 +7,9 @@
    *
    * DatabaseListView 컴포넌트를 사용하여 구현되었습니다.
    */
-  import DatabaseListView from '../lib/components/DatabaseListView.svelte';
-  import { t } from '../lib/stores/i18n.js';
-  import { login } from '../lib/utils/firebase-login-user.svelte.js';
+  import DatabaseListView from "../lib/components/DatabaseListView.svelte";
+  import { t } from "../lib/stores/i18n.js";
+  import { login } from "../lib/utils/firebase-login-user.svelte.js";
 
   /**
    * 날짜 포맷팅 함수
@@ -17,12 +17,12 @@
    * @returns {string} 포맷된 날짜 문자열
    */
   function formatDate(timestamp) {
-    if (!timestamp) return '정보 없음';
+    if (!timestamp) return "정보 없음";
     const date = new Date(timestamp);
-    return date.toLocaleDateString('ko-KR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
+    return date.toLocaleDateString("ko-KR", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
   }
 
@@ -33,11 +33,11 @@
   function goToProfile(uid) {
     if (uid === login.uid) {
       // 자신의 프로필로 이동
-      window.history.pushState({}, '', '/user/profile');
-      window.dispatchEvent(new PopStateEvent('popstate'));
+      window.history.pushState({}, "", "/user/profile");
+      window.dispatchEvent(new PopStateEvent("popstate"));
     } else {
       // 다른 사용자 프로필로 이동 (추후 구현)
-      console.log('다른 사용자 프로필:', uid);
+      console.log("다른 사용자 프로필:", uid);
     }
   }
 </script>
@@ -46,8 +46,10 @@
 <div class="user-list-page">
   <!-- 페이지 헤더 -->
   <div class="page-header">
-    <h1>{$t('사용자찾기')}</h1>
-    <p class="page-description">등록된 사용자 목록을 확인하고 친구를 찾아보세요.</p>
+    <h1>{$t("사용자찾기")}</h1>
+    <p class="page-description">
+      등록된 사용자 목록을 확인하고 친구를 찾아보세요.
+    </p>
   </div>
 
   <!-- 사용자 목록 (무한 스크롤) -->
@@ -67,7 +69,7 @@
           tabindex="0"
           onclick={() => goToProfile(itemData.key)}
           onkeydown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
+            if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
               goToProfile(itemData.key);
             }
@@ -76,10 +78,13 @@
           <!-- 프로필 사진 -->
           <div class="user-avatar">
             {#if itemData.data?.photoURL}
-              <img src={itemData.data.photoURL} alt={itemData.data?.displayName || '사용자'} />
+              <img
+                src={itemData.data.photoURL}
+                alt={itemData.data?.displayName || "사용자"}
+              />
             {:else}
               <div class="avatar-placeholder">
-                {itemData.data?.displayName?.charAt(0)?.toUpperCase() || '?'}
+                {itemData.data?.displayName?.charAt(0)?.toUpperCase() || "?"}
               </div>
             {/if}
           </div>
@@ -87,11 +92,13 @@
           <!-- 사용자 정보 -->
           <div class="user-info">
             <h3 class="user-name">
-              {itemData.data?.displayName || '이름 없음'}
+              {itemData.data?.displayName || "이름 없음"}
               {#if itemData.key === login.uid}
                 <span class="badge-me">나</span>
               {/if}
             </h3>
+
+            <h5>{itemData.key}</h5>
 
             {#if itemData.data?.email}
               <p class="user-email">{itemData.data.email}</p>
@@ -108,10 +115,13 @@
 
           <!-- 프로필 보기 버튼 -->
           <div class="user-actions">
-            <button class="btn-view-profile" onclick={(e) => {
-              e.stopPropagation();
-              goToProfile(itemData.key);
-            }}>
+            <button
+              class="btn-view-profile"
+              onclick={(e) => {
+                e.stopPropagation();
+                goToProfile(itemData.key);
+              }}
+            >
               프로필 보기
             </button>
           </div>
@@ -199,7 +209,10 @@
     border: 1px solid #e5e7eb;
     border-radius: 0.5rem;
     overflow: hidden;
-    max-height: 600px;
+    /* DatabaseListView의 내부 스크롤을 위해 높이를 명시적으로 설정 */
+    height: 600px;
+    display: flex;
+    flex-direction: column;
   }
 
   /* ============================================================================

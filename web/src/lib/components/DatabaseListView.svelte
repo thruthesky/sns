@@ -32,7 +32,7 @@
 -->
 
 <script>
-  import { query, orderByChild, limitToFirst, startAfter, ref as dbRef, get } from 'firebase/database';
+  import { ref as dbRef, get, onValue } from 'firebase/database';
   import { database } from '../utils/firebase.js';
 
   // ============================================================================
@@ -72,10 +72,22 @@
   // ============================================================================
 
   /**
-   * 로드된 아이템 목록
+   * 현재 표시 중인 아이템 목록
    * @type {Array<{key: string, data: any}>}
    */
   let items = $state([]);
+
+  /**
+   * 전체 로드된 아이템 목록 (클라이언트 메모리)
+   * @type {Array<{key: string, data: any}>}
+   */
+  let allItems = $state([]);
+
+  /**
+   * 현재 표시 중인 페이지 인덱스
+   * @type {number}
+   */
+  let currentPage = $state(0);
 
   /**
    * 로딩 상태
@@ -94,12 +106,6 @@
    * @type {boolean}
    */
   let hasMore = $state(true);
-
-  /**
-   * 마지막으로 로드된 아이템의 정렬 필드 값
-   * @type {any}
-   */
-  let lastValue = $state(null);
 
   /**
    * 에러 메시지
@@ -143,53 +149,68 @@
   // ============================================================================
 
   /**
-   * 초기 데이터 로드
+   * 초기 데이터 로드 (클라이언트 측 페이지네이션)
+   *
+   * Firebase 인덱스 없이 전체 데이터를 가져온 후 클라이언트에서 정렬합니다.
+   * 모든 데이터를 allItems에 저장하고 첫 페이지만 items에 표시합니다.
+   * 이 방식은 데이터가 적을 때 효율적입니다 (수백 개 이내의 데이터).
    */
   async function loadInitialData() {
     console.log('DatabaseListView: Loading initial data from', path);
     initialLoading = true;
     error = null;
     items = [];
-    lastValue = null;
+    allItems = [];
+    currentPage = 0;
     hasMore = true;
 
     try {
       const dataRef = dbRef(database, path);
-      const dataQuery = query(
-        dataRef,
-        orderByChild(orderBy),
-        limitToFirst(pageSize + 1) // +1로 hasMore 판단
-      );
-
-      const snapshot = await get(dataQuery);
+      const snapshot = await get(dataRef);
 
       if (snapshot.exists()) {
         const data = snapshot.val();
-        const loadedItems = Object.entries(data).map(([key, value]) => ({
+        let loadedItems = Object.entries(data).map(([key, value]) => ({
           key,
           data: value,
         }));
+
+        // orderBy 필드로 정렬 (클라이언트에서)
+        loadedItems.sort((a, b) => {
+          const valueA = a.data[orderBy];
+          const valueB = b.data[orderBy];
+          if (valueA < valueB) return -1;
+          if (valueA > valueB) return 1;
+          return 0;
+        });
 
         // reverse가 true면 배열 뒤집기
         if (reverse) {
           loadedItems.reverse();
         }
 
-        // pageSize보다 많으면 hasMore = true
-        if (loadedItems.length > pageSize) {
-          hasMore = true;
-          items = loadedItems.slice(0, pageSize);
-          const lastItem = items[items.length - 1];
-          lastValue = lastItem.data[orderBy];
-        } else {
-          hasMore = false;
-          items = loadedItems;
-        }
+        // 메모리에 모든 아이템 저장
+        allItems = loadedItems;
 
-        console.log(`DatabaseListView: Loaded ${items.length} items, hasMore:`, hasMore);
+        // 첫 페이지 표시
+        const firstPageEndIndex = pageSize;
+        items = allItems.slice(0, firstPageEndIndex);
+
+        // 더 이상 로드할 데이터가 있는지 확인
+        hasMore = firstPageEndIndex < allItems.length;
+
+        // currentPage는 0 (첫 페이지)
+        currentPage = 0;
+
+        console.log(
+          `DatabaseListView: Loaded ${items.length} items, total available: ${allItems.length}, hasMore:`,
+          hasMore
+        );
       } else {
         console.log('DatabaseListView: No data found');
         items = [];
+        allItems = [];
+        currentPage = 0;
         hasMore = false;
       }
     } catch (err) {
@@ -201,55 +222,49 @@
   }
 
   /**
-   * 다음 페이지 데이터 로드
+   * 다음 페이지 데이터 로드 (클라이언트 측 페이지네이션)
+   *
+   * 메모리에 있는 allItems 배열에서 다음 페이지를 가져옵니다.
+   * Firebase 서버 쿼리가 필요 없습니다.
    */
-  async function loadMore() {
-    if (loading || !hasMore || !lastValue) return;
+  function loadMore() {
+    // 이미 로딩 중이거나 더 이상 데이터가 없으면 반환
+    if (loading || !hasMore) return;
 
-    console.log('DatabaseListView: Loading more data');
+    console.log('DatabaseListView: Loading more data (client-side pagination)');
     loading = true;
     error = null;
 
     try {
-      const dataRef = dbRef(database, path);
-      const dataQuery = query(
-        dataRef,
-        orderByChild(orderBy),
-        startAfter(lastValue),
-        limitToFirst(pageSize + 1)
-      );
+      // 다음 페이지의 시작 인덱스 계산
+      const startIndex = (currentPage + 1) * pageSize;
+      const endIndex = startIndex + pageSize;
 
-      const snapshot = await get(dataQuery);
-
-      if (snapshot.exists()) {
-        const data = snapshot.val();
-        const newItems = Object.entries(data).map(([key, value]) => ({
-          key,
-          data: value,
-        }));
-
-        // reverse가 true면 배열 뒤집기
-        if (reverse) {
-          newItems.reverse();
-        }
-
-        // pageSize보다 많으면 hasMore = true
-        if (newItems.length > pageSize) {
-          hasMore = true;
-          const itemsToAdd = newItems.slice(0, pageSize);
-          items = [...items, ...itemsToAdd];
-          const lastItem = itemsToAdd[itemsToAdd.length - 1];
-          lastValue = lastItem.data[orderBy];
-        } else {
-          hasMore = false;
-          items = [...items, ...newItems];
-        }
-
-        console.log(`DatabaseListView: Loaded ${newItems.length} more items, total: ${items.length}, hasMore:`, hasMore);
-      } else {
-        console.log('DatabaseListView: No more data');
+      // 모든 데이터를 로드했는지 확인
+      if (startIndex >= allItems.length) {
+        console.log('DatabaseListView: No more data available');
         hasMore = false;
+        loading = false;
+        return;
       }
+
+      // 다음 페이지 아이템 추출
+      const nextPageItems = allItems.slice(startIndex, endIndex);
+
+      // 기존 아이템에 새로운 아이템 추가
+      items = [...items, ...nextPageItems];
+
+      // 현재 페이지 인덱스 증가
+      currentPage += 1;
+
+      // 더 이상 데이터가 있는지 확인
+      // endIndex가 allItems 길이 이상이면 더 이상 데이터 없음
+      hasMore = endIndex < allItems.length;
+
+      console.log(
+        `DatabaseListView: Loaded page ${currentPage}, items: ${items.length}/${allItems.length}, hasMore:`,
+        hasMore
+      );
     } catch (err) {
       console.error('DatabaseListView: Load more error', err);
       error = err.message;
@@ -383,11 +398,16 @@
     height: 100%;
     overflow-y: auto;
     overflow-x: hidden;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
   }
 
   /* 아이템 컨테이너 */
   .items-container {
     width: 100%;
+    display: flex;
+    flex-direction: column;
   }
 
   /* 아이템 래퍼 */
