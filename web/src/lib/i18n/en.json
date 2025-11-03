@@ -155,5 +155,9 @@
   "phoneLogin.error.tooManyRequests": "Too many requests. Please try again later.",
   "phoneLogin.error.recaptchaExpired": "reCAPTCHA has expired. Please refresh the page.",
   "phoneLogin.error.recaptchaInit": "Failed to initialize reCAPTCHA.",
-  "phoneLogin.error.smsFailed": "SMS sending failed: {error}"
+  "phoneLogin.error.smsFailed": "SMS sending failed: {error}",
+  "label.category.community": "Community",
+  "label.category.qna": "Q&A",
+  "label.category.news": "News",
+  "label.category.market": "Marketplace"
 }

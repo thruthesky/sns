@@ -155,5 +155,9 @@
   "phoneLogin.error.tooManyRequests": "请求过多。请稍后再试。",
   "phoneLogin.error.recaptchaExpired": "reCAPTCHA已过期。请刷新页面。",
   "phoneLogin.error.recaptchaInit": "reCAPTCHA初始化失败。",
-  "phoneLogin.error.smsFailed": "短信发送失败: {error}"
+  "phoneLogin.error.smsFailed": "短信发送失败: {error}",
+  "label.category.community": "社区",
+  "label.category.qna": "问答",
+  "label.category.news": "新闻",
+  "label.category.market": "会员商城"
 }

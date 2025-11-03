@@ -155,5 +155,9 @@
   "phoneLogin.error.tooManyRequests": "너무 많은 요청이 발생했습니다. 나중에 다시 시도해주세요.",
   "phoneLogin.error.recaptchaExpired": "reCAPTCHA가 만료되었습니다. 페이지를 새로고침해주세요.",
   "phoneLogin.error.recaptchaInit": "reCAPTCHA 초기화에 실패했습니다.",
-  "phoneLogin.error.smsFailed": "SMS 전송 실패: {error}"
+  "phoneLogin.error.smsFailed": "SMS 전송 실패: {error}",
+  "label.category.community": "커뮤니티",
+  "label.category.qna": "질문답변",
+  "label.category.news": "뉴스",
+  "label.category.market": "회원장터"
 }

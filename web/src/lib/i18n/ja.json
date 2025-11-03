@@ -155,5 +155,9 @@
   "phoneLogin.error.tooManyRequests": "リクエストが多すぎます。後でもう一度お試しください。",
   "phoneLogin.error.recaptchaExpired": "reCAPTCHAの有効期限が切れました。ページを更新してください。",
   "phoneLogin.error.recaptchaInit": "reCAPTCHAの初期化に失敗しました。",
-  "phoneLogin.error.smsFailed": "SMS送信失敗: {error}"
+  "phoneLogin.error.smsFailed": "SMS送信失敗: {error}",
+  "label.category.community": "コミュニティ",
+  "label.category.qna": "Q&A",
+  "label.category.news": "ニュース",
+  "label.category.market": "マーケットプレイス"
 }
