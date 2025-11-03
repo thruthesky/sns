@@ -243,6 +243,37 @@
                 })}
               </span>
             </div>
+
+            <!-- 게시글 액션 버튼 영역 -->
+            <div class="post-actions">
+              <!-- 왼쪽 버튼 그룹: 댓글, 좋아요, 채팅, 신고 -->
+              <div class="post-actions-left">
+                <button class="action-btn" title={$t("댓글")}>
+                  💬 {$t("댓글")}
+                </button>
+                <button class="action-btn" title={$t("좋아요")}>
+                  ❤️ {$t("좋아요")}
+                </button>
+                <button class="action-btn" title={$t("채팅")}>
+                  💬 {$t("채팅")}
+                </button>
+                <button class="action-btn" title={$t("신고")}>
+                  🚨 {$t("신고")}
+                </button>
+              </div>
+
+              <!-- 오른쪽 버튼 그룹: 수정, 삭제 (작성자만 표시, 아이콘만) -->
+              <div class="post-actions-right">
+                {#if userId === itemData.data.uid}
+                  <button class="action-btn edit icon-only" title={$t("수정")}>
+                    ✏️
+                  </button>
+                  <button class="action-btn delete icon-only" title={$t("삭제")}>
+                    🗑️
+                  </button>
+                {/if}
+              </div>
+            </div>
           </div>
         {/snippet}
 
@@ -634,6 +665,79 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* 게시글 액션 버튼 영역 */
+  .post-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding-top: 0.5rem;
+    /* 보더 제거하여 더 깔끔하게 */
+    border-top: none;
+  }
+
+  .post-actions-left,
+  .post-actions-right {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+  }
+
+  .action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    /* 더 콤팩트한 패딩 */
+    padding: 0.4rem 0.65rem;
+    /* 보더 제거 */
+    border: none;
+    border-radius: 0.5rem;
+    /* 배경색 투명하게 */
+    background-color: transparent;
+    color: #6b7280;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+  }
+
+  .action-btn:hover {
+    background-color: #f3f4f6;
+    color: #111827;
+  }
+
+  .action-btn:active {
+    transform: scale(0.95);
+  }
+
+  /* 아이콘만 있는 버튼 스타일 */
+  .action-btn.icon-only {
+    padding: 0.4rem;
+    font-size: 1.1rem;
+  }
+
+  /* 수정 버튼 스타일 */
+  .action-btn.edit {
+    color: #3b82f6;
+  }
+
+  .action-btn.edit:hover {
+    background-color: #eff6ff;
+    color: #1d4ed8;
+  }
+
+  /* 삭제 버튼 스타일 */
+  .action-btn.delete {
+    color: #ef4444;
+  }
+
+  .action-btn.delete:hover {
+    background-color: #fef2f2;
+    color: #dc2626;
+  }
+
   /* 빈 상태 */
   .empty-state {
     padding: 4rem 2rem;
@@ -917,6 +1021,17 @@
     .post-item {
       padding: 1.25rem 1.35rem;
     }
+
+    /* 모바일에서 액션 버튼 크기 조정 */
+    .action-btn {
+      padding: 0.35rem 0.55rem;
+      font-size: 0.75rem;
+    }
+
+    .action-btn.icon-only {
+      padding: 0.35rem;
+      font-size: 1rem;
+    }
   }
 
   @media (max-width: 480px) {
@@ -932,6 +1047,20 @@
       flex-direction: column;
       align-items: flex-start;
       gap: 0.6rem;
+    }
+
+    /* 작은 화면에서 액션 버튼 영역을 세로로 배치 */
+    .post-actions {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.5rem;
+    }
+
+    .post-actions-left,
+    .post-actions-right {
+      justify-content: flex-start;
+      width: 100%;
+      gap: 0.25rem;
     }
   }
 </style>
