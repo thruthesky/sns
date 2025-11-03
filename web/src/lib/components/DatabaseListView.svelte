@@ -499,9 +499,11 @@
           return;
         }
 
-        // pageSize보다 많으면 hasMore = true
-        if (filteredItems.length > pageSize) {
+        // hasMore 판단은 중복 제거 전 newItems 길이로 결정
+        // Firebase에서 pageSize + 1개를 가져왔다면 더 많은 데이터가 있다는 의미
+        if (newItems.length > pageSize) {
           hasMore = true;
+          // 중복 제거 후 실제로 표시할 아이템은 pageSize만큼만 추가
           const itemsToAdd = filteredItems.slice(0, pageSize);
           items = [...items, ...itemsToAdd];
           // 마지막 항목에서 페이지 커서 값 추출
@@ -515,6 +517,7 @@
             console.log('DatabaseListView: No valid cursor, hasMore set to false');
           }
         } else {
+          // Firebase에서 pageSize 이하로 가져왔다면 마지막 페이지
           hasMore = false;
           items = [...items, ...filteredItems];
           if (filteredItems.length > 0) {
