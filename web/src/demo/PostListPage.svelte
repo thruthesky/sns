@@ -294,17 +294,20 @@
 
   <!-- 글쓰기 모달 다이얼로그 -->
   {#if isDialogOpen}
+    <!-- 모달 배경: 클릭하면 닫힘, Escape 키로도 닫힘 -->
     <div
       class="modal-backdrop"
-      role="presentation"
       onclick={() => (isDialogOpen = false)}
       onkeydown={(e) => e.key === "Escape" && (isDialogOpen = false)}
+      aria-hidden="true"
     >
+      <!-- 모달 대화상자: role="dialog" + tabindex="-1"로 접근성 표준 준수 -->
       <div
         class="modal"
         onclick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
+        tabindex="-1"
       >
         <div class="modal-header">
           <h2>{$t("새게시글작성")}</h2>
