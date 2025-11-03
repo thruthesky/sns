@@ -22,6 +22,8 @@ export default defineConfig({
   ],
   // 데모 앱의 루트 폴더
   root: 'src/demo',
+  // 정적 자산 폴더 (public 폴더가 프로젝트 루트에 있으므로 명시)
+  publicDir: resolve(__dirname, 'public'),
   // .env 파일의 위치를 프로젝트 루트로 지정
   // root가 'src/demo'이므로 envDir로 상위 폴더를 명시해야 함
   envDir: resolve(__dirname, '.'),
