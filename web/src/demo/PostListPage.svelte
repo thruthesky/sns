@@ -6,7 +6,9 @@
    */
 
   import { onMount } from "svelte";
-  import { auth } from "../lib/utils/firebase.js";
+  import { auth, database } from "../lib/utils/firebase.js";
+  import { ref, update } from "firebase/database";
+  import { increment, serverTimestamp } from "firebase/database";
   import { createPost } from "../lib/services/forum.js";
   import { FORUM_CATEGORIES } from "../lib/constants/forum.js";
   import { setPageTitle } from "../lib/stores/pageTitle.js";
@@ -150,6 +152,41 @@
   }
 
   /**
+   * 좋아요 버튼 클릭 핸들러
+   * Firebase Server Value의 increment()를 사용하여 좋아요 개수를 증가시킵니다.
+   * @param {string} postId - 게시글 ID
+   * @param {string} category - 게시글 카테고리
+   */
+  async function handleLike(postId, category) {
+    // 로그인 확인
+    if (!userId) {
+      alert($t("로그인필요"));
+      window.location.href = "/user/login";
+      return;
+    }
+
+    try {
+      // Firebase update 객체 생성
+      const updates = {};
+
+      // 1. 게시글의 좋아요 개수 증가 (서버에서 원자적으로 +1)
+      updates[`posts/${category}/${postId}/likeCount`] = increment(1);
+
+      // 2. 좋아요 누른 사용자 기록 (서버 타임스탬프 사용)
+      updates[`post-props/likes/${postId}/${userId}`] = serverTimestamp();
+
+      // 한 번의 update 호출로 여러 경로 동시 업데이트
+      await update(ref(database), updates);
+
+      // 성공 메시지 (선택사항)
+      showToast($t("좋아요"), "success");
+    } catch (error) {
+      console.error("좋아요 추가 오류:", error);
+      showToast($t("좋아요실패"), "error");
+    }
+  }
+
+  /**
    * 카테고리 탭 클릭 핸들러
    * 카테고리 변경 시 URL을 업데이트하고 currentCategory를 변경합니다.
    */
@@ -251,8 +288,15 @@
                 <button class="action-btn" title={$t("댓글")}>
                   💬 {$t("댓글")}
                 </button>
-                <button class="action-btn" title={$t("좋아요")}>
+                <button
+                  class="action-btn"
+                  title={$t("좋아요")}
+                  onclick={() => handleLike(itemData.key, currentCategory)}
+                >
                   ❤️ {$t("좋아요")}
+                  {#if itemData.data.likeCount > 0}
+                    <span class="count">{itemData.data.likeCount}</span>
+                  {/if}
                 </button>
                 <button class="action-btn" title={$t("채팅")}>
                   💬 {$t("채팅")}
@@ -710,6 +754,22 @@
 
   .action-btn:active {
     transform: scale(0.95);
+  }
+
+  /* 액션 버튼 내 카운트 표시 (좋아요 개수 등) */
+  .action-btn .count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0 0.35rem;
+    border-radius: 9999px;
+    background-color: #ef4444;
+    color: #ffffff;
+    font-size: 0.7rem;
+    font-weight: 600;
+    line-height: 1;
   }
 
   /* 아이콘만 있는 버튼 스타일 */

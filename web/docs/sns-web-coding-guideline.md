@@ -91,6 +91,124 @@ const user = rtdb('users/123');
 
 ---
 
+## Firebase Server Values (increment, serverTimestamp)
+
+Firebase Realtime Database는 **Server Values**를 제공하여 서버 측에서 값을 처리할 수 있습니다. 이는 클라이언트 간 동기화 문제를 방지하고 데이터 일관성을 보장합니다.
+
+### ⚠️ 중요: 숫자 증감 시 반드시 increment 사용
+
+**숫자를 1씩 증가하거나 감소시킬 때는 항상 Firebase의 `increment()` Server Value를 사용해야 합니다.**
+
+#### ❌ 잘못된 방법 - 클라이언트에서 직접 증감
+
+```javascript
+// ❌ 경쟁 조건(Race Condition) 발생 가능!
+const currentValue = await get(ref(database, 'posts/abc123/likeCount'));
+const newValue = (currentValue.val() || 0) + 1;
+await set(ref(database, 'posts/abc123/likeCount'), newValue);
+
+// 문제점:
+// - 두 명의 사용자가 동시에 좋아요를 누르면 한 명의 좋아요가 누락될 수 있음
+// - 네트워크 지연으로 인한 데이터 불일치 발생 가능
+```
+
+#### ✅ 올바른 방법 - increment() 사용
+
+```javascript
+import { ref, update } from 'firebase/database';
+import { increment } from 'firebase/database';
+
+// ✅ 서버에서 원자적(atomic)으로 처리
+const updates = {};
+updates['posts/community/abc123/likeCount'] = increment(1);  // +1 증가
+await update(ref(database), updates);
+
+// 감소는 음수 사용
+updates['posts/community/abc123/likeCount'] = increment(-1);  // -1 감소
+await update(ref(database), updates);
+```
+
+### increment() 사용 예시
+
+#### 예시 1: 좋아요 추가
+
+```javascript
+import { database } from '$lib/firebase.js';
+import { ref, update } from 'firebase/database';
+import { increment, serverTimestamp } from 'firebase/database';
+
+async function addLike(postId, userId, category) {
+  const updates = {};
+
+  // 1. 게시글의 좋아요 개수 증가 (서버에서 원자적으로 +1)
+  updates[`posts/${category}/${postId}/likeCount`] = increment(1);
+
+  // 2. 좋아요 누른 사용자 기록 (서버 타임스탬프 사용)
+  updates[`post-props/likes/${postId}/${userId}`] = serverTimestamp();
+
+  // 한 번의 update 호출로 여러 경로 동시 업데이트
+  await update(ref(database), updates);
+}
+```
+
+#### 예시 2: 좋아요 취소
+
+```javascript
+import { database } from '$lib/firebase.js';
+import { ref, update } from 'firebase/database';
+import { increment } from 'firebase/database';
+
+async function removeLike(postId, userId, category) {
+  const updates = {};
+
+  // 1. 게시글의 좋아요 개수 감소 (서버에서 원자적으로 -1)
+  updates[`posts/${category}/${postId}/likeCount`] = increment(-1);
+
+  // 2. 좋아요 기록 삭제 (null로 설정하면 삭제됨)
+  updates[`post-props/likes/${postId}/${userId}`] = null;
+
+  await update(ref(database), updates);
+}
+```
+
+#### 예시 3: 조회수 증가
+
+```javascript
+async function incrementViewCount(postId, category) {
+  const updates = {};
+  updates[`posts/${category}/${postId}/viewCount`] = increment(1);
+  await update(ref(database), updates);
+}
+```
+
+### serverTimestamp() 사용
+
+현재 서버 시간을 기록할 때는 `serverTimestamp()`를 사용합니다:
+
+```javascript
+import { serverTimestamp } from 'firebase/database';
+
+const updates = {};
+updates[`posts/community/abc123/createdAt`] = serverTimestamp();
+updates[`post-props/likes/${postId}/${userId}`] = serverTimestamp();
+await update(ref(database), updates);
+```
+
+### 장점
+
+1. **원자성(Atomicity)**: 서버에서 단일 연산으로 처리되어 경쟁 조건 방지
+2. **데이터 일관성**: 여러 클라이언트에서 동시에 요청해도 정확한 값 유지
+3. **네트워크 최적화**: 현재 값을 읽지 않고 바로 증감 가능
+4. **서버 시간 사용**: 클라이언트 시간 차이로 인한 오류 방지
+
+### 주의사항
+
+- ⚠️ `increment()`는 `set()`이 아닌 `update()`와 함께 사용해야 합니다
+- ⚠️ 증감할 필드가 존재하지 않으면 자동으로 0에서 시작합니다
+- ⚠️ 여러 경로를 동시에 업데이트할 때는 객체 형태로 전달합니다
+
+---
+
 # Firebase 로그인 사용자 관리 (login)
 
 `login`은 현재 로그인한 사용자의 정보를 반응형으로 관리하는 Singleton 인스턴스입니다.

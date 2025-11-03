@@ -72,6 +72,244 @@ Firebase Realtime Database 구조:
 ```
 
 
+# 게시판 (Forum / Posts)
+
+본 항목은 게시판 관련 데이터베이스 구조 정보를 제공합니다.
+- 반드시 아래의 규칙과 예제를 따라 개발을 진행해야 합니다.
+
+## Firebase Realtime Database (RTDB) 사용
+
+**RTDB를 사용하는 이유:**
+1. **실시간 동기화**: 게시글 쓰기, 수정, 삭제 시 실시간으로 반영되어 사용자 경험 향상
+2. **간편한 데이터 구조**: 계층적 데이터 저장이 용이하여 게시판 구조에 적합
+3. **확장성**: 사용자 수 증가에 따른 확장 용이
+
+## 게시판 데이터 구조
+
+게시판 데이터는 `/posts/` 경로 아래에 저장됩니다.
+
+```
+/posts/
+  {category}/              # 카테고리 (community, qna, news, market)
+    {postId}/            # Firebase 자동 생성 ID
+      uid: "사용자 UID"
+      title: "게시글 제목"
+      content: "게시글 내용"
+      author: "작성자 displayName"
+      category: "카테고리"
+      createdAt: 1234567890  # Unix timestamp (밀리초)
+      updatedAt: 1234567890  # Unix timestamp (밀리초)
+      likeCount: 0         # 좋아요(추천) 총 개수 (기본값: 0)
+      commentCount: 0      # 댓글 총 개수 (기본값: 0)
+```
+
+**예시 경로:**
+```
+/posts/community/abc123def456/
+/posts/qna/xyz789uvw012/
+/posts/news/mno345pqr678/
+```
+
+### 게시글 필드 설명
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `uid` | string | ✅ | 작성자 UID |
+| `title` | string | ✅ | 게시글 제목 |
+| `content` | string | ✅ | 게시글 내용 |
+| `author` | string | ✅ | 작성자 displayName |
+| `category` | string | ✅ | 카테고리 (community, qna, news, market) |
+| `createdAt` | number | ✅ | 작성 시간 (Unix timestamp 밀리초) |
+| `updatedAt` | number | ✅ | 수정 시간 (Unix timestamp 밀리초) |
+| `likeCount` | number | ❌ | 좋아요(추천) 총 개수 (기본값: 0) |
+| `commentCount` | number | ❌ | 댓글 총 개수 (기본값: 0) |
+
+## 카테고리 설정
+
+카테고리는 상수로 정의하여 중앙 관리됩니다.
+
+```javascript
+// src/lib/constants/forum.js
+/**
+ * 게시판 카테고리 설정
+ */
+export const FORUM_CATEGORIES = [
+  { value: "community", label: "커뮤니티" },
+  { value: "qna", label: "질문과답변" },
+  { value: "news", label: "뉴스" },
+  { value: "market", label: "회원장터" },
+];
+```
+
+## 게시글 속성 관리 (post-props)
+
+게시글과 관련된 다양한 속성(좋아요, 신고, 북마크 등)은 **성능 최적화 및 확장성**을 위해 별도의 `/post-props/` 노드에서 관리합니다.
+
+### 게시글 속성 분리의 필요성
+
+**❌ 비효율적인 구조** (게시글 노드에 모든 속성 정보 저장):
+```
+/posts/<category>/<post-id>/
+  likes/
+    <uid1>: timestamp
+    <uid2>: timestamp
+    ... (수천 명의 좋아요 시 데이터 과다)
+  reports/
+    <uid1>: "스팸"
+    <uid2>: "부적절한 내용"
+    ... (신고 데이터까지 포함)
+```
+- **문제점**: 게시글 목록 로드 시 모든 속성 정보까지 다운로드되어 비효율적
+- **문제점**: 데이터가 많을수록 전송량 급증 및 성능 저하
+- **문제점**: 확장 시 게시글 노드가 비대해짐
+
+**✅ 효율적인 구조** (속성 개수와 상세 정보 분리):
+```
+# 1. 게시글 노드: 집계된 개수만 저장 (빠른 조회)
+/posts/<category>/<post-id>/
+  likeCount: 42        # 좋아요 총 개수
+  commentCount: 15     # 댓글 총 개수
+
+# 2. 속성 상세 정보: 별도 노드에 저장
+/post-props/
+  likes/
+    <post-id>/
+      <uid1>: timestamp
+      <uid2>: timestamp
+  reports/
+    <post-id>/
+      <uid1>: "스팸"
+      <uid2>: "부적절한 내용"
+  bookmarks/
+    <post-id>/
+      <uid1>: timestamp
+```
+
+### 데이터 구조 상세
+
+#### 좋아요 (Likes)
+```
+/post-props/
+  likes/
+    {postId}/            # 게시글 ID (카테고리 없이 post-id만 사용)
+      {uid}: timestamp   # 좋아요를 누른 사용자 UID와 시간
+```
+
+**예시:**
+```json
+{
+  "post-props": {
+    "likes": {
+      "abc123def456": {
+        "user-uid-1": 1698473000000,
+        "user-uid-2": 1698474000000,
+        "user-uid-3": 1698475000000
+      },
+      "xyz789uvw012": {
+        "user-uid-4": 1698476000000
+      }
+    }
+  }
+}
+```
+
+#### 신고 (Reports)
+```
+/post-props/
+  reports/
+    {postId}/
+      {uid}: "신고 사유"   # 신고한 사용자 UID와 사유
+```
+
+**예시:**
+```json
+{
+  "post-props": {
+    "reports": {
+      "abc123def456": {
+        "user-uid-5": "스팸",
+        "user-uid-6": "부적절한 내용"
+      }
+    }
+  }
+}
+```
+
+### 좋아요 기능 구현 로직
+
+#### 1. 좋아요 추가
+```javascript
+// 1. /post-props/likes/<postId>/<uid> 에 timestamp 저장
+// 2. /posts/<category>/<postId>/likeCount 를 +1 증가 (트랜잭션 사용)
+```
+
+#### 2. 좋아요 취소
+```javascript
+// 1. /post-props/likes/<postId>/<uid> 삭제
+// 2. /posts/<category>/<postId>/likeCount 를 -1 감소 (트랜잭션 사용)
+```
+
+#### 3. 사용자의 좋아요 여부 확인
+```javascript
+// /post-props/likes/<postId>/<current-uid> 경로 존재 여부 확인
+```
+
+#### 4. 게시글 목록 표시
+```javascript
+// /posts/<category>/<postId>/likeCount 만 조회 (빠름)
+```
+
+### 확장성 (Extensibility)
+
+`/post-props/` 구조를 사용하면 다양한 게시글 관련 속성을 쉽게 추가할 수 있습니다:
+
+```
+/post-props/
+  likes/           # 좋아요
+    <post-id>/
+      <uid>: timestamp
+
+  reports/         # 신고
+    <post-id>/
+      <uid>: "신고 사유"
+
+  bookmarks/       # 북마크
+    <post-id>/
+      <uid>: timestamp
+
+  shares/          # 공유
+    <post-id>/
+      <uid>: timestamp
+
+  views/           # 조회수 (필요시)
+    <post-id>/
+      <uid>: timestamp
+```
+
+**확장성 장점:**
+- 새로운 속성 추가 시 기존 구조 변경 없이 `/post-props/` 아래에 추가만 하면 됨
+- 각 속성별로 독립적인 보안 규칙 적용 가능
+- 특정 속성만 선택적으로 조회하여 성능 최적화
+- 속성별로 다른 데이터 타입 사용 가능 (timestamp, string, number 등)
+
+### 장점
+
+1. **성능 최적화**: 게시글 목록 로드 시 집계된 개수(`likeCount` 등)만 가져오므로 빠름
+2. **중복 방지**: 사용자 UID를 키로 사용하여 자동으로 중복 방지
+3. **빠른 확인**: 특정 사용자의 속성 여부를 단일 경로로 확인 가능
+4. **확장성**: 새로운 속성을 쉽게 추가할 수 있는 유연한 구조
+5. **데이터 관리**: 카테고리 없이 post-id만 사용하여 구조 단순화
+6. **보안 규칙**: 속성별로 독립적인 접근 제어 가능
+
+### 주의사항
+
+- **동기화 필수**: `likeCount`와 `/post-props/likes/` 의 데이터는 항상 동기화되어야 함
+- **트랜잭션 사용**: 속성 추가/삭제 시 Firebase 트랜잭션 사용 권장
+- **Cloud Functions**: 서버 측에서 데이터 일관성을 보장하는 것이 더 안전함
+- **post-id 고유성**: 카테고리를 제거했으므로 post-id는 전역적으로 고유해야 함 (Firebase의 `push()` 사용 시 자동 보장)
+
+---
+
 # 친구 관계
 
 본 항목은 친구 관계, 팔로잉, 팔로워에 대한 데이터베이스 구조 정보를 제공합니다.

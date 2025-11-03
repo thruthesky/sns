@@ -43,57 +43,23 @@
 
 ## 데이터베이스 구조
 
-### Firebase Realtime Database (RTDB) 사용
+게시판 데이터베이스 구조는 별도 문서에서 관리됩니다.
 
-**RTDB를 사용하는 이유:**
-1. **실시간 동기화**: 게시글 쓰기, 수정, 삭제 시 실시간으로 반영되어 사용자 경험 향상
-2. **간편한 데이터 구조**: 계층적 데이터 저장이 용이하여 게시판 구조에 적합
-3. **확장성**: 사용자 수 증가에 따른 확장 용이
+**📖 참고 문서**: [데이터베이스 구조 가이드](./sns-web-database.md#게시판-forum--posts)
 
-### 게시판 데이터 구조
-
-게시판 데이터는 `/posts/` 경로 아래에 저장됩니다.
-
-```
-/posts/
-  {category}/              # 카테고리 (community, qna, news, market)
-    {postId}/            # Firebase 자동 생성 ID
-      uid: "사용자 UID"
-      title: "게시글 제목"
-      content: "게시글 내용"
-      author: "작성자 displayName"
-      category: "카테고리"
-      createdAt: 1234567890  # Unix timestamp (밀리초)
-      updatedAt: 1234567890  # Unix timestamp (밀리초)
-```
-
-**예시 경로:**
-```
-/posts/community/abc123def456/
-/posts/qna/xyz789uvw012/
-/posts/news/mno345pqr678/
-```
+주요 내용:
+- `/posts/{category}/{postId}` 경로 구조
+- 카테고리별 게시글 저장 (community, qna, news, market)
+- 실시간 동기화를 위한 RTDB 사용
+- 게시글 필드: uid, title, content, author, category, createdAt, updatedAt
 
 ---
 
 ## 카테고리 관리
 
-### 카테고리 설정
+카테고리 설정은 데이터베이스 구조 문서를 참고하세요.
 
-카테고리는 상수로 정의하여 중앙 관리됩니다.
-
-```javascript
-// src/lib/constants/forum.js
-/**
- * 게시판 카테고리 설정
- */
-export const FORUM_CATEGORIES = [
-  { value: "community", label: "커뮤니티" },
-  { value: "qna", label: "질문과답변" },
-  { value: "news", label: "뉴스" },
-  { value: "market", label: "회원장터" },
-];
-```
+**📖 참고 문서**: [데이터베이스 구조 가이드 - 카테고리 설정](./sns-web-database.md#카테고리-설정)
 
 ### 카테고리 사용 방법
 
@@ -814,6 +780,7 @@ Svelte 5의 Runes를 사용하여 반응형 상태를 관리합니다.
 
 ## 관련 문서
 
+- [데이터베이스 구조 가이드](./sns-web-database.md) - **게시판 DB 구조 필수 참고**
 - [Svelte Custom Elements 개발 가이드](./sns-custom-elements.md)
 - [웹 개발 지침](./sns-web.md)
 - [i18n 개발 가이드](./sns-web-i18n.md)

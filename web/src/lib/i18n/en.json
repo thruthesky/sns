@@ -256,5 +256,6 @@
   "게시글작성완료": "Post has been created.",
   "게시글저장실패": "Failed to save post: {error}",
   "게시글저장중오류": "An error occurred while saving the post.",
-  "로그인정보확인불가": "Could not verify login information."
+  "로그인정보확인불가": "Could not verify login information.",
+  "좋아요실패": "An error occurred while processing like."
 }
