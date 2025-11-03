@@ -20,28 +20,6 @@
 
   // 반응형 상태
   let dropdownOpen = $state(false);
-  let logoRef = $state(null);
-
-  /**
-   * 로고 애니메이션 트리거 함수
-   */
-  function triggerLogoAnimation() {
-    if (logoRef) {
-      // 기존 애니메이션 클래스 제거 (재트리거 가능하도록)
-      logoRef.classList.remove('logo-animate-active');
-
-      // 리플로우를 강제로 발생시켜 애니메이션 재시작
-      void logoRef.offsetWidth;
-
-      // 애니메이션 클래스 추가
-      logoRef.classList.add('logo-animate-active');
-
-      // 애니메이션 완료 후 클래스 제거
-      setTimeout(() => {
-        logoRef?.classList.remove('logo-animate-active');
-      }, 600);
-    }
-  }
 
   /**
    * 로그아웃 핸들러
@@ -94,25 +72,12 @@
     }
   }
 
-  // 로고 애니메이션 - 로딩 후 1회 자동 수행, 매 10초마다 반복
+  // 드롭다운 외부 클릭 감지
   onMount(() => {
-    // 로딩 완료 후 500ms 후 1회 자동 실행
-    const initialTimer = setTimeout(() => {
-      triggerLogoAnimation();
-    }, 500);
-
-    // 매 10초마다 실행
-    const intervalTimer = setInterval(() => {
-      triggerLogoAnimation();
-    }, 10000);
-
-    // 외부 클릭 감지
     document.addEventListener('click', handleClickOutside);
 
     // 클린업 함수
     return () => {
-      clearTimeout(initialTimer);
-      clearInterval(intervalTimer);
       document.removeEventListener('click', handleClickOutside);
     };
   });
@@ -121,13 +86,9 @@
 <!-- 탑바 -->
 <header class="topbar">
   <div class="container">
-    <!-- 왼쪽: 로고 -->
-    <a href="/" class="logo-link" bind:this={logoRef}>
-      <div class="logo">
-        {#each $t('프로젝트_명칭').split('') as char, i}
-          <span class="logo-char logo-char-{i + 1}">{char}</span>
-        {/each}
-      </div>
+    <!-- 왼쪽: 로고 이미지 -->
+    <a href="/" class="logo-link">
+      <img src="/logo.png" alt="로고" class="logo-img" />
     </a>
 
     <!-- 중앙: 페이지 제목 -->
@@ -313,55 +274,16 @@
   .logo-link {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
     text-decoration: none;
     color: inherit;
     flex-shrink: 0;
   }
 
-  .logo {
-    font-size: 1.25rem;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-  }
-
-  .logo-char {
-    display: inline-block;
-    transition: transform 0.3s ease;
-  }
-
-  .logo-animate-active .logo-char-1 {
-    animation: bounce 0.3s ease;
-  }
-
-  .logo-animate-active .logo-char-2 {
-    animation: bounce 0.3s ease 0.075s;
-  }
-
-  .logo-animate-active .logo-char-3 {
-    animation: bounce 0.3s ease 0.15s;
-  }
-
-  @keyframes bounce {
-    0%, 100% {
-      transform: translateY(0);
-    }
-    50% {
-      transform: translateY(-0.25rem);
-    }
-  }
-
-  .logo-link:hover .logo-char {
-    transform: translateY(-0.25rem);
-  }
-
-  .logo-link:hover .logo-char-2 {
-    transition-delay: 0.075s;
-  }
-
-  .logo-link:hover .logo-char-3 {
-    transition-delay: 0.15s;
+  /* 로고 이미지 */
+  .logo-img {
+    height: 2.5rem;
+    width: auto;
+    display: block;
   }
 
   /* 페이지 제목 컨테이너 */
