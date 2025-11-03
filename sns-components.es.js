@@ -19112,13 +19112,13 @@ function x0() {
 }
 x0();
 const O0 = {
-  apiKey: "AIzaSyB89ImXbiKosw6eTCC8S1_vY8BzGq_SFY0",
-  authDomain: "withcenter-test-5.firebaseapp.com",
-  databaseURL: "https://withcenter-test-5-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "withcenter-test-5",
-  storageBucket: "withcenter-test-5.appspot.com",
-  messagingSenderId: "1064417466216",
-  appId: "1:1064417466216:web:039565a60d9b0b74db28dd"
+  apiKey: void 0,
+  authDomain: void 0,
+  databaseURL: void 0,
+  projectId: void 0,
+  storageBucket: void 0,
+  messagingSenderId: void 0,
+  appId: void 0
 }, bc = Ed(O0), Hn = Vb(bc), bt = t0(bc);
 R0(bc);
 var L0 = /* @__PURE__ */ j('<div class="loading svelte-1t1odzy"><div class="spinner svelte-1t1odzy"></div> <p class="svelte-1t1odzy">게시물을 불러오는 중...</p></div>'), D0 = /* @__PURE__ */ j('<div class="error svelte-1t1odzy"><p class="svelte-1t1odzy"> </p></div>'), M0 = /* @__PURE__ */ j('<div class="empty svelte-1t1odzy"><p class="svelte-1t1odzy">아직 게시물이 없습니다.</p></div>'), $0 = /* @__PURE__ */ j('<h3 class="post-title svelte-1t1odzy"> </h3>'), F0 = /* @__PURE__ */ j('<p class="post-text svelte-1t1odzy"> </p>'), U0 = /* @__PURE__ */ j('<article class="post-card svelte-1t1odzy" role="button" tabindex="0"><div class="post-header svelte-1t1odzy"><div class="author-info svelte-1t1odzy"><span class="author-name svelte-1t1odzy"> </span> <span class="post-date svelte-1t1odzy"> </span></div></div> <div class="post-content svelte-1t1odzy"><!> <!></div> <div class="post-footer svelte-1t1odzy"><span class="stat svelte-1t1odzy"> </span> <span class="stat svelte-1t1odzy"> </span></div></article>'), H0 = /* @__PURE__ */ j('<div class="posts svelte-1t1odzy"></div>'), W0 = /* @__PURE__ */ j('<div class="post-list-container svelte-1t1odzy"><!></div>');
@@ -20912,11 +20912,11 @@ class Zn {
    * 사용자 프로필 업데이트
    *
    * Firebase Auth와 Realtime Database 모두 업데이트합니다.
-   * 업데이트 가능한 필드: displayName, photoURL 등
+   * 업데이트 가능한 필드: displayName, photoUrl 등
    *
    * @param {Object} profileData - 업데이트할 프로필 데이터
    * @param {string} [profileData.displayName] - 표시 이름
-   * @param {string} [profileData.photoURL] - 프로필 사진 URL
+   * @param {string} [profileData.photoUrl] - 프로필 사진 URL
    * @returns {Promise<void>}
    * @throws {Error} 사용자가 로그인하지 않았거나 업데이트에 실패한 경우
    *
@@ -20924,10 +20924,10 @@ class Zn {
    * // displayName 업데이트
    * await firebaseLoginUser.updateProfile({ displayName: '홍길동' });
    *
-   * // displayName과 photoURL 동시 업데이트
+   * // displayName과 photoUrl 동시 업데이트
    * await firebaseLoginUser.updateProfile({
    *   displayName: '홍길동',
-   *   photoURL: 'https://example.com/photo.jpg'
+   *   photoUrl: 'https://example.com/photo.jpg'
    * });
    */
   async updateProfile(e) {
@@ -20935,9 +20935,9 @@ class Zn {
       throw new Error("User is not authenticated");
     try {
       const n = {};
-      e.displayName !== void 0 && (n.displayName = e.displayName), e.photoUrl !== void 0 ? n.photoURL = e.photoUrl : e.photoURL !== void 0 && (n.photoURL = e.photoURL), Object.keys(n).length > 0 && (await Zd(this.#o, n), console.log("FirebaseLoginUser: Auth profile updated", n));
+      e.displayName !== void 0 && (n.displayName = e.displayName), (e.photoUrl !== void 0 || e.photoUrl !== void 0) && (n.photoUrl = e.photoUrl), Object.keys(n).length > 0 && (await Zd(this.#o, n), console.log("FirebaseLoginUser: Auth profile updated", n));
       const i = { ...e };
-      i.photoURL !== void 0 && (i.photoUrl === void 0 && (i.photoUrl = i.photoURL), delete i.photoURL);
+      i.photoUrl !== void 0 && (i.photoUrl === void 0 && (i.photoUrl = i.photoUrl), delete i.photoUrl);
       const r = yt(bt, `users/${this.uid}`);
       await mo(r, i), console.log("FirebaseLoginUser: RTDB profile updated", i);
     } catch (n) {
@@ -20970,15 +20970,15 @@ class Zn {
     return this.updateProfile({ displayName: e });
   }
   /**
-   * photoURL 업데이트 (단축 메서드)
+   * photoUrl 업데이트 (단축 메서드)
    *
-   * @param {string} photoURL - 프로필 사진 URL
+   * @param {string} photoUrl - 프로필 사진 URL
    * @returns {Promise<void>}
    *
    * @example
-   * await firebaseLoginUser.updatePhotoURL('https://example.com/photo.jpg');
+   * await firebaseLoginUser.updatePhotoUrl('https://example.com/photo.jpg');
    */
-  async updatePhotoURL(e) {
+  async updatePhotoUrl(e) {
     return this.updateProfile({ photoUrl: e });
   }
   /**
