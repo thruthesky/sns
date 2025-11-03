@@ -54,11 +54,11 @@
         <span>{$t('내프로필')}</span>
       </a>
 
-      <!-- 게시판 (향후 추가 예정) -->
-      <div class="menu-item disabled">
+      <!-- 게시판 -->
+      <a href="/post/list" class="menu-item">
         <FileText size={20} />
         <span>{$t('게시판')}</span>
-      </div>
+      </a>
     </nav>
 
     <!-- 구분선 -->

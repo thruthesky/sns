@@ -130,10 +130,10 @@
       {#if $user}
         <!-- 데스크톱 메뉴 -->
         <div class="desktop-menu">
-          <!-- 포럼 버튼 -->
-          <a href="/forum/list" class="nav-button">
+          <!-- 게시판 버튼 -->
+          <a href="/post/list" class="nav-button">
             <LayoutGrid size={16} />
-            <span>{$t('포럼')}</span>
+            <span>{$t('게시판')}</span>
           </a>
 
           <!-- 채팅 버튼 -->
@@ -156,8 +156,8 @@
               type="button"
             >
               <div class="avatar">
-                {#if $user?.photoURL}
-                  <img src={$user.photoURL} alt="프로필" class="avatar-image" />
+                {#if $user?.photoUrl || $user?.photoURL}
+                  <img src={$user?.photoUrl ?? $user?.photoURL} alt="프로필" class="avatar-image" />
                 {:else}
                   <div class="avatar-fallback">{getUserInitial()}</div>
                 {/if}
@@ -192,7 +192,7 @@
 
         <!-- 모바일 메뉴 -->
         <div class="mobile-menu">
-          <a href="/forum/list" class="icon-button" title={$t('포럼')}>
+          <a href="/post/list" class="icon-button" title={$t('게시판')}>
             <LayoutGrid size={20} />
           </a>
           <a href="/user/list" class="icon-button" title={$t('사용자찾기')}>
@@ -203,8 +203,12 @@
           </a>
           <a href="/user/profile" class="icon-button" title={$t('프로필')}>
             <div class="avatar avatar-small">
-              {#if $user?.photoURL}
-                <img src={$user.photoURL} alt={$t('프로필')} class="avatar-image" />
+              {#if $user?.photoUrl || $user?.photoURL}
+                <img
+                  src={$user?.photoUrl ?? $user?.photoURL}
+                  alt={$t('프로필')}
+                  class="avatar-image"
+                />
               {:else}
                 <div class="avatar-fallback avatar-fallback-small">{getUserInitial()}</div>
               {/if}
@@ -218,10 +222,10 @@
         <!-- 로그인하지 않은 경우 -->
         <!-- 데스크톱 메뉴 -->
         <div class="desktop-menu">
-          <!-- 포럼 버튼 -->
-          <a href="/forum/list" class="nav-button">
+          <!-- 게시판 버튼 -->
+          <a href="/post/list" class="nav-button">
             <LayoutGrid size={16} />
-            <span>{$t('포럼')}</span>
+            <span>{$t('게시판')}</span>
           </a>
 
           <!-- 채팅 버튼 -->
@@ -241,8 +245,8 @@
 
         <!-- 모바일 메뉴 -->
         <div class="mobile-menu">
-          <!-- 포럼 아이콘 -->
-          <a href="/forum/list" class="icon-button" title={$t('포럼')}>
+          <!-- 게시판 아이콘 -->
+          <a href="/post/list" class="icon-button" title={$t('게시판')}>
             <LayoutGrid size={20} />
           </a>
 
