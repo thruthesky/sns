@@ -1,7 +1,7 @@
 <!--
   Toast 알림 컴포넌트
 
-  화면 하단에 짧은 알림 메시지를 표시합니다.
+  화면 상단에 강한 색상의 알림 메시지를 표시합니다.
   여러 개의 toast가 쌓여서 표시될 수 있습니다.
 
   사용법:
@@ -64,10 +64,10 @@
 </div>
 
 <style>
-  /* Toast 컨테이너 - 화면 하단 중앙에 고정 */
+  /* Toast 컨테이너 - 화면 상단 중앙에 고정 */
   .toast-container {
     position: fixed;
-    bottom: 2rem;
+    top: 2rem;
     left: 50%;
     transform: translateX(-50%);
     z-index: 9999;
@@ -84,22 +84,21 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    padding: 1rem 1.25rem;
-    background-color: #ffffff;
+    padding: 1rem 1.5rem;
     border-radius: 0.5rem;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
     pointer-events: auto;
-    min-width: 300px;
+    min-width: 320px;
     max-width: 500px;
-    animation: slideIn 0.3s ease-out;
-    border-left: 4px solid;
+    animation: slideDown 0.4s ease-out;
+    font-weight: 500;
   }
 
-  /* 슬라이드 인 애니메이션 */
-  @keyframes slideIn {
+  /* 슬라이드 다운 애니메이션 - 위에서 아래로 */
+  @keyframes slideDown {
     from {
       opacity: 0;
-      transform: translateY(1rem);
+      transform: translateY(-1rem);
     }
     to {
       opacity: 1;
@@ -107,44 +106,48 @@
     }
   }
 
-  /* 타입별 색상 - Success (성공) */
+  /* 타입별 색상 - Success (성공) - 강렬한 초록색 */
   .toast-success {
-    border-left-color: #10b981;
+    background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+    color: #ffffff;
   }
 
   .toast-success .toast-icon {
-    color: #10b981;
-    background-color: #d1fae5;
+    color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.25);
   }
 
-  /* 타입별 색상 - Error (에러) */
+  /* 타입별 색상 - Error (에러) - 강렬한 빨간색 */
   .toast-error {
-    border-left-color: #ef4444;
+    background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+    color: #ffffff;
   }
 
   .toast-error .toast-icon {
-    color: #ef4444;
-    background-color: #fee2e2;
+    color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.25);
   }
 
-  /* 타입별 색상 - Info (정보) */
+  /* 타입별 색상 - Info (정보) - 강렬한 파란색 */
   .toast-info {
-    border-left-color: #3b82f6;
+    background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+    color: #ffffff;
   }
 
   .toast-info .toast-icon {
-    color: #3b82f6;
-    background-color: #dbeafe;
+    color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.25);
   }
 
-  /* 타입별 색상 - Warning (경고) */
+  /* 타입별 색상 - Warning (경고) - 강렬한 주황색 */
   .toast-warning {
-    border-left-color: #f59e0b;
+    background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%);
+    color: #ffffff;
   }
 
   .toast-warning .toast-icon {
-    color: #f59e0b;
-    background-color: #fef3c7;
+    color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.25);
   }
 
   /* Toast 아이콘 */
@@ -163,48 +166,51 @@
   /* Toast 메시지 */
   .toast-message {
     flex: 1;
-    font-size: 0.875rem;
-    color: #111827;
+    font-size: 0.9375rem;
+    color: #ffffff;
     line-height: 1.5;
+    font-weight: 500;
   }
 
   /* Toast 닫기 버튼 */
   .toast-close {
     background: none;
     border: none;
-    color: #9ca3af;
-    font-size: 1.5rem;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 1.75rem;
     line-height: 1;
     cursor: pointer;
     padding: 0;
-    width: 1.5rem;
-    height: 1.5rem;
+    width: 1.75rem;
+    height: 1.75rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: color 0.2s ease;
+    transition: all 0.2s ease;
     flex-shrink: 0;
+    border-radius: 0.25rem;
   }
 
   .toast-close:hover {
-    color: #111827;
+    color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.2);
   }
 
   /* 반응형 - 모바일 */
   @media (max-width: 640px) {
     .toast-container {
-      bottom: 1rem;
+      top: 1rem;
       max-width: 95%;
     }
 
     .toast {
       min-width: auto;
       width: 100%;
-      padding: 0.875rem 1rem;
+      padding: 1rem 1.25rem;
     }
 
     .toast-message {
-      font-size: 0.8125rem;
+      font-size: 0.875rem;
     }
   }
 </style>
