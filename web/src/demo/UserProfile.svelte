@@ -151,7 +151,9 @@
    * @param {Event} event - 파일 입력 이벤트
    */
   async function handlePhotoChange(event) {
-    const file = event.target.files?.[0];
+    /** @type {HTMLInputElement} */
+    const target = event.target;
+    const file = target.files?.[0];
     if (!file) return;
 
     if (isPhotoUpdating) {
@@ -182,7 +184,11 @@
     // 미리보기 생성
     const reader = new FileReader();
     reader.onload = (e) => {
-      photoPreview = e.target?.result;
+      // readAsDataURL()은 항상 string을 반환하지만, 타입 체크를 추가
+      const result = e.target?.result;
+      if (typeof result === 'string') {
+        photoPreview = result;
+      }
     };
     reader.readAsDataURL(file);
 
