@@ -13,6 +13,7 @@
 
   import { Menu, MessageCircle, Users, User, LogOut, LayoutGrid } from 'lucide-svelte';
   import { user, signOut } from '../stores/auth.js';
+  import { login } from '../utils/firebase-login-user.svelte.js';
   import { t } from '../stores/i18n.js';
   import { onMount } from 'svelte';
 
@@ -59,13 +60,16 @@
 
   /**
    * 사용자 이름의 첫 글자를 가져옴 (아바타 표시용)
+   * login.data에서 displayName을 가져와 실시간 업데이트를 지원합니다.
    */
   function getUserInitial() {
-    if ($user?.displayName) {
-      return $user.displayName.charAt(0).toUpperCase();
+    // Firebase Realtime Database에서 실시간 동기화되는 displayName 사용
+    if (login.data?.displayName) {
+      return login.data.displayName.charAt(0).toUpperCase();
     }
-    if ($user?.email) {
-      return $user.email.charAt(0).toUpperCase();
+    // Firebase Auth의 이메일 사용 (static 속성)
+    if (login.email) {
+      return login.email.charAt(0).toUpperCase();
     }
     return 'U';
   }
@@ -156,14 +160,16 @@
               type="button"
             >
               <div class="avatar">
-                {#if $user?.photoUrl || $user?.photoURL}
-                  <img src={$user?.photoUrl ?? $user?.photoURL} alt="프로필" class="avatar-image" />
+                {#if login.data?.photoUrl}
+                  <!-- Firebase Realtime Database에서 실시간 동기화되는 프로필 사진 -->
+                  <img src={login.data.photoUrl} alt="프로필" class="avatar-image" />
                 {:else}
+                  <!-- 사진이 없으면 사용자 이름의 첫 글자 표시 -->
                   <div class="avatar-fallback">{getUserInitial()}</div>
                 {/if}
               </div>
               <span class="profile-name">
-                {$user?.displayName || $user?.email}
+                {login.data?.displayName || login.email}
               </span>
             </button>
 
@@ -203,13 +209,15 @@
           </a>
           <a href="/user/profile" class="icon-button" title={$t('프로필')}>
             <div class="avatar avatar-small">
-              {#if $user?.photoUrl || $user?.photoURL}
+              {#if login.data?.photoUrl}
+                <!-- Firebase Realtime Database에서 실시간 동기화되는 프로필 사진 -->
                 <img
-                  src={$user?.photoUrl ?? $user?.photoURL}
+                  src={login.data.photoUrl}
                   alt={$t('프로필')}
                   class="avatar-image"
                 />
               {:else}
+                <!-- 사진이 없으면 사용자 이름의 첫 글자 표시 -->
                 <div class="avatar-fallback avatar-fallback-small">{getUserInitial()}</div>
               {/if}
             </div>
