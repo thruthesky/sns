@@ -89,11 +89,6 @@
       <Home />
     {/if}
   </main>
-
-  <!-- 푸터 -->
-  <footer class="footer">
-    <p>{$t('푸터')}</p>
-  </footer>
 </sns-layout>
 
 <style>
@@ -101,21 +96,6 @@
   .content {
     max-width: 800px;
     margin: 0 auto;
-  }
-
-  /* 푸터 */
-  .footer {
-    max-width: 800px;
-    margin: 2rem auto 0;
-    padding-top: 2rem;
-    border-top: 1px solid #e5e7eb;
-    text-align: center;
-    color: #6b7280;
-  }
-
-  .footer p {
-    margin: 0;
-    font-size: 0.875rem;
   }
 
   /* 반응형 */
