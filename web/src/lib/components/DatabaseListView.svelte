@@ -36,6 +36,7 @@
     ref as dbRef,
     get,
     onValue,
+    onChildAdded,
     query,
     orderByChild,
     limitToFirst,
@@ -152,17 +153,51 @@
    */
   let pageItems = new Map();
 
+  /**
+   * onChildAdded 리스너 해제 함수
+   * 새로운 노드 생성을 감지하는 리스너
+   * @type {(() => void) | null}
+   */
+  let childAddedUnsubscribe = null;
+
+  /**
+   * onChildAdded 리스너가 초기화되었는지 여부
+   * 초기 로드 시 기존 아이템들에 대한 child_added 이벤트를 무시하기 위한 플래그
+   * @type {boolean}
+   */
+  let childAddedListenerReady = $state(false);
+
   // ============================================================================
   // Lifecycle (생명주기)
   // ============================================================================
 
   /**
    * 컴포넌트 마운트 시 초기 데이터 로드
+   * 컴포넌트 언마운트 시 모든 리스너 해제
    */
   $effect(() => {
     if (path && database) {
       loadInitialData();
     }
+
+    // cleanup: 컴포넌트 언마운트 시 모든 리스너 해제
+    return () => {
+      console.log('DatabaseListView: Cleaning up listeners');
+
+      // child_added 리스너 해제
+      if (childAddedUnsubscribe) {
+        childAddedUnsubscribe();
+        childAddedUnsubscribe = null;
+      }
+
+      // 모든 onValue 리스너 해제
+      unsubscribers.forEach((unsubscribe) => {
+        unsubscribe();
+      });
+      unsubscribers.clear();
+
+      console.log('DatabaseListView: All listeners cleaned up');
+    };
   });
 
   /**
@@ -263,6 +298,86 @@
   }
 
   /**
+   * 새로운 노드 생성 감지 리스너 설정 (onChildAdded)
+   *
+   * Firebase의 onChildAdded()를 사용하여 새로운 노드가 생성되면 실시간으로 화면에 추가합니다.
+   * - reverse가 true이면 배열 맨 앞에 추가 (최신 글이 위에)
+   * - reverse가 false이면 배열 맨 뒤에 추가 (최신 글이 아래에)
+   *
+   * 주의: onChildAdded는 초기에 기존 아이템들에 대해서도 발생하므로,
+   * childAddedListenerReady 플래그를 사용하여 초기 로드 완료 후에만 새 아이템으로 처리합니다.
+   */
+  function setupChildAddedListener() {
+    if (childAddedUnsubscribe) {
+      // 기존 리스너가 있으면 먼저 해제
+      childAddedUnsubscribe();
+      childAddedUnsubscribe = null;
+    }
+
+    console.log('DatabaseListView: Setting up child_added listener for', path);
+    childAddedListenerReady = false;
+
+    const baseRef = dbRef(database, path);
+    const dataQuery = query(baseRef, orderByChild(orderBy));
+
+    childAddedUnsubscribe = onChildAdded(dataQuery, (snapshot) => {
+      // 초기 로드 완료 전에는 무시 (기존 아이템들은 loadInitialData에서 처리)
+      if (!childAddedListenerReady) {
+        return;
+      }
+
+      const newItemKey = snapshot.key;
+      const newItemData = snapshot.val();
+
+      // 중복 체크: 이미 items에 있는 key는 추가하지 않음
+      const exists = items.some(item => item.key === newItemKey);
+      if (exists) {
+        console.log('DatabaseListView: Child already exists, skipping:', newItemKey);
+        return;
+      }
+
+      console.log('DatabaseListView: New child added:', newItemKey, newItemData);
+
+      const newItem = {
+        key: newItemKey,
+        data: newItemData
+      };
+
+      // reverse 여부에 따라 배열의 앞 또는 뒤에 추가
+      if (reverse) {
+        // reverse가 true: 최신 글이 위에 → 배열 맨 앞에 추가
+        items = [newItem, ...items];
+        console.log('DatabaseListView: Added new item to the beginning (reverse mode)');
+
+        // 새 아이템에 onValue 리스너 설정 (인덱스 0)
+        setupItemListener(newItemKey, 0);
+
+        // 기존 아이템들의 인덱스가 밀렸으므로, unsubscribers의 인덱스를 업데이트할 필요는 없음
+        // (setupItemListener는 itemKey를 키로 사용하므로 인덱스 변경에 영향 없음)
+        // 하지만 items[index] 업데이트를 위해 모든 리스너를 다시 설정하는 것이 안전할 수 있음
+        // 성능을 위해 여기서는 새 아이템에만 리스너 설정
+      } else {
+        // reverse가 false: 오래된 글이 위에 → 배열 맨 뒤에 추가
+        const newIndex = items.length;
+        items = [...items, newItem];
+        console.log('DatabaseListView: Added new item to the end (normal mode)');
+
+        // 새 아이템에 onValue 리스너 설정
+        setupItemListener(newItemKey, newIndex);
+      }
+    }, (error) => {
+      console.error('DatabaseListView: Error in child_added listener', error);
+    });
+
+    // 약간의 지연 후 리스너를 활성화 (기존 아이템들의 child_added 이벤트를 건너뛰기 위해)
+    // Firebase는 리스너 설정 직후 기존 아이템들에 대해 child_added를 발생시킴
+    setTimeout(() => {
+      childAddedListenerReady = true;
+      console.log('DatabaseListView: child_added listener is now ready to accept new children');
+    }, 1000);
+  }
+
+  /**
    * 초기 데이터 로드 (페이지별 Firebase 쿼리)
    *
    * Firebase 쿼리를 사용하여 첫 번째 페이지 + 1개를 로드합니다.
@@ -277,7 +392,18 @@
     error = null;
     items = [];
     pageItems.clear();
+
+    // 기존 리스너들 정리
+    unsubscribers.forEach((unsubscribe) => unsubscribe());
     unsubscribers.clear();
+
+    // child_added 리스너 해제
+    if (childAddedUnsubscribe) {
+      childAddedUnsubscribe();
+      childAddedUnsubscribe = null;
+    }
+    childAddedListenerReady = false;
+
     lastLoadedValue = null;
     lastLoadedKey = null;
     hasMore = true;
@@ -389,6 +515,10 @@
       error = err.message;
     } finally {
       initialLoading = false;
+
+      // 초기 로드 완료 후 child_added 리스너 설정
+      // 이후 새로 생성되는 노드를 실시간으로 감지하여 화면에 추가
+      setupChildAddedListener();
     }
   }
 
