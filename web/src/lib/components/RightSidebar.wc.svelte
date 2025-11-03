@@ -89,7 +89,7 @@
     border-left: 1px solid #e5e7eb;
     background-color: white;
     padding: 1rem;
-    overflow-y: auto;
+    overflow-y: hidden;
     height: 100vh;
   }
 

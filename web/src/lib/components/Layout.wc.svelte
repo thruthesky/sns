@@ -65,7 +65,7 @@
       position: sticky;
       top: 4rem;
       height: calc(100vh - 4rem);
-      overflow-y: auto;
+      overflow: hidden;
     }
   }
 
@@ -100,7 +100,7 @@
       position: sticky;
       top: 4rem;
       height: calc(100vh - 4rem);
-      overflow-y: auto;
+      overflow: hidden;
     }
   }
 </style>

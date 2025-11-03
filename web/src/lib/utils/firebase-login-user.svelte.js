@@ -235,7 +235,9 @@ class FirebaseLoginUser {
             if (profileData.displayName !== undefined) {
                 authUpdateData.displayName = profileData.displayName;
             }
-            if (profileData.photoURL !== undefined) {
+            if (profileData.photoUrl !== undefined) {
+                authUpdateData.photoURL = profileData.photoUrl;
+            } else if (profileData.photoURL !== undefined) {
                 authUpdateData.photoURL = profileData.photoURL;
             }
 
@@ -245,9 +247,17 @@ class FirebaseLoginUser {
             }
 
             // 2. Realtime Database 업데이트
+            const dbUpdateData = { ...profileData };
+            if (dbUpdateData.photoURL !== undefined) {
+                if (dbUpdateData.photoUrl === undefined) {
+                    dbUpdateData.photoUrl = dbUpdateData.photoURL;
+                }
+                delete dbUpdateData.photoURL;
+            }
+
             const userRef = dbRef(database, `users/${this.uid}`);
-            await dbUpdate(userRef, profileData);
-            console.log('FirebaseLoginUser: RTDB profile updated', profileData);
+            await dbUpdate(userRef, dbUpdateData);
+            console.log('FirebaseLoginUser: RTDB profile updated', dbUpdateData);
         } catch (error) {
             console.error('FirebaseLoginUser: Profile update error', error);
             this.error = error;
@@ -292,7 +302,7 @@ class FirebaseLoginUser {
      * await firebaseLoginUser.updatePhotoURL('https://example.com/photo.jpg');
      */
     async updatePhotoURL(photoURL) {
-        return this.updateProfile({ photoURL });
+        return this.updateProfile({ photoUrl: photoURL });
     }
 
     /**

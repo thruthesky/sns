@@ -179,24 +179,24 @@
   </div>
 {:else}
   <div class="post-list-container">
-    <!-- 헤더 영역 (글쓰기 버튼) -->
-    <div class="header">
+    <!-- 카테고리 + 글쓰기 -->
+    <div class="toolbar">
+      <!-- 카테고리 탭 -->
+      <div class="category-tabs">
+        {#each FORUM_CATEGORIES as category (category.value)}
+          <button
+            class="tab {currentCategory === category.value ? 'active' : ''}"
+            onclick={() => handleCategoryChange(category.value)}
+          >
+            {category.label}
+          </button>
+        {/each}
+      </div>
+
       <!-- 게시글 작성 버튼 -->
       <button class="btn-create-post" onclick={handleCreatePost}>
         ✏️ 글쓰기
       </button>
-    </div>
-
-    <!-- 카테고리 탭 -->
-    <div class="category-tabs">
-      {#each FORUM_CATEGORIES as category (category.value)}
-        <button
-          class="tab {currentCategory === category.value ? 'active' : ''}"
-          onclick={() => handleCategoryChange(category.value)}
-        >
-          {category.label}
-        </button>
-      {/each}
     </div>
 
     <!-- 게시글 목록 또는 빈 상태 -->
@@ -315,12 +315,15 @@
     padding: 2rem 1rem;
   }
 
-  /* 헤더 영역 */
-  .header {
+  /* 상단 도구 모음 (카테고리 + 글쓰기) */
+  .toolbar {
     display: flex;
-    justify-content: flex-end;
-    align-items: center;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 0.75rem;
     margin-bottom: 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
   }
 
   /* 글쓰기 버튼 */
@@ -335,6 +338,7 @@
     cursor: pointer;
     white-space: nowrap;
     transition: background-color 0.2s ease;
+    flex-shrink: 0;
   }
 
   .btn-create-post:hover {
@@ -345,9 +349,8 @@
   .category-tabs {
     display: flex;
     gap: 0.5rem;
-    border-bottom: 1px solid #e5e7eb;
-    margin-bottom: 1.5rem;
     overflow-x: auto;
+    flex: 1;
   }
 
   .tab {

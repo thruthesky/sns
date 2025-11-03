@@ -363,16 +363,17 @@
             aria-label={photoPreview ? '프로필 사진 변경' : '프로필 사진 추가'}
           >
             {#if photoPreview}
-              <img src={photoPreview} alt="프로필 사진" class="photo-image" />
+              <div
+                class="photo-image"
+                style={`background-image: url("${photoPreview}")`}
+                aria-hidden="true"
+              ></div>
             {:else}
               <div class="photo-placeholder">
                 <span class="placeholder-icon">📷</span>
                 <span class="placeholder-text">사진 없음</span>
               </div>
             {/if}
-            <span class="camera-badge" aria-hidden="true">
-              <Camera size={20} stroke-width={2} />
-            </span>
           </button>
 
           {#if photoPreview}
@@ -386,6 +387,9 @@
               <X size={18} stroke-width={3} />
             </button>
           {/if}
+          <span class="camera-badge" aria-hidden="true">
+            <Camera size={20} stroke-width={2} />
+          </span>
         </div>
 
         <p class="photo-instruction">프로필 사진을 클릭하여 변경</p>
@@ -548,8 +552,9 @@
     width: 100%;
     height: 100%;
     border-radius: 50%;
-    border: 4px solid #e5e7eb;
-    background-color: #f3f4f6;
+    border: none;
+    box-shadow: 0 0 0 4px #e5e7eb;
+    background-color: transparent;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -576,18 +581,25 @@
   }
 
   .photo-image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
   }
 
   .photo-placeholder {
+    position: absolute;
+    inset: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 0.3rem;
     color: #6b7280;
+    border-radius: 50%;
+    background-color: #f3f4f6;
   }
 
   .placeholder-icon {
@@ -600,27 +612,28 @@
 
   .camera-badge {
     position: absolute;
-    bottom: 12px;
-    right: 12px;
-    width: 48px;
-    height: 48px;
+    bottom: 16px;
+    right: 16px;
+    transform: translate(40%, 40%);
+    width: 42px;
+    height: 42px;
     border-radius: 9999px;
-    background-color: #111827;
+    background-color: #0f172a;
     color: #ffffff;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.35);
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.3);
     pointer-events: none;
   }
 
   .photo-remove-button {
     position: absolute;
-    top: 0;
-    right: 0;
-    transform: translate(35%, -35%);
-    width: 40px;
-    height: 40px;
+    top: 18px;
+    right: 18px;
+    transform: translate(50%, -50%);
+    width: 44px;
+    height: 44px;
     border-radius: 9999px;
     background-color: #ef4444;
     color: #ffffff;
@@ -628,7 +641,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 10px 24px rgba(239, 68, 68, 0.35);
+    box-shadow: 0 12px 26px rgba(239, 68, 68, 0.35);
     cursor: pointer;
   }
 

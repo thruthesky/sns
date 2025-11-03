@@ -60,117 +60,117 @@
 -->
 <DatabaseListView
   path="users"
-  pageSize={8}
+  pageSize={15}
   orderBy="createdAt"
   threshold={300}
   reverse={false}
 >
-      <!-- 개별 사용자 카드 -->
-      {#snippet item(itemData)}
-        <div
-          class="user-card"
-          role="button"
-          tabindex="0"
-          onclick={() => goToProfile(itemData.key)}
-          onkeydown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              goToProfile(itemData.key);
-            }
+  <!-- 개별 사용자 카드 -->
+  {#snippet item(itemData)}
+    <div
+      class="user-card"
+      role="button"
+      tabindex="0"
+      onclick={() => goToProfile(itemData.key)}
+      onkeydown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          goToProfile(itemData.key);
+        }
+      }}
+    >
+      <!-- 프로필 사진 -->
+      <div class="user-avatar">
+        {#if itemData.data?.photoUrl || itemData.data?.photoURL}
+          <img
+            src={itemData.data?.photoUrl ?? itemData.data?.photoURL}
+            alt={itemData.data?.displayName || "사용자"}
+          />
+        {:else}
+          <div class="avatar-placeholder">
+            {itemData.data?.displayName?.charAt(0)?.toUpperCase() || "?"}
+          </div>
+        {/if}
+      </div>
+
+      <!-- 사용자 정보 -->
+      <div class="user-info">
+        <h3 class="user-name">
+          {itemData.data?.displayName || "이름 없음"}
+          {#if itemData.key === login.uid}
+            <span class="badge-me">나</span>
+          {/if}
+        </h3>
+
+        <h5>{itemData.key}</h5>
+
+        {#if itemData.data?.email}
+          <p class="user-email">{itemData.data.email}</p>
+        {/if}
+
+        {#if itemData.data?.bio}
+          <p class="user-bio">{itemData.data.bio}</p>
+        {/if}
+
+        <p class="user-date">
+          가입일: {formatDate(itemData.data?.createdAt)}
+        </p>
+      </div>
+
+      <!-- 프로필 보기 버튼 -->
+      <div class="user-actions">
+        <button
+          class="btn-view-profile"
+          onclick={(e) => {
+            e.stopPropagation();
+            goToProfile(itemData.key);
           }}
         >
-          <!-- 프로필 사진 -->
-          <div class="user-avatar">
-            {#if itemData.data?.photoUrl || itemData.data?.photoURL}
-              <img
-                src={itemData.data?.photoUrl ?? itemData.data?.photoURL}
-                alt={itemData.data?.displayName || "사용자"}
-              />
-            {:else}
-              <div class="avatar-placeholder">
-                {itemData.data?.displayName?.charAt(0)?.toUpperCase() || "?"}
-              </div>
-            {/if}
-          </div>
+          프로필 보기
+        </button>
+      </div>
+    </div>
+  {/snippet}
 
-          <!-- 사용자 정보 -->
-          <div class="user-info">
-            <h3 class="user-name">
-              {itemData.data?.displayName || "이름 없음"}
-              {#if itemData.key === login.uid}
-                <span class="badge-me">나</span>
-              {/if}
-            </h3>
+  <!-- 로딩 상태 -->
+  {#snippet loading()}
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>사용자 목록을 불러오는 중...</p>
+    </div>
+  {/snippet}
 
-            <h5>{itemData.key}</h5>
+  <!-- 빈 상태 -->
+  {#snippet empty()}
+    <div class="empty-state">
+      <p class="empty-icon">👥</p>
+      <p class="empty-text">등록된 사용자가 없습니다.</p>
+    </div>
+  {/snippet}
 
-            {#if itemData.data?.email}
-              <p class="user-email">{itemData.data.email}</p>
-            {/if}
+  <!-- 에러 상태 -->
+  {#snippet error(errorMessage)}
+    <div class="error-state">
+      <p class="error-icon">⚠️</p>
+      <p class="error-text">사용자 목록을 불러오는데 실패했습니다.</p>
+      <p class="error-detail">{errorMessage}</p>
+    </div>
+  {/snippet}
 
-            {#if itemData.data?.bio}
-              <p class="user-bio">{itemData.data.bio}</p>
-            {/if}
+  <!-- 더 로드 중 -->
+  {#snippet loadingMore()}
+    <div class="loading-more-state">
+      <div class="spinner-small"></div>
+      <p>더 많은 사용자를 불러오는 중...</p>
+    </div>
+  {/snippet}
 
-            <p class="user-date">
-              가입일: {formatDate(itemData.data?.createdAt)}
-            </p>
-          </div>
-
-          <!-- 프로필 보기 버튼 -->
-          <div class="user-actions">
-            <button
-              class="btn-view-profile"
-              onclick={(e) => {
-                e.stopPropagation();
-                goToProfile(itemData.key);
-              }}
-            >
-              프로필 보기
-            </button>
-          </div>
-        </div>
-      {/snippet}
-
-      <!-- 로딩 상태 -->
-      {#snippet loading()}
-        <div class="loading-state">
-          <div class="spinner"></div>
-          <p>사용자 목록을 불러오는 중...</p>
-        </div>
-      {/snippet}
-
-      <!-- 빈 상태 -->
-      {#snippet empty()}
-        <div class="empty-state">
-          <p class="empty-icon">👥</p>
-          <p class="empty-text">등록된 사용자가 없습니다.</p>
-        </div>
-      {/snippet}
-
-      <!-- 에러 상태 -->
-      {#snippet error(errorMessage)}
-        <div class="error-state">
-          <p class="error-icon">⚠️</p>
-          <p class="error-text">사용자 목록을 불러오는데 실패했습니다.</p>
-          <p class="error-detail">{errorMessage}</p>
-        </div>
-      {/snippet}
-
-      <!-- 더 로드 중 -->
-      {#snippet loadingMore()}
-        <div class="loading-more-state">
-          <div class="spinner-small"></div>
-          <p>더 많은 사용자를 불러오는 중...</p>
-        </div>
-      {/snippet}
-
-      <!-- 더 이상 데이터 없음 -->
-      {#snippet noMore()}
-        <div class="no-more-state">
-          <p>모든 사용자를 불러왔습니다.</p>
-        </div>
-      {/snippet}
+  <!-- 더 이상 데이터 없음 -->
+  {#snippet noMore()}
+    <div class="no-more-state">
+      <p>모든 사용자를 불러왔습니다.</p>
+    </div>
+  {/snippet}
 </DatabaseListView>
 
 <style>

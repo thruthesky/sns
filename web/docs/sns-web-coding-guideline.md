@@ -371,3 +371,404 @@ import { login } from '$lib/utils/firebase-login-user.svelte.js';
 - ✅ **자동 동기화**: Firebase Auth + RTDB onValue() 자동 연동
 - ✅ **간편한 API**: 직관적인 메서드 제공 (updateProfile, updateDisplayName 등)
 - ❌ **Destructuring 금지**: 반응형 속성의 반응성 손실 방지
+
+---
+
+# DatabaseListView 컴포넌트 코딩 가이드라인
+
+`DatabaseListView`는 Firebase Realtime Database의 데이터를 무한 스크롤 방식으로 표시하는 재사용 가능한 컴포넌트입니다.
+
+## 1. 개요
+
+- **목적**: Firebase RTDB 데이터를 페이지네이션과 무한 스크롤로 표시
+- **특징**:
+  - 자동 스크롤 감지 (컨테이너 스크롤 + window 스크롤)
+  - 실시간 데이터 동기화 (`onValue` 기반)
+  - Svelte 5 Runes 기반 반응형 상태 관리
+  - 커스터마이징 가능한 snippet 지원
+
+## 2. 기본 사용법
+
+```svelte
+<script>
+  import DatabaseListView from '$lib/components/DatabaseListView.svelte';
+</script>
+
+<DatabaseListView
+  path="users"
+  pageSize={10}
+  orderBy="createdAt"
+  threshold={300}
+  reverse={false}
+>
+  {#snippet item(itemData)}
+    <div class="item-card">
+      <h3>{itemData.data.displayName}</h3>
+      <p>{itemData.data.email}</p>
+    </div>
+  {/snippet}
+</DatabaseListView>
+```
+
+## 3. Props 설명
+
+| Prop | 타입 | 기본값 | 설명 |
+|------|------|--------|------|
+| `path` | `string` | (필수) | Firebase RTDB 경로 (예: `"users"`, `"posts/community"`) |
+| `pageSize` | `number` | `10` | 한 번에 가져올 아이템 개수 |
+| `orderBy` | `string` | `"createdAt"` | 정렬 기준 필드 |
+| `threshold` | `number` | `300` | 스크롤 threshold (px) - 바닥에서 이 거리만큼 떨어지면 다음 페이지 로드 |
+| `reverse` | `boolean` | `false` | 역순 정렬 여부 |
+
+## 4. Snippets
+
+DatabaseListView는 다양한 상태에 대한 커스터마이징 가능한 snippet을 제공합니다:
+
+- `item(itemData, index)` - 각 아이템 렌더링
+- `loading()` - 초기 로딩 상태
+- `empty()` - 데이터 없음 상태
+- `error(errorMessage)` - 에러 상태
+- `loadingMore()` - 더 로드 중 상태
+- `noMore()` - 더 이상 데이터 없음 상태
+
+## 5. 스크롤 방식 선택
+
+DatabaseListView는 두 가지 스크롤 방식을 지원합니다:
+
+### 방식 1: Body 스크롤 (전체 페이지 무한 스크롤)
+
+**사용 시기**:
+- 전체 페이지를 스크롤하며 무한 스크롤을 구현하고 싶을 때
+- 페이지 전체가 리스트로 구성될 때
+- 자연스러운 네이티브 스크롤 경험을 제공하고 싶을 때
+
+**구현 방법**:
+
+```svelte
+<script>
+  import DatabaseListView from '$lib/components/DatabaseListView.svelte';
+</script>
+
+<!-- 래퍼 없이 직접 마운트 -->
+<DatabaseListView
+  path="users"
+  pageSize={15}
+  orderBy="createdAt"
+>
+  {#snippet item(itemData)}
+    <div class="user-card">
+      <!-- 아이템 내용 -->
+    </div>
+  {/snippet}
+</DatabaseListView>
+
+<style>
+  /* 아이템 스타일만 정의 */
+  .user-card {
+    padding: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+  }
+</style>
+```
+
+**장점**:
+- ✅ 자연스러운 스크롤 경험
+- ✅ 높이 제한 없음
+- ✅ 코드가 간단함
+
+**단점**:
+- ❌ 페이지 레이아웃 제어가 어려움
+- ❌ 다른 컨텐츠와 함께 배치하기 어려움
+
+### 방식 2: 컨테이너 스크롤 (제한된 영역에서 무한 스크롤)
+
+**사용 시기**:
+- 특정 영역에만 리스트를 표시하고 싶을 때
+- 페이지 내 다른 컨텐츠와 함께 배치할 때
+- 고정된 높이의 리스트 영역이 필요할 때
+
+**구현 방법**:
+
+```svelte
+<script>
+  import DatabaseListView from '$lib/components/DatabaseListView.svelte';
+</script>
+
+<!-- 래퍼 컨테이너로 감싸기 -->
+<div class="user-list-container">
+  <DatabaseListView
+    path="users"
+    pageSize={10}
+    orderBy="createdAt"
+  >
+    {#snippet item(itemData)}
+      <div class="user-card">
+        <!-- 아이템 내용 -->
+      </div>
+    {/snippet}
+  </DatabaseListView>
+</div>
+
+<style>
+  /* 래퍼 컨테이너에 높이와 스크롤 설정 */
+  .user-list-container {
+    /* 고정 높이 설정 */
+    height: 600px;
+
+    /* 또는 뷰포트 기준 높이 (topbar 높이 4rem 제외) */
+    /* height: calc(100vh - 4rem); */
+
+    /* 스크롤 활성화 */
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    /* 스타일링 (선택사항) */
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    background-color: #ffffff;
+  }
+
+  /* 아이템 스타일 */
+  .user-card {
+    padding: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+  }
+</style>
+```
+
+**장점**:
+- ✅ 페이지 레이아웃 제어 가능
+- ✅ 다른 컨텐츠와 함께 배치 가능
+- ✅ 고정된 영역에 리스트 표시
+
+**단점**:
+- ❌ 컨테이너 높이를 명시적으로 설정해야 함
+- ❌ 스크롤이 두 개 생길 수 있음 (페이지 스크롤 + 컨테이너 스크롤)
+
+## 6. 컨테이너 높이 설정 방법
+
+### 고정 높이
+
+```css
+.list-container {
+  height: 500px;  /* 픽셀 단위 */
+  overflow-y: auto;
+}
+```
+
+### 뷰포트 기준 높이
+
+```css
+.list-container {
+  /* 전체 뷰포트 높이 */
+  height: 100vh;
+
+  /* topbar(4rem) 제외 */
+  height: calc(100vh - 4rem);
+
+  /* topbar(4rem) + 여백 제외 */
+  height: calc(100vh - 6rem);
+
+  overflow-y: auto;
+}
+```
+
+### Flexbox를 사용한 자동 높이
+
+```css
+.page-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.header {
+  flex-shrink: 0;  /* 헤더는 고정 */
+}
+
+.list-container {
+  flex: 1;  /* 남은 공간을 모두 차지 */
+  overflow-y: auto;
+}
+```
+
+## 7. 실전 예제
+
+### 예제 1: Body 스크롤 (사용자 목록 페이지)
+
+```svelte
+<script>
+  import DatabaseListView from '../lib/components/DatabaseListView.svelte';
+  import { login } from '../lib/utils/firebase-login-user.svelte.js';
+
+  function goToProfile(uid) {
+    window.history.pushState({}, '', `/user/profile/${uid}`);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  }
+</script>
+
+<!-- 래퍼 없이 직접 마운트 -->
+<DatabaseListView
+  path="users"
+  pageSize={15}
+  orderBy="createdAt"
+  threshold={300}
+>
+  {#snippet item(itemData)}
+    <div
+      class="user-card"
+      onclick={() => goToProfile(itemData.key)}
+    >
+      <img src={itemData.data?.photoUrl} alt="프로필" />
+      <div>
+        <h3>{itemData.data?.displayName}</h3>
+        <p>{itemData.data?.email}</p>
+      </div>
+    </div>
+  {/snippet}
+
+  {#snippet loading()}
+    <div class="loading">로딩 중...</div>
+  {/snippet}
+
+  {#snippet empty()}
+    <div class="empty">사용자가 없습니다.</div>
+  {/snippet}
+</DatabaseListView>
+
+<style>
+  .user-card {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+    cursor: pointer;
+  }
+
+  .user-card:hover {
+    background-color: #f9fafb;
+  }
+</style>
+```
+
+### 예제 2: 컨테이너 스크롤 (채팅 목록)
+
+```svelte
+<script>
+  import DatabaseListView from '../lib/components/DatabaseListView.svelte';
+</script>
+
+<div class="page-layout">
+  <!-- 헤더 -->
+  <div class="header">
+    <h1>채팅 목록</h1>
+    <button>새 채팅</button>
+  </div>
+
+  <!-- 채팅 리스트 (스크롤 영역) -->
+  <div class="chat-list-container">
+    <DatabaseListView
+      path="chats"
+      pageSize={20}
+      orderBy="lastMessageAt"
+      reverse={true}
+    >
+      {#snippet item(itemData)}
+        <div class="chat-item">
+          <img src={itemData.data?.avatar} alt="프로필" />
+          <div>
+            <h3>{itemData.data?.title}</h3>
+            <p>{itemData.data?.lastMessage}</p>
+          </div>
+        </div>
+      {/snippet}
+    </DatabaseListView>
+  </div>
+</div>
+
+<style>
+  .page-layout {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 4rem);  /* topbar 제외 */
+  }
+
+  .header {
+    flex-shrink: 0;
+    padding: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .chat-list-container {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .chat-item {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+  }
+</style>
+```
+
+## 8. 주의사항
+
+### ⚠️ 컨테이너 높이 설정 필수
+
+컨테이너 스크롤 방식을 사용할 때는 **반드시** 래퍼 컨테이너에 명시적인 높이를 설정해야 합니다:
+
+```css
+/* ❌ 잘못된 예 - 높이 없음 */
+.list-container {
+  overflow-y: auto;  /* 높이가 없으면 스크롤 안 됨! */
+}
+
+/* ✅ 올바른 예 */
+.list-container {
+  height: 600px;  /* 또는 calc(100vh - 4rem) */
+  overflow-y: auto;
+}
+```
+
+### ⚠️ box-sizing 고려
+
+패딩이나 보더를 포함한 높이 계산이 필요하면 `box-sizing`을 설정하세요:
+
+```css
+.list-container {
+  height: calc(100vh - 4rem);
+  padding: 1rem;
+  box-sizing: border-box;  /* 패딩을 높이에 포함 */
+  overflow-y: auto;
+}
+```
+
+### ⚠️ 스크롤 감지 방식
+
+DatabaseListView는 두 가지 스크롤을 **모두** 감지합니다:
+- **컨테이너 스크롤**: 래퍼 div의 내부 스크롤
+- **Window 스크롤**: body의 네이티브 스크롤
+
+따라서 두 방식 중 어떤 것을 사용해도 무한 스크롤이 정상 작동합니다.
+
+## 9. 선택 가이드
+
+| 요구사항 | 추천 방식 |
+|---------|----------|
+| 전체 페이지가 리스트인 경우 | Body 스크롤 |
+| 다른 컨텐츠와 함께 배치 | 컨테이너 스크롤 |
+| 고정 헤더/푸터 필요 | 컨테이너 스크롤 |
+| 심플한 구현 원함 | Body 스크롤 |
+| 복잡한 레이아웃 | 컨테이너 스크롤 |
+| 모바일 네이티브 느낌 | Body 스크롤 |
+
+## 10. 요약
+
+- ✅ **두 가지 스크롤 방식**: Body 스크롤 (전체 페이지) vs 컨테이너 스크롤 (제한된 영역)
+- ✅ **자동 감지**: 두 방식 모두 자동으로 감지하여 무한 스크롤 작동
+- ✅ **높이 설정 필수**: 컨테이너 스크롤 사용 시 명시적인 높이 설정 필요
+- ✅ **Flexbox 활용**: flex를 사용하면 동적 높이 계산 가능
+- ✅ **용도별 선택**: 페이지 구조와 요구사항에 맞는 방식 선택
