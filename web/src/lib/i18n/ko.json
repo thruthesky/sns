@@ -158,5 +158,10 @@
   "label.category.community": "커뮤니티",
   "label.category.qna": "질문답변",
   "label.category.news": "뉴스",
-  "label.category.market": "회원장터"
+  "label.category.market": "회원장터",
+  "현재언어": "현재 언어",
+  "언어_한국어": "한국어",
+  "언어_영어": "영어",
+  "언어_일본어": "일본어",
+  "언어_중국어": "중국어"
 }

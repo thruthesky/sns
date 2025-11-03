@@ -158,5 +158,10 @@
   "label.category.community": "社区",
   "label.category.qna": "问答",
   "label.category.news": "新闻",
-  "label.category.market": "会员商城"
+  "label.category.market": "会员商城",
+  "현재언어": "当前语言",
+  "언어_한국어": "韩语",
+  "언어_영어": "英语",
+  "언어_일본어": "日语",
+  "언어_중국어": "中文"
 }

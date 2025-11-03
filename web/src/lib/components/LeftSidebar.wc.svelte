@@ -21,7 +21,13 @@
     LogIn
   } from 'lucide-svelte';
   import { user } from '../stores/auth.js';
-  import { t } from '../stores/i18n.js';
+  import { t, locale, setLocale, SUPPORTED_LOCALES } from '../stores/i18n.js';
+
+  const LANGUAGE_OPTIONS = SUPPORTED_LOCALES;
+
+  function handleLocaleSelect(code) {
+    setLocale(code);
+  }
 </script>
 
 <!-- 왼쪽 사이드바 -->
@@ -144,8 +150,22 @@
     <!-- 언어 설정 섹션 (향후 구현) -->
     <div class="section language-section">
       <h3 class="section-subtitle">{$t('언어설정')}</h3>
-      <div class="language-notice">
-        {$t('언어전환기능안내')}
+      <div class="language-current">
+        <span class="language-current-label">{$t('현재언어')}</span>
+        <span class="language-current-value">
+          {$t(LANGUAGE_OPTIONS.find(option => option.code === $locale)?.labelKey ?? '언어_한국어')}
+        </span>
+      </div>
+      <div class="language-options">
+        {#each LANGUAGE_OPTIONS as option}
+          <button
+            type="button"
+            class="language-button {option.code === $locale ? 'active' : ''}"
+            onclick={() => handleLocaleSelect(option.code)}
+          >
+            {$t(option.labelKey)}
+          </button>
+        {/each}
       </div>
     </div>
 

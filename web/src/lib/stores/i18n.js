@@ -19,11 +19,41 @@
 import { writable, derived } from 'svelte/store';
 import { createI18n, detectLocale } from '../i18n/index.js';
 
+/**
+ * 로컬 스토리지 키
+ */
+const STORAGE_KEY = 'sns-web-locale';
+
+/**
+ * 지원하는 언어 목록
+ */
+export const SUPPORTED_LOCALES = [
+  { code: 'ko', labelKey: '언어_한국어' },
+  { code: 'en', labelKey: '언어_영어' },
+  { code: 'ja', labelKey: '언어_일본어' },
+  { code: 'zh', labelKey: '언어_중국어' }
+];
+
+/**
+ * 저장된 Locale 가져오기
+ */
+function getStoredLocale() {
+  if (typeof localStorage === 'undefined') return null;
+  const stored = localStorage.getItem(STORAGE_KEY);
+  if (!stored) return null;
+  const matched = SUPPORTED_LOCALES.find((option) => option.code === stored);
+  return matched ? matched.code : null;
+}
+
 // 브라우저 언어 자동 감지하여 초기 locale 설정
-const initialLocale = detectLocale();
+const initialLocale = getStoredLocale() ?? detectLocale();
 
 // i18n 인스턴스 생성
 const i18nInstance = createI18n(initialLocale);
+
+if (typeof localStorage !== 'undefined') {
+  localStorage.setItem(STORAGE_KEY, i18nInstance.getLocale());
+}
 
 /**
  * 현재 활성화된 locale을 저장하는 writable 스토어
@@ -38,7 +68,11 @@ export const locale = writable(initialLocale);
  */
 export function setLocale(newLocale) {
   i18nInstance.setLocale(newLocale);
-  locale.set(i18nInstance.getLocale());
+  const normalized = i18nInstance.getLocale();
+  locale.set(normalized);
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(STORAGE_KEY, normalized);
+  }
 }
 
 /**

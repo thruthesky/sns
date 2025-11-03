@@ -39,7 +39,9 @@
     query,
     orderByChild,
     limitToFirst,
-    startAfter
+    limitToLast,
+    startAfter,
+    endBefore
   } from 'firebase/database';
   import { database } from '../utils/firebase.js';
 
@@ -266,9 +268,11 @@
    * Firebase 쿼리를 사용하여 첫 번째 페이지 + 1개를 로드합니다.
    * pageSize + 1개를 로드하여 다음 페이지 존재 여부를 판단합니다.
    * 각 아이템에 onValue 리스너를 설정하여 실시간 업데이트를 감지합니다.
+   *
+   * reverse가 true일 때는 limitToLast를 사용하여 최신 아이템부터 가져옵니다.
    */
   async function loadInitialData() {
-    console.log('DatabaseListView: Loading initial data from', path);
+    console.log('DatabaseListView: Loading initial data from', path, '(reverse:', reverse, ')');
     initialLoading = true;
     error = null;
     items = [];
@@ -282,13 +286,27 @@
     try {
       const baseRef = dbRef(database, path);
 
-      // Firebase 쿼리: orderBy + limitToFirst(pageSize + 1)
+      // Firebase 쿼리 생성
+      // reverse가 true면 limitToLast를 사용하여 가장 최근 데이터부터 가져옵니다
       // pageSize + 1개를 가져와서 hasMore를 판단합니다
-      const dataQuery = query(
-        baseRef,
-        orderByChild(orderBy),
-        limitToFirst(pageSize + 1)
-      );
+      let dataQuery;
+      if (reverse) {
+        // 역순 정렬: limitToLast 사용
+        dataQuery = query(
+          baseRef,
+          orderByChild(orderBy),
+          limitToLast(pageSize + 1)
+        );
+        console.log('DatabaseListView: Using limitToLast for reverse order');
+      } else {
+        // 정순 정렬: limitToFirst 사용
+        dataQuery = query(
+          baseRef,
+          orderByChild(orderBy),
+          limitToFirst(pageSize + 1)
+        );
+        console.log('DatabaseListView: Using limitToFirst for normal order');
+      }
 
       const snapshot = await get(dataQuery);
 
@@ -316,9 +334,11 @@
           }))
         );
 
-        // reverse가 true면 배열 뒤집기
+        // limitToLast를 사용하면 Firebase가 오름차순으로 반환하므로
+        // reverse가 true일 때는 배열을 뒤집어야 합니다 (최신 글이 먼저 오도록)
         if (reverse) {
           loadedItems.reverse();
+          console.log('DatabaseListView: Reversed items for display (newest first)');
         }
 
         // pageSize보다 많으면 hasMore = true, 마지막 아이템은 표시하지 않음
@@ -330,6 +350,7 @@
           if (cursor) {
             lastLoadedValue = cursor.value;
             lastLoadedKey = cursor.key;
+            console.log('DatabaseListView: Next page cursor set:', { lastLoadedValue, lastLoadedKey });
           } else {
             hasMore = false;
           }
@@ -342,6 +363,7 @@
             if (cursor) {
               lastLoadedValue = cursor.value;
               lastLoadedKey = cursor.key;
+              console.log('DatabaseListView: Last cursor set:', { lastLoadedValue, lastLoadedKey });
             }
           }
         }
@@ -374,14 +396,19 @@
    * 다음 페이지 데이터 로드 (Firebase 쿼리)
    *
    * Firebase 쿼리를 사용하여 다음 페이지를 로드합니다.
-   * startAfter(lastLoadedValue)를 사용하여 마지막으로 로드한 아이템 이후의 데이터를 가져옵니다.
+   * - reverse가 false일 때: startAfter + limitToFirst 사용 (오래된 글 → 최신 글 순서)
+   * - reverse가 true일 때: endBefore + limitToLast 사용 (최신 글 → 오래된 글 순서)
    * pageSize + 1개를 로드하여 hasMore를 판단합니다.
    */
   async function loadMore() {
-    if (loading || !hasMore) return;
+    if (loading || !hasMore) {
+      console.log('DatabaseListView: Cannot load more - loading:', loading, 'hasMore:', hasMore);
+      return;
+    }
 
     currentPage++;
     console.log(`DatabaseListView: Loading more data (server-side pagination) - Page ${currentPage}`);
+    console.log(`DatabaseListView: Current cursor - lastLoadedValue:`, lastLoadedValue, 'lastLoadedKey:', lastLoadedKey);
     loading = true;
     error = null;
 
@@ -397,13 +424,30 @@
 
       const baseRef = dbRef(database, path);
 
-      // Firebase 쿼리: orderBy + startAfter(lastLoadedValue) + limitToFirst(pageSize + 1)
-      const dataQuery = query(
-        baseRef,
-        orderByChild(orderBy),
-        startAfter(lastLoadedValue),
-        limitToFirst(pageSize + 1)
-      );
+      // Firebase 쿼리 생성
+      // reverse 여부에 따라 다른 쿼리 사용
+      let dataQuery;
+      if (reverse) {
+        // 역순 정렬: endBefore + limitToLast 사용
+        // limitToLast를 사용하면 마지막 N개를 가져오는데,
+        // endBefore로 현재 커서 이전 데이터를 가져옵니다
+        dataQuery = query(
+          baseRef,
+          orderByChild(orderBy),
+          endBefore(lastLoadedValue),
+          limitToLast(pageSize + 1)
+        );
+        console.log('DatabaseListView: Using endBefore + limitToLast for reverse pagination');
+      } else {
+        // 정순 정렬: startAfter + limitToFirst 사용
+        dataQuery = query(
+          baseRef,
+          orderByChild(orderBy),
+          startAfter(lastLoadedValue),
+          limitToFirst(pageSize + 1)
+        );
+        console.log('DatabaseListView: Using startAfter + limitToFirst for normal pagination');
+      }
 
       const snapshot = await get(dataQuery);
 
@@ -421,7 +465,7 @@
 
         // 🔍 디버깅: loadMore 쿼리 결과
         console.log(
-          `DatabaseListView: Page ${currentPage} - startAfter query returned ${newItems.length} items from Firebase`
+          `DatabaseListView: Page ${currentPage} - Query returned ${newItems.length} items from Firebase`
         );
         console.log(
           `DatabaseListView: Page ${currentPage} - Items orderBy values:`,
@@ -431,9 +475,11 @@
           }))
         );
 
-        // reverse가 true면 배열 뒤집기
+        // reverse가 true이고 limitToLast를 사용했으면 배열을 뒤집어야 합니다
+        // (Firebase는 오름차순으로 반환하므로, 최신 글이 먼저 오도록 뒤집기)
         if (reverse) {
           newItems.reverse();
+          console.log('DatabaseListView: Reversed items for display (newest first)');
         }
 
         // 중복 제거: 이미 로드된 아이템들을 제외
@@ -447,7 +493,7 @@
         );
 
         if (filteredItems.length === 0) {
-          console.log('DatabaseListView: No more data');
+          console.log('DatabaseListView: No more unique items after filtering');
           hasMore = false;
           loading = false;
           return;
@@ -463,8 +509,10 @@
           if (cursor) {
             lastLoadedValue = cursor.value;
             lastLoadedKey = cursor.key;
+            console.log('DatabaseListView: Updated cursor for next page:', { lastLoadedValue, lastLoadedKey });
           } else {
             hasMore = false;
+            console.log('DatabaseListView: No valid cursor, hasMore set to false');
           }
         } else {
           hasMore = false;
@@ -475,8 +523,10 @@
             if (cursor) {
               lastLoadedValue = cursor.value;
               lastLoadedKey = cursor.key;
+              console.log('DatabaseListView: Updated cursor (last page):', { lastLoadedValue, lastLoadedKey });
             }
           }
+          console.log('DatabaseListView: Loaded all remaining items, hasMore set to false');
         }
 
         // 새로 추가된 아이템들에 onValue 리스너 설정
@@ -489,7 +539,7 @@
           `DatabaseListView: Page ${currentPage} - Loaded ${filteredItems.length} more items, total: ${items.length}, hasMore: ${hasMore}`
         );
       } else {
-        console.log('DatabaseListView: No more data');
+        console.log('DatabaseListView: Query returned no data, hasMore set to false');
         hasMore = false;
       }
     } catch (err) {

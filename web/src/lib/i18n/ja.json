@@ -158,5 +158,10 @@
   "label.category.community": "コミュニティ",
   "label.category.qna": "Q&A",
   "label.category.news": "ニュース",
-  "label.category.market": "マーケットプレイス"
+  "label.category.market": "マーケットプレイス",
+  "현재언어": "現在の言語",
+  "언어_한국어": "韓国語",
+  "언어_영어": "英語",
+  "언어_일본어": "日本語",
+  "언어_중국어": "中国語"
 }
