@@ -7,10 +7,11 @@
 
   import { onMount } from 'svelte';
   import { auth } from '../lib/utils/firebase.js';
-  import { createPost, listenToPosts } from '../lib/services/forum.js';
+  import { createPost } from '../lib/services/forum.js';
   import { FORUM_CATEGORIES } from '../lib/constants/forum.js';
   import { setPageTitle } from '../lib/stores/pageTitle.js';
   import { showToast } from '../lib/stores/toast.js';
+  import DatabaseListView from '../lib/components/DatabaseListView.svelte';
 
   // 인증 상태
   let userId = $state(null);
@@ -27,9 +28,6 @@
   let postTitle = $state('');
   let postContent = $state('');
   let isSubmitting = $state(false);
-
-  // 게시글 목록 상태
-  let posts = $state([]);
 
   /**
    * Firebase 인증 상태 확인
@@ -57,20 +55,6 @@
     return () => unsubscribe();
   });
 
-  /**
-   * 게시글 목록 실시간 리스너
-   * currentCategory가 변경되면 해당 카테고리의 게시글을 감시합니다.
-   */
-  $effect(() => {
-    if (!isAuthLoading) {
-      const unsubscribe = listenToPosts(currentCategory, 10, (newPosts) => {
-        posts = newPosts;
-      });
-
-      // ⚠️ 중요: 카테고리 변경 시 이전 리스너 해제
-      return () => unsubscribe();
-    }
-  });
 
   /**
    * 게시글 작성 버튼 클릭 핸들러
@@ -200,42 +184,54 @@
       </button>
     </div>
 
-    <!-- 게시글 목록 또는 빈 상태 -->
-    {#if posts.length === 0}
-      <!-- 게시글이 없는 경우 -->
-      <div class="empty-state">
-        <div class="empty-icon">📝</div>
-        <p class="empty-message">게시글이 없습니다</p>
-        <p class="empty-hint">첫 번째 게시글을 작성해보세요!</p>
-      </div>
-    {:else}
-      <!-- 게시글 목록 -->
-      <div class="posts-list">
-        {#each posts as post (post.postId)}
-          <div class="post-item">
-            <!-- 게시글 제목 -->
-            <h3 class="post-title">{post.title}</h3>
+    <!-- 게시글 목록 (무한 스크롤) -->
+    <DatabaseListView
+      path={`posts/${currentCategory}`}
+      orderBy="createdAt"
+      reverse={true}
+      pageSize={20}
+    >
+      {#snippet item(itemData, index)}
+        <!-- 개별 게시글 아이템 -->
+        <div class="post-item">
+          <!-- 게시글 제목 -->
+          <h3 class="post-title">{itemData.data.title}</h3>
 
-            <!-- 게시글 내용 미리보기 -->
-            <p class="post-content">{post.content}</p>
+          <!-- 게시글 내용 미리보기 -->
+          <p class="post-content">{itemData.data.content}</p>
 
-            <!-- 게시글 메타 정보 -->
-            <div class="post-meta">
-              <span class="post-author">작성자: {post.author}</span>
-              <span class="post-date">
-                {new Date(post.createdAt).toLocaleDateString('ko-KR', {
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}
-              </span>
-            </div>
+          <!-- 게시글 메타 정보 -->
+          <div class="post-meta">
+            <span class="post-author">작성자: {itemData.data.author}</span>
+            <span class="post-date">
+              {new Date(itemData.data.createdAt).toLocaleDateString('ko-KR', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+              })}
+            </span>
           </div>
-        {/each}
-      </div>
-    {/if}
+        </div>
+      {/snippet}
+
+      {#snippet empty()}
+        <!-- 게시글이 없는 경우 -->
+        <div class="empty-state">
+          <div class="empty-icon">📝</div>
+          <p class="empty-message">게시글이 없습니다</p>
+          <p class="empty-hint">첫 번째 게시글을 작성해보세요!</p>
+        </div>
+      {/snippet}
+
+      {#snippet loading()}
+        <!-- 추가 로딩 중 표시 -->
+        <div class="loading-more">
+          <p>게시글을 불러오는 중...</p>
+        </div>
+      {/snippet}
+    </DatabaseListView>
   </div>
 
   <!-- 글쓰기 모달 다이얼로그 -->
@@ -462,6 +458,18 @@
     min-height: 100vh;
     font-size: 0.95rem;
     color: #6b7280;
+  }
+
+  /* 추가 로딩 중 표시 (무한 스크롤) */
+  .loading-more {
+    padding: 2rem;
+    text-align: center;
+    color: #6b7280;
+    font-size: 0.875rem;
+  }
+
+  .loading-more p {
+    margin: 0;
   }
 
   /* 모달 스타일 */
