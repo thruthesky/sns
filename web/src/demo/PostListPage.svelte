@@ -533,6 +533,11 @@
     /* 여백 최소화 */
     padding: 0.5rem 0 1rem 0;
     box-shadow: none;
+    /* 게시글 카드 사이 여백 추가: gap 사용 */
+    /* DatabaseListView의 내부 구조와 무관하게 reliable하게 작동 */
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
   }
 
   .post-item {
