@@ -49,7 +49,7 @@
       </a>
 
       <!-- 프로필 -->
-      <a href="/profile" class="menu-item">
+      <a href="/user/profile" class="menu-item">
         <User size={20} />
         <span>{$t('내프로필')}</span>
       </a>
@@ -70,7 +70,7 @@
       <div class="menu">
         {#if $user}
           <!-- 로그인한 사용자 - 프로필 수정 링크 -->
-          <a href="/profile" class="menu-item-small">
+          <a href="/user/profile" class="menu-item-small">
             <User size={16} />
             <span>{$t('회원정보수정')}</span>
           </a>

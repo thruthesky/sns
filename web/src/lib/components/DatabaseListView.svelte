@@ -118,6 +118,13 @@
   let lastLoadedKey = $state(null);
 
   /**
+   * 현재 로드된 페이지 번호 (0부터 시작)
+   * 페이지별 로드 추적용
+   * @type {number}
+   */
+  let currentPage = $state(0);
+
+  /**
    * 에러 메시지
    * @type {string | null}
    */
@@ -171,6 +178,43 @@
   // ============================================================================
   // Methods (메서드)
   // ============================================================================
+
+  /**
+   * 아이템 목록의 마지막 항목에서 orderBy 필드 값 추출
+   *
+   * 페이지 커서를 위해 마지막 항목의 orderBy 필드 값이 필요합니다.
+   * 필드가 없으면 다른 정렬 필드로 fallback합니다.
+   *
+   * @param {Array<{key: string, data: any}>} itemList - 아이템 목록
+   * @param {string} primaryField - 주 정렬 필드 이름
+   * @returns {{value: any, key: string} | null} orderBy 값과 키, 또는 null
+   */
+  function getLastItemCursor(itemList, primaryField) {
+    if (itemList.length === 0) return null;
+
+    const lastItem = itemList[itemList.length - 1];
+    const value = lastItem.data[primaryField];
+
+    // 주 필드 값이 있으면 사용
+    if (value != null && value !== '') {
+      console.log(`DatabaseListView: Using cursor from '${primaryField}':`, {
+        value: value,
+        key: lastItem.key
+      });
+      return {
+        value: value,
+        key: lastItem.key
+      };
+    }
+
+    // 주 필드가 없으면 Firebase 키를 사용 (fallback)
+    // 단, startAfter는 문자열 비교가 되므로 주의
+    console.warn(`DatabaseListView: Field '${primaryField}' not found in last item, using key as fallback:`, lastItem.key);
+    return {
+      value: lastItem.key,
+      key: lastItem.key
+    };
+  }
 
   /**
    * 각 아이템에 onValue 리스너 설정 (실시간 업데이트)
@@ -227,6 +271,7 @@
     lastLoadedValue = null;
     lastLoadedKey = null;
     hasMore = true;
+    currentPage = 0;
 
     try {
       const baseRef = dbRef(database, path);
@@ -253,6 +298,18 @@
           });
         });
 
+        // 🔍 디버깅: 초기 로드 결과
+        console.log(
+          `DatabaseListView: Initial query returned ${loadedItems.length} items from Firebase`
+        );
+        console.log(
+          `DatabaseListView: Items orderBy values:`,
+          loadedItems.map((item) => ({
+            key: item.key,
+            [orderBy]: item.data[orderBy]
+          }))
+        );
+
         // reverse가 true면 배열 뒤집기
         if (reverse) {
           loadedItems.reverse();
@@ -262,16 +319,24 @@
         if (loadedItems.length > pageSize) {
           hasMore = true;
           items = loadedItems.slice(0, pageSize);
-          const lastItem = items[items.length - 1];
-          lastLoadedValue = lastItem.data[orderBy];
-          lastLoadedKey = lastItem.key;
+          // 마지막 항목에서 페이지 커서 값 추출
+          const cursor = getLastItemCursor(items, orderBy);
+          if (cursor) {
+            lastLoadedValue = cursor.value;
+            lastLoadedKey = cursor.key;
+          } else {
+            hasMore = false;
+          }
         } else {
           hasMore = false;
           items = loadedItems;
           if (items.length > 0) {
-            const lastItem = items[items.length - 1];
-            lastLoadedValue = lastItem.data[orderBy];
-            lastLoadedKey = lastItem.key;
+            // 마지막 항목에서 페이지 커서 값 추출
+            const cursor = getLastItemCursor(items, orderBy);
+            if (cursor) {
+              lastLoadedValue = cursor.value;
+              lastLoadedKey = cursor.key;
+            }
           }
         }
 
@@ -284,7 +349,7 @@
         });
 
         console.log(
-          `DatabaseListView: Loaded ${items.length} items, hasMore: ${hasMore}`
+          `DatabaseListView: Page ${currentPage} - Loaded ${items.length} items, hasMore: ${hasMore}`
         );
       } else {
         console.log('DatabaseListView: No data found');
@@ -309,13 +374,16 @@
   async function loadMore() {
     if (loading || !hasMore) return;
 
-    console.log('DatabaseListView: Loading more data (server-side pagination)');
+    currentPage++;
+    console.log(`DatabaseListView: Loading more data (server-side pagination) - Page ${currentPage}`);
     loading = true;
     error = null;
 
     try {
-      if (lastLoadedValue === null) {
-        console.log('DatabaseListView: No lastLoadedValue, cannot load more');
+      // lastLoadedValue가 null 또는 undefined이면 더 이상 로드할 수 없음
+      // (undefined 체크도 필수 - orderBy 필드가 없는 항목이 있을 수 있음)
+      if (lastLoadedValue == null) {
+        console.log('DatabaseListView: No lastLoadedValue (null or undefined), cannot load more');
         hasMore = false;
         loading = false;
         return;
@@ -345,6 +413,18 @@
           });
         });
 
+        // 🔍 디버깅: loadMore 쿼리 결과
+        console.log(
+          `DatabaseListView: Page ${currentPage} - startAfter query returned ${newItems.length} items from Firebase`
+        );
+        console.log(
+          `DatabaseListView: Page ${currentPage} - Items orderBy values:`,
+          newItems.map((item) => ({
+            key: item.key,
+            [orderBy]: item.data[orderBy]
+          }))
+        );
+
         // reverse가 true면 배열 뒤집기
         if (reverse) {
           newItems.reverse();
@@ -354,6 +434,11 @@
         // 새로 로드된 아이템 중 이미 화면에 있는 key는 제외합니다
         const existingKeys = new Set(items.map(item => item.key));
         const filteredItems = newItems.filter((item) => !existingKeys.has(item.key));
+
+        // 🔍 디버깅: 필터링 후 결과
+        console.log(
+          `DatabaseListView: Page ${currentPage} - After filtering duplicates: ${filteredItems.length} items`
+        );
 
         if (filteredItems.length === 0) {
           console.log('DatabaseListView: No more data');
@@ -367,16 +452,24 @@
           hasMore = true;
           const itemsToAdd = filteredItems.slice(0, pageSize);
           items = [...items, ...itemsToAdd];
-          const lastItem = itemsToAdd[itemsToAdd.length - 1];
-          lastLoadedValue = lastItem.data[orderBy];
-          lastLoadedKey = lastItem.key;
+          // 마지막 항목에서 페이지 커서 값 추출
+          const cursor = getLastItemCursor(itemsToAdd, orderBy);
+          if (cursor) {
+            lastLoadedValue = cursor.value;
+            lastLoadedKey = cursor.key;
+          } else {
+            hasMore = false;
+          }
         } else {
           hasMore = false;
           items = [...items, ...filteredItems];
           if (filteredItems.length > 0) {
-            const lastItem = filteredItems[filteredItems.length - 1];
-            lastLoadedValue = lastItem.data[orderBy];
-            lastLoadedKey = lastItem.key;
+            // 마지막 항목에서 페이지 커서 값 추출
+            const cursor = getLastItemCursor(filteredItems, orderBy);
+            if (cursor) {
+              lastLoadedValue = cursor.value;
+              lastLoadedKey = cursor.key;
+            }
           }
         }
 
@@ -387,8 +480,7 @@
         });
 
         console.log(
-          `DatabaseListView: Loaded ${filteredItems.length} more items, total: ${items.length}, hasMore:`,
-          hasMore
+          `DatabaseListView: Page ${currentPage} - Loaded ${filteredItems.length} more items, total: ${items.length}, hasMore: ${hasMore}`
         );
       } else {
         console.log('DatabaseListView: No more data');

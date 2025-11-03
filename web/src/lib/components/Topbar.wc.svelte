@@ -171,7 +171,7 @@
               <div class="dropdown-menu">
                 <div class="dropdown-label">{$t('내계정')}</div>
                 <div class="dropdown-divider"></div>
-                <a href="/profile" class="dropdown-item">
+                <a href="/user/profile" class="dropdown-item">
                   <User size={16} />
                   <span>{$t('프로필수정')}</span>
                 </a>
@@ -201,7 +201,7 @@
           <a href="/chat/list" class="icon-button" title={$t('채팅')}>
             <MessageCircle size={20} />
           </a>
-          <a href="/profile" class="icon-button" title={$t('프로필')}>
+          <a href="/user/profile" class="icon-button" title={$t('프로필')}>
             <div class="avatar avatar-small">
               {#if $user?.photoURL}
                 <img src={$user.photoURL} alt={$t('프로필')} class="avatar-image" />

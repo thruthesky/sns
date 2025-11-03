@@ -11,6 +11,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getDatabase } from 'firebase/database';
+import { getStorage } from 'firebase/storage';
 import { firebaseConfig } from '../../config/firebase.web-config';
 
 
@@ -22,6 +23,9 @@ export const auth = getAuth(app);
 
 // Firebase Realtime Database 인스턴스
 export const database = getDatabase(app);
+
+// Firebase Storage 인스턴스
+export const storage = getStorage(app);
 
 // Firebase 앱 인스턴스 (필요 시 사용)
 export default app;

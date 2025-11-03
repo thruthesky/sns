@@ -61,8 +61,8 @@
   <div class="list-container">
     <DatabaseListView
       path="users"
-      pageSize={20}
-      orderBy="nicknameLowerCase"
+      pageSize={8}
+      orderBy="createdAt"
       threshold={300}
       reverse={false}
     >

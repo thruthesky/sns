@@ -1,0 +1,11 @@
+{
+  "rules": {
+    "users": {
+      ".indexOn": ["nicknameLowerCase", "createdAt"],
+      "$uid": {
+        ".read": "true",
+        ".write": "$uid === auth.uid"
+      }
+    }
+  }
+}
