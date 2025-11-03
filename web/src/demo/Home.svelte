@@ -9,6 +9,7 @@
   import { t } from "../lib/stores/i18n.js";
   import { ChevronDown, CheckCircle2, Circle } from "lucide-svelte";
   import { rtdb } from "../lib/utils/firebase-realtime-database.svelte.js";
+  import { login } from "../lib/utils/firebase-login-user.svelte.js";
 
   // 현재 열려있는 아코디언 아이템
   let openAccordionItem = $state(null);
@@ -142,6 +143,32 @@
       {$t("home.description.part2")}
     </p>
   </div>
+
+  {#if login.loading}
+    <p>⏳ 로딩 중...</p>
+
+    <!-- 로그인 상태 -->
+  {:else if login.isAuthenticated}
+    <div class="user-info">
+      <h2>환영합니다!</h2>
+
+      <!-- RTDB 사용자 데이터 (users/<uid>) -->
+      <div class="user-data-section">
+        <h3>RTDB 사용자 데이터 (users/{login.uid}):</h3>
+        <pre>{JSON.stringify(login.data, null, 2)}</pre>
+      </div>
+
+      <!-- 개별 필드 표시 -->
+      <p>UID: {login.uid}</p>
+      <p>Email: {login.email}</p>
+      <p>전화번호: {login.phoneNumber}</p>
+    </div>
+
+    <!-- 로그아웃 상태 -->
+  {:else}
+    <p>로그인이 필요합니다.</p>
+    <a href="/user/login">로그인하기</a>
+  {/if}
 
   <!-- 기술 스택 -->
   <section class="section techstack-section">
@@ -720,6 +747,55 @@
     color: #b45309;
     font-weight: 700;
     text-decoration: underline;
+  }
+
+  /* 사용자 정보 섹션 */
+  .user-info {
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: white;
+    border-radius: 0.75rem;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  }
+
+  .user-info h2 {
+    margin: 0 0 1rem 0;
+    color: #111827;
+    font-size: 1.5rem;
+  }
+
+  .user-info h3 {
+    margin: 0 0 0.75rem 0;
+    color: #374151;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  .user-data-section {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+  }
+
+  .user-data-section pre {
+    margin: 0;
+    padding: 0.75rem;
+    background: #1f2937;
+    color: #10b981;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    overflow-x: auto;
+    font-family: "Courier New", monospace;
+  }
+
+  .user-info p {
+    margin: 0.5rem 0;
+    color: #4b5563;
+    font-size: 0.9375rem;
   }
 
   /* 반응형 */
