@@ -165,12 +165,18 @@
 
   /**
    * 스크롤 이벤트 리스너 등록
+   * 컨테이너 스크롤과 window 스크롤을 모두 감지합니다.
    */
   $effect(() => {
     if (scrollContainer) {
+      // 컨테이너 자체 스크롤 감지
       scrollContainer.addEventListener('scroll', handleScroll);
+      // window 스크롤 감지 (body 스크롤)
+      window.addEventListener('scroll', handleWindowScroll);
+
       return () => {
         scrollContainer?.removeEventListener('scroll', handleScroll);
+        window.removeEventListener('scroll', handleWindowScroll);
       };
     }
   });
@@ -500,7 +506,7 @@
   }
 
   /**
-   * 스크롤 이벤트 핸들러
+   * 컨테이너 스크롤 이벤트 핸들러
    * 스크롤이 threshold 이내로 내려가면 다음 페이지 로드
    */
   function handleScroll() {
@@ -511,7 +517,27 @@
 
     // 바닥에서 threshold px 이내면 다음 페이지 로드
     if (distanceFromBottom < threshold) {
-      console.log('DatabaseListView: Near bottom, loading more...');
+      console.log('DatabaseListView: Near bottom (container scroll), loading more...');
+      loadMore();
+    }
+  }
+
+  /**
+   * Window 스크롤 이벤트 핸들러
+   * body 스크롤이 threshold 이내로 내려가면 다음 페이지 로드
+   */
+  function handleWindowScroll() {
+    if (loading || !hasMore) return;
+
+    // document의 전체 높이와 현재 스크롤 위치를 확인
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    const scrollHeight = document.documentElement.scrollHeight;
+    const clientHeight = window.innerHeight;
+    const distanceFromBottom = scrollHeight - (scrollTop + clientHeight);
+
+    // 바닥에서 threshold px 이내면 다음 페이지 로드
+    if (distanceFromBottom < threshold) {
+      console.log('DatabaseListView: Near bottom (window scroll), loading more...');
       loadMore();
     }
   }
