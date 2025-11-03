@@ -384,10 +384,12 @@
     width: 100%;
     max-width: 72rem;
     margin: 0 auto;
-    padding: 3rem 2rem 4rem;
+    /* 여백 최소화: 상/하 1.5rem, 좌/우 1rem */
+    padding: 1.5rem 1rem 2rem;
     display: flex;
     flex-direction: column;
-    gap: 2rem;
+    /* 섹션 간 여백 줄임 */
+    gap: 1.25rem;
   }
 
   .page-header {
@@ -525,7 +527,8 @@
     /* 테두리 제거 - 각 글 카드의 보더가 있으므로 불필요 */
     border: none;
     border-radius: 1rem;
-    padding: 0.75rem 0.75rem 1.5rem;
+    /* 여백 최소화 */
+    padding: 0.5rem 0 1rem 0;
     box-shadow: none;
   }
 
@@ -541,8 +544,8 @@
   }
 
   .post-item + .post-item {
-    /* 각 글 카드 사이의 여백 증가 */
-    margin-top: 1.25rem;
+    /* 각 글 카드 사이 여백: 위아래 약간의 간격 */
+    margin-top: 0.75rem;
   }
 
   .post-item:hover {
