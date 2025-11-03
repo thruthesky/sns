@@ -292,7 +292,7 @@
 
   /* 로고 이미지 */
   .logo-img {
-    height: 2.5rem;
+    height: 2rem;
     width: auto;
     display: block;
   }
@@ -308,9 +308,9 @@
   /* 페이지 제목 */
   .page-title {
     margin: 0;
-    font-size: 0.95rem;
-    font-weight: 500;
-    color: #6b7280;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #1f2937;
   }
 
   /* 네비게이션 */
