@@ -228,9 +228,32 @@
       {/snippet}
 
       {#snippet loading()}
-        <!-- 추가 로딩 중 표시 -->
+        <!-- 초기 로딩 중 표시 -->
         <div class="loading-more">
           <p>게시글을 불러오는 중...</p>
+        </div>
+      {/snippet}
+
+      {#snippet error(errorMessage)}
+        <!-- 에러 발생 시 표시 -->
+        <div class="error-state">
+          <div class="error-icon">⚠️</div>
+          <p class="error-message">게시글을 불러오는 중 오류가 발생했습니다</p>
+          <p class="error-detail">{errorMessage}</p>
+        </div>
+      {/snippet}
+
+      {#snippet loadingMore()}
+        <!-- 추가 로딩 중 표시 (무한 스크롤) -->
+        <div class="loading-more">
+          <p>더 많은 게시글을 불러오는 중...</p>
+        </div>
+      {/snippet}
+
+      {#snippet noMore()}
+        <!-- 더 이상 게시글이 없을 때 표시 -->
+        <div class="no-more">
+          <p>모든 게시글을 불러왔습니다</p>
         </div>
       {/snippet}
     </DatabaseListView>
