@@ -15,6 +15,8 @@ import { getStorage } from 'firebase/storage';
 import { firebaseConfig } from '../../config/firebase.web-config';
 
 
+console.log('Firebase Config:', firebaseConfig);
+
 // Firebase 앱 초기화
 const app = initializeApp(firebaseConfig);
 

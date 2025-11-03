@@ -66,9 +66,9 @@ function generateUserData(index, totalUsers = 100) {
  */
 async function generateTestData(totalUsers = 100) {
   try {
-    console.log(`🔥 Firebase 테스트 데이터 생성 시작...`);
-    console.log(`📊 총 ${totalUsers}개의 사용자 데이터를 생성합니다.`);
-    console.log('');
+    // console.log(`🔥 Firebase 테스트 데이터 생성 시작...`);
+    // console.log(`📊 총 ${totalUsers}개의 사용자 데이터를 생성합니다.`);
+    // console.log('');
 
     // 생성할 사용자 데이터
     const usersData = {};
@@ -79,29 +79,28 @@ async function generateTestData(totalUsers = 100) {
 
     // 🔍 생성된 데이터 개수 확인
     const generatedCount = Object.keys(usersData).length;
-    console.log(`📝 생성된 데이터 개수: ${generatedCount}개`);
+    // console.log(`📝 생성된 데이터 개수: ${generatedCount}개`);
     console.log(
-      `📋 생성된 사용자 ID 범위: ${Object.keys(usersData).sort()[0]} ~ ${
-        Object.keys(usersData).sort().pop()
+      `📋 생성된 사용자 ID 범위: ${Object.keys(usersData).sort()[0]} ~ ${Object.keys(usersData).sort().pop()
       }`
     );
 
     // Firebase Database의 /users 경로에 데이터 저장
     const usersRef = ref(database, 'users');
     await set(usersRef, usersData);
-    console.log(`✅ Firebase에 ${generatedCount}개의 데이터를 저장했습니다.`);
+    // console.log(`✅ Firebase에 ${generatedCount}개의 데이터를 저장했습니다.`);
 
-    console.log('✅ 테스트 데이터 생성 완료!');
-    console.log('');
-    console.log('📍 저장 위치: /users');
-    console.log(`📈 생성된 사용자 수: ${totalUsers}개`);
-    console.log('');
-    console.log('🧪 테스트 데이터 샘플:');
+    // console.log('✅ 테스트 데이터 생성 완료!');
+    // console.log('');
+    // console.log('📍 저장 위치: /users');
+    // console.log(`📈 생성된 사용자 수: ${totalUsers}개`);
+    // console.log('');
+    // console.log('🧪 테스트 데이터 샘플:');
     const sampleUser = generateUserData(0);
-    console.log(JSON.stringify(sampleUser, null, 2));
-    console.log('');
-    console.log('✨ 이제 브라우저에서 무한 스크롤을 테스트할 수 있습니다!');
-    console.log('');
+    // console.log(JSON.stringify(sampleUser, null, 2));
+    // console.log('');
+    // console.log('✨ 이제 브라우저에서 무한 스크롤을 테스트할 수 있습니다!');
+    // console.log('');
 
     // 프로세스 종료
     process.exit(0);

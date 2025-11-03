@@ -342,7 +342,7 @@ async function createTestPost(category, uid, author, titleTemplate, contentTempl
 
 async function generateTestPosts() {
   try {
-    console.log('🔥 Firebase 인증 중...');
+    // console.log('🔥 Firebase 인증 중...');
 
     // 테스트 계정으로 로그인 (관리자 계정 필요)
     // 실제로는 Firebase Admin SDK를 사용하거나, 테스트 계정으로 로그인해야 합니다
@@ -352,8 +352,8 @@ async function generateTestPosts() {
     const userCredential = await signInWithEmailAndPassword(auth, testEmail, testPassword);
     const user = userCredential.user;
 
-    console.log('✅ 로그인 성공:', user.email);
-    console.log('📝 게시글 생성 시작...\n');
+    // console.log('✅ 로그인 성공:', user.email);
+    // console.log('📝 게시글 생성 시작...\n');
 
     const categories = [
       { value: 'community', label: '커뮤니티', titles: communityTitles, contents: communityContents },
@@ -363,7 +363,7 @@ async function generateTestPosts() {
     ];
 
     for (const category of categories) {
-      console.log(`\n📂 [${category.label}] 카테고리 생성 중...`);
+      // console.log(`\n📂 [${category.label}] 카테고리 생성 중...`);
 
       let successCount = 0;
       let failCount = 0;
@@ -383,7 +383,7 @@ async function generateTestPosts() {
         if (result.success) {
           successCount++;
           if ((i + 1) % 10 === 0) {
-            console.log(`  ✓ ${i + 1}/100 생성 완료`);
+            // console.log(`  ✓ ${i + 1}/100 생성 완료`);
           }
         } else {
           failCount++;
@@ -393,11 +393,11 @@ async function generateTestPosts() {
         await new Promise(resolve => setTimeout(resolve, 100));
       }
 
-      console.log(`✅ [${category.label}] 완료: 성공 ${successCount}개, 실패 ${failCount}개`);
+      // console.log(`✅ [${category.label}] 완료: 성공 ${successCount}개, 실패 ${failCount}개`);
     }
 
-    console.log('\n🎉 모든 테스트 데이터 생성 완료!');
-    console.log('총 400개의 게시글이 생성되었습니다.');
+    // console.log('\n🎉 모든 테스트 데이터 생성 완료!');
+    // console.log('총 400개의 게시글이 생성되었습니다.');
 
   } catch (error) {
     console.error('❌ 오류 발생:', error);

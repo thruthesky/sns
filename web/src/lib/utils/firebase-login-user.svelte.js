@@ -126,13 +126,13 @@ class FirebaseLoginUser {
                 throw new Error('Auth instance not available');
             }
 
-            console.log('FirebaseLoginUser: Initializing auth state listener...');
+            // console.log('FirebaseLoginUser: Initializing auth state listener...');
 
             // Firebase Auth 상태 변경 리스너 등록
             this.#authUnsubscribe = onAuthStateChanged(
                 auth,
                 (firebaseUser) => {
-                    console.log('FirebaseLoginUser: Auth state changed', firebaseUser?.uid || 'null');
+                    // console.log('FirebaseLoginUser: Auth state changed', firebaseUser?.uid || 'null');
 
                     // 내부 Firebase User 객체 저장
                     this.#firebaseUser = firebaseUser;
@@ -152,7 +152,7 @@ class FirebaseLoginUser {
                         }
 
                         // 사용자 데이터 실시간 로드 (onValue 사용)
-                        console.log(`FirebaseLoginUser: Loading user data from users/${firebaseUser.uid}`);
+                        // console.log(`FirebaseLoginUser: Loading user data from users/${firebaseUser.uid}`);
                         const userRef = dbRef(database, `users/${firebaseUser.uid}`);
 
                         this.#dbUnsubscribe = onValue(
@@ -160,11 +160,11 @@ class FirebaseLoginUser {
                             (snapshot) => {
                                 // 데이터 업데이트
                                 this.data = snapshot.val();
-                                console.log(`FirebaseLoginUser: User data updated`, this.data);
+                                // console.log(`FirebaseLoginUser: User data updated`, this.data);
                             },
                             (dbError) => {
                                 // DB 에러 발생
-                                console.error('FirebaseLoginUser: Database error', dbError);
+                                // console.error('FirebaseLoginUser: Database error', dbError);
                                 this.error = dbError;
                             }
                         );
@@ -188,7 +188,7 @@ class FirebaseLoginUser {
                 },
                 (authError) => {
                     // Auth 에러 발생
-                    console.error('FirebaseLoginUser: Auth state change error', authError);
+                    // console.error('FirebaseLoginUser: Auth state change error', authError);
                     this.error = authError;
                     this.loading = false;
                     this.isAuthenticated = false;
@@ -196,7 +196,7 @@ class FirebaseLoginUser {
             );
         } catch (error) {
             // 초기화 중 에러 발생
-            console.error('FirebaseLoginUser: Initialization error', error);
+            // console.error('FirebaseLoginUser: Initialization error', error);
             this.error = error;
             this.loading = false;
         }
@@ -243,7 +243,7 @@ class FirebaseLoginUser {
 
             if (Object.keys(authUpdateData).length > 0) {
                 await firebaseUpdateProfile(this.#firebaseUser, authUpdateData);
-                console.log('FirebaseLoginUser: Auth profile updated', authUpdateData);
+                // console.log('FirebaseLoginUser: Auth profile updated', authUpdateData);
             }
 
             // 2. Realtime Database 업데이트
@@ -257,9 +257,9 @@ class FirebaseLoginUser {
 
             const userRef = dbRef(database, `users/${this.uid}`);
             await dbUpdate(userRef, dbUpdateData);
-            console.log('FirebaseLoginUser: RTDB profile updated', dbUpdateData);
+            // console.log('FirebaseLoginUser: /RTDB profile updated', dbUpdateData);
         } catch (error) {
-            console.error('FirebaseLoginUser: Profile update error', error);
+            // console.error('FirebaseLoginUser: Profile update error', error);
             this.error = error;
             throw error;
         }
@@ -320,7 +320,7 @@ class FirebaseLoginUser {
      * });
      */
     dispose() {
-        console.log('FirebaseLoginUser: Disposing...');
+        // console.log('FirebaseLoginUser: Disposing...');
 
         // Auth 리스너 해제
         if (this.#authUnsubscribe) {
