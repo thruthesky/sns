@@ -86,17 +86,20 @@
 <!-- 탑바 -->
 <header class="topbar">
   <div class="container">
-    <!-- 왼쪽: 로고 이미지 -->
-    <a href="/" class="logo-link">
-      <img src="/logo.png" alt="로고" class="logo-img" />
-    </a>
+    <!-- 왼쪽: 로고 + 페이지 제목 -->
+    <div class="logo-section">
+      <!-- 로고 이미지 -->
+      <a href="/" class="logo-link">
+        <img src="/logo.png" alt="로고" class="logo-img" />
+      </a>
 
-    <!-- 중앙: 페이지 제목 -->
-    {#if $pageTitle}
-      <div class="page-title-container">
-        <h1 class="page-title">{$pageTitle}</h1>
-      </div>
-    {/if}
+      <!-- 페이지 제목 -->
+      {#if $pageTitle}
+        <div class="page-title-inline">
+          <h1 class="page-title">{$pageTitle}</h1>
+        </div>
+      {/if}
+    </div>
 
     <!-- 오른쪽: 네비게이션 -->
     <nav class="nav">
@@ -279,6 +282,14 @@
     flex-shrink: 0;
   }
 
+  /* 로고 섹션 (로고 + 페이지 제목) */
+  .logo-section {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-shrink: 0;
+  }
+
   /* 로고 이미지 */
   .logo-img {
     height: 2.5rem;
@@ -286,20 +297,20 @@
     display: block;
   }
 
-  /* 페이지 제목 컨테이너 */
-  .page-title-container {
-    flex: 1;
+  /* 페이지 제목 인라인 표시 */
+  .page-title-inline {
     display: flex;
-    justify-content: center;
     align-items: center;
+    padding-left: 1rem;
+    border-left: 1px solid #e5e7eb;
   }
 
   /* 페이지 제목 */
   .page-title {
     margin: 0;
-    font-size: 1.125rem;
-    font-weight: 600;
-    color: #1f2937;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #6b7280;
   }
 
   /* 네비게이션 */
