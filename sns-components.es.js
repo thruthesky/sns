@@ -20140,7 +20140,7 @@ function mp(t) {
   }[t] || "알 수 없는 오류가 발생했습니다.";
 }
 const pE = {
-  프로젝트_명칭: "Hanbabo v0.2",
+  프로젝트_명칭: "Hanbabo 0.2",
   웰컴: "Welcome to SNS!",
   로그인: "Login",
   회원가입: "Sign Up",
@@ -20299,7 +20299,7 @@ Author: {author}`,
   "phoneLogin.error.recaptchaInit": "Failed to initialize reCAPTCHA.",
   "phoneLogin.error.smsFailed": "SMS sending failed: {error}"
 }, mE = {
-  프로젝트_명칭: "한바보 v0.2",
+  프로젝트_명칭: "한바보 0.2",
   웰컴: "SNS에 오신 것을 환영합니다!",
   로그인: "로그인",
   회원가입: "회원가입",
@@ -20458,7 +20458,7 @@ Author: {author}`,
   "phoneLogin.error.recaptchaInit": "reCAPTCHA 초기화에 실패했습니다.",
   "phoneLogin.error.smsFailed": "SMS 전송 실패: {error}"
 }, _E = {
-  프로젝트_명칭: "ハンバボ v0.2",
+  프로젝트_명칭: "ハンバボ 0.2",
   웰컴: "SNSへようこそ!",
   로그인: "ログイン",
   회원가입: "登録",
@@ -20617,7 +20617,7 @@ Author: {author}`,
   "phoneLogin.error.recaptchaInit": "reCAPTCHAの初期化に失敗しました。",
   "phoneLogin.error.smsFailed": "SMS送信失敗: {error}"
 }, gE = {
-  프로젝트_명칭: "韩芭芭 v0.2",
+  프로젝트_명칭: "韩芭芭 0.2",
   웰컴: "欢迎来到SNS!",
   로그인: "登录",
   회원가입: "注册",
