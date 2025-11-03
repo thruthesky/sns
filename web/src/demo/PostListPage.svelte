@@ -10,6 +10,7 @@
   import { createPost, listenToPosts } from '../lib/services/forum.js';
   import { FORUM_CATEGORIES } from '../lib/constants/forum.js';
   import { setPageTitle } from '../lib/stores/pageTitle.js';
+  import { showToast } from '../lib/stores/toast.js';
 
   // 인증 상태
   let userId = $state(null);
@@ -143,19 +144,19 @@
         postTitle = '';
         postContent = '';
 
-        // 6. 성공 메시지 표시
-        alert('게시글이 작성되었습니다.');
+        // 6. 성공 메시지 표시 (Toast)
+        showToast('게시글이 작성되었습니다.', 'success');
 
         // 7. $effect를 통해 자동으로 새로운 게시글을 로드합니다
         // (currentCategory를 savedCategory로 변경할 필요 없음. listenToPosts가 자동으로 새 게시글 감시)
         // 필요시 카테고리 변경:
         // currentCategory = savedCategory;
       } else {
-        alert(`게시글 저장 실패: ${result.error || 'Unknown error'}`);
+        showToast(`게시글 저장 실패: ${result.error || 'Unknown error'}`, 'error');
       }
     } catch (error) {
       console.error('게시글 저장 오류:', error);
-      alert('게시글 저장 중 오류가 발생했습니다.');
+      showToast('게시글 저장 중 오류가 발생했습니다.', 'error');
     } finally {
       // 6. 전송 중 상태 해제
       isSubmitting = false;

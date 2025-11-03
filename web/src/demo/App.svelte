@@ -25,6 +25,7 @@
   import Privacy from './Privacy.svelte';
   import Contact from './Contact.svelte';
   import GenerateTestPosts from './GenerateTestPosts.svelte';
+  import Toast from '../lib/components/Toast.svelte';
 
   // 현재 경로 상태
   let currentPath = $state(window.location.pathname);
@@ -94,6 +95,9 @@
     {/if}
   </main>
 </sns-layout>
+
+<!-- Toast 알림 컴포넌트 -->
+<Toast />
 
 <style>
   /* 콘텐츠 */
