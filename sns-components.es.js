@@ -19112,13 +19112,13 @@ function O0() {
 }
 O0();
 const kp = {
-  apiKey: void 0,
-  authDomain: void 0,
-  databaseURL: void 0,
-  projectId: void 0,
-  storageBucket: void 0,
-  messagingSenderId: void 0,
-  appId: void 0
+  apiKey: "AIzaSyB89ImXbiKosw6eTCC8S1_vY8BzGq_SFY0",
+  authDomain: "withcenter-test-5.firebaseapp.com",
+  databaseURL: "https://withcenter-test-5-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "withcenter-test-5",
+  storageBucket: "withcenter-test-5.appspot.com",
+  messagingSenderId: "1064417466216",
+  appId: "1:1064417466216:web:039565a60d9b0b74db28dd"
 };
 console.log("Firebase Config:", kp);
 const bc = Ed(kp), Hn = jb(bc), bt = n0(bc);
