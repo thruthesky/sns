@@ -102,6 +102,17 @@
       completed: false,
       subitems: [{ key: "home.todo.item7.subitem1", completed: false }],
     },
+    {
+      labelKey: "home.todo.item8.label",
+      descriptionKey: "home.todo.item8.description",
+      completed: false,
+      subitems: [
+        { key: "home.todo.item8.subitem1", completed: false },
+        { key: "home.todo.item8.subitem2", completed: false },
+        { key: "home.todo.item8.subitem3", completed: false },
+        { key: "home.todo.item8.subitem4", completed: false },
+      ],
+    },
   ];
 
   /**
