@@ -13,7 +13,7 @@
    */
   function handleLoginSuccess(event) {
     console.log('Login successful:', event.detail);
-    alert(`로그인 성공!\n전화번호: ${event.detail.phoneNumber}`);
+    alert($t('로그인성공알림', { phone: event.detail.phoneNumber }));
     // 로그인 성공 후 홈으로 이동
     window.location.href = '/';
   }
@@ -23,7 +23,7 @@
    */
   function handleLoginError(event) {
     console.error('Login error:', event.detail);
-    alert(`로그인 실패: ${event.detail.error}`);
+    alert($t('로그인실패', { error: event.detail.error }));
   }
 </script>
 
@@ -34,7 +34,7 @@
       <div class="login-card">
         <h1 class="login-title">{$t('로그인')}</h1>
         <p class="login-description">
-          전화번호로 간편하게 로그인하세요.
+          {$t('전화번호로로그인')}
         </p>
         <phone-login
           onlogin-success={handleLoginSuccess}
@@ -44,11 +44,11 @@
     {:else}
       <!-- 이미 로그인된 경우 -->
       <div class="welcome-card">
-        <h2 class="welcome-title">환영합니다!</h2>
+        <h2 class="welcome-title">{$t('웰컴')}</h2>
         <p class="welcome-message">
-          {$user.phoneNumber}로 로그인하셨습니다.
+          {$t('로그인하셨습니다', { phone: $user.phoneNumber })}
         </p>
-        <a href="/" class="home-button">홈으로 이동</a>
+        <a href="/" class="home-button">{$t('홈으로이동')}</a>
       </div>
     {/if}
   </div>

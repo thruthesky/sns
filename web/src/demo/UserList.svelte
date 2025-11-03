@@ -19,7 +19,7 @@
    * @returns {string} 포맷된 날짜 문자열
    */
   function formatDate(timestamp) {
-    if (!timestamp) return "정보 없음";
+    if (!timestamp) return $t("정보없음");
     const date = new Date(timestamp);
     return date.toLocaleDateString("ko-KR", {
       year: "numeric",
@@ -84,7 +84,7 @@
         {#if itemData.data?.photoUrl || itemData.data?.photoURL}
           <img
             src={itemData.data?.photoUrl ?? itemData.data?.photoURL}
-            alt={itemData.data?.displayName || "사용자"}
+            alt={itemData.data?.displayName || $t("사용자")}
           />
         {:else}
           <div class="avatar-placeholder">
@@ -96,9 +96,9 @@
       <!-- 사용자 정보 -->
       <div class="user-info">
         <h3 class="user-name">
-          {itemData.data?.displayName || "이름 없음"}
+          {itemData.data?.displayName || $t("이름없음")}
           {#if itemData.key === login.uid}
-            <span class="badge-me">나</span>
+            <span class="badge-me">{$t("나뱃지")}</span>
           {/if}
         </h3>
 
@@ -113,7 +113,7 @@
         {/if}
 
         <p class="user-date">
-          가입일: {formatDate(itemData.data?.createdAt)}
+          {$t("가입일")} {formatDate(itemData.data?.createdAt)}
         </p>
       </div>
 
@@ -126,7 +126,7 @@
             goToProfile(itemData.key);
           }}
         >
-          프로필 보기
+          {$t("프로필보기")}
         </button>
       </div>
     </div>
@@ -136,7 +136,7 @@
   {#snippet loading()}
     <div class="loading-state">
       <div class="spinner"></div>
-      <p>사용자 목록을 불러오는 중...</p>
+      <p>{$t("사용자목록로딩")}</p>
     </div>
   {/snippet}
 
@@ -144,7 +144,7 @@
   {#snippet empty()}
     <div class="empty-state">
       <p class="empty-icon">👥</p>
-      <p class="empty-text">등록된 사용자가 없습니다.</p>
+      <p class="empty-text">{$t("등록된사용자없음")}</p>
     </div>
   {/snippet}
 
@@ -152,7 +152,7 @@
   {#snippet error(errorMessage)}
     <div class="error-state">
       <p class="error-icon">⚠️</p>
-      <p class="error-text">사용자 목록을 불러오는데 실패했습니다.</p>
+      <p class="error-text">{$t("사용자목록로드실패")}</p>
       <p class="error-detail">{errorMessage}</p>
     </div>
   {/snippet}
@@ -161,14 +161,14 @@
   {#snippet loadingMore()}
     <div class="loading-more-state">
       <div class="spinner-small"></div>
-      <p>더 많은 사용자를 불러오는 중...</p>
+      <p>{$t("더많은사용자로딩")}</p>
     </div>
   {/snippet}
 
   <!-- 더 이상 데이터 없음 -->
   {#snippet noMore()}
     <div class="no-more-state">
-      <p>모든 사용자를 불러왔습니다.</p>
+      <p>{$t("모든사용자로드완료")}</p>
     </div>
   {/snippet}
 </DatabaseListView>

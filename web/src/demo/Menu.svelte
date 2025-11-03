@@ -12,7 +12,7 @@
    * 컴포넌트 마운트 시 페이지 제목 설정
    */
   onMount(() => {
-    setPageTitle('메뉴');
+    setPageTitle($t('메뉴'));
   });
 
   /**
@@ -24,27 +24,27 @@
     window.dispatchEvent(new PopStateEvent('popstate'));
   }
 
-  // 메뉴 항목 목록
-  const menuItems = [
-    { label: '홈', path: '/' },
-    { label: '로그인', path: '/user/login' },
-    { label: '사용자 프로필', path: '/user/profile' },
-    { label: '게시물 목록', path: '/post/list' },
-    { label: '게시물 상세 (예: ID:123)', path: '/post/detail/123' },
-    { label: '채팅 목록', path: '/chat/list' },
-    { label: '설정', path: '/settings' },
-    { label: '앱 정보', path: '/about' },
-    { label: '도움말', path: '/help' },
-    { label: '이용 약관', path: '/terms' },
-    { label: '개인정보 처리방침', path: '/privacy' },
-    { label: '문의하기', path: '/contact' },
-    { label: '[개발] 테스트 게시글 생성', path: '/dev/generate-posts' }
-  ];
+  // 메뉴 항목 목록 - 반응형으로 선언하여 언어 변경 시 자동 업데이트
+  let menuItems = $derived([
+    { label: $t('홈'), path: '/' },
+    { label: $t('로그인'), path: '/user/login' },
+    { label: $t('사용자프로필'), path: '/user/profile' },
+    { label: $t('게시물목록'), path: '/post/list' },
+    { label: $t('게시물상세예시'), path: '/post/detail/123' },
+    { label: $t('채팅목록'), path: '/chat/list' },
+    { label: $t('설정'), path: '/settings' },
+    { label: $t('정보'), path: '/about' },
+    { label: $t('도움말'), path: '/help' },
+    { label: $t('이용약관'), path: '/terms' },
+    { label: $t('개인정보'), path: '/privacy' },
+    { label: $t('문의하기'), path: '/contact' },
+    { label: $t('테스트게시글생성'), path: '/dev/generate-posts' }
+  ]);
 </script>
 
 <div class="menu-container">
   <div class="menu-card">
-    <p class="menu-description">아래에서 이동할 페이지를 선택하세요</p>
+    <p class="menu-description">{$t('페이지선택')}</p>
 
     <nav class="menu-list">
       {#each menuItems as item (item.path)}

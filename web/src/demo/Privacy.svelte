@@ -4,13 +4,14 @@
    * 개인정보 처리방침을 표시합니다.
    */
   import { onMount } from 'svelte';
+  import { t } from '../lib/stores/i18n.js';
   import { setPageTitle } from '../lib/stores/pageTitle.js';
 
   /**
    * 컴포넌트 마운트 시 페이지 제목 설정
    */
   onMount(() => {
-    setPageTitle('개인정보처리방침');
+    setPageTitle($t('개인정보'));
   });
 
   /**
@@ -26,10 +27,10 @@
   <div class="privacy-card">
     <div class="construction-content">
       <div class="construction-icon">🚧</div>
-      <p class="construction-message">이 페이지는 공사중입니다</p>
-      <p class="construction-description">개인정보 처리방침 페이지를 개발 중이며, 곧 업데이트될 예정입니다.</p>
+      <p class="construction-message">{$t('공사중메시지')}</p>
+      <p class="construction-description">{$t('공사중설명_개인정보')}</p>
     </div>
-    <button class="back-button" onclick={goBack}>메뉴로 돌아가기</button>
+    <button class="back-button" onclick={goBack}>{$t('메뉴로돌아가기')}</button>
   </div>
 </div>
 

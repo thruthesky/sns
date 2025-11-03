@@ -24,10 +24,6 @@
   import { t, locale, setLocale, SUPPORTED_LOCALES } from '../stores/i18n.js';
 
   const LANGUAGE_OPTIONS = SUPPORTED_LOCALES;
-
-  function handleLocaleSelect(code) {
-    setLocale(code);
-  }
 </script>
 
 <!-- 왼쪽 사이드바 -->
@@ -150,23 +146,20 @@
     <!-- 언어 설정 섹션 -->
     <div class="section language-section">
       <h3 class="section-subtitle">{$t('언어설정')}</h3>
-      {#if true}
-        {@const currentLanguage = LANGUAGE_OPTIONS.find(option => option.code === $locale) ?? LANGUAGE_OPTIONS[0]}
-        <div class="language-current">
-          <span class="language-current-label">{$t('현재언어')}</span>
-          <span class="language-current-value">{$t(currentLanguage.labelKey)}</span>
-        </div>
-      {/if}
-      <div class="language-options">
-        {#each LANGUAGE_OPTIONS as option}
-          <button
-            type="button"
-            class="language-button {option.code === $locale ? 'active' : ''}"
-            onclick={() => handleLocaleSelect(option.code)}
-          >
-            {$t(option.labelKey)}
-          </button>
-        {/each}
+      <div class="language-compact">
+        <label class="language-label" for="language-select" aria-label={$t('언어설정')}>🌐</label>
+        <select
+          id="language-select"
+          class="language-select"
+          value={$locale}
+          on:change={(e) => setLocale(e.currentTarget.value)}
+        >
+          {#each LANGUAGE_OPTIONS as option}
+            <option value={option.code}>
+              {option.label}
+            </option>
+          {/each}
+        </select>
       </div>
     </div>
 
@@ -309,56 +302,40 @@
     border-top: 1px solid #e5e7eb;
   }
 
-  .language-current {
+  .language-compact {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 0.5rem 0.75rem;
-    border-radius: 0.5rem;
-    background-color: #f9fafb;
-    margin-bottom: 0.75rem;
+    gap: 0.75rem;
   }
 
-  .language-current-label {
-    font-size: 0.75rem;
-    color: #6b7280;
-  }
-
-  .language-current-value {
+  .language-label {
+    font-size: 0.85rem;
     font-weight: 600;
-    color: #111827;
-    font-size: 0.9rem;
+    color: #374151;
+    white-space: nowrap;
   }
 
-  .language-options {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
-    gap: 0.5rem;
-  }
-
-  .language-button {
-    padding: 0.5rem 0.75rem;
+  .language-select {
+    flex: 1;
+    padding: 0.45rem 0.75rem;
     border: 1px solid #d1d5db;
     border-radius: 0.5rem;
     background-color: #ffffff;
-    color: #374151;
-    font-size: 0.8rem;
+    color: #111827;
+    font-size: 0.85rem;
     font-weight: 500;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 6L11 1' stroke='%236b7280' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 12px 8px;
     cursor: pointer;
-    transition: all 0.2s;
   }
 
-  .language-button:hover {
-    background-color: #f3f4f6;
+  .language-select:focus {
+    outline: none;
     border-color: #3b82f6;
-    color: #1f2937;
-  }
-
-  .language-button.active {
-    background-color: #3b82f6;
-    border-color: #3b82f6;
-    color: #ffffff;
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
   }
 
   /* 빌드 정보 */

@@ -14,6 +14,7 @@
   import { ref, push } from 'firebase/database';
   import { login } from '../lib/utils/firebase-login-user.svelte.js';
   import { setPageTitle } from '../lib/stores/pageTitle.js';
+  import { t } from '../lib/stores/i18n.js';
 
   let isGenerating = $state(false);
   let progress = $state({ current: 0, total: 0, category: '' });
@@ -21,7 +22,7 @@
   let completed = $state(false);
 
   onMount(() => {
-    setPageTitle('테스트 데이터 생성');
+    setPageTitle($t('테스트게시글생성타이틀'));
   });
 
   function addLog(message, type = 'info') {
@@ -120,26 +121,26 @@
 
   async function generatePosts() {
     if (!login.isAuthenticated || !login.uid) {
-      addLog('❌ 로그인이 필요합니다.', 'error');
+      addLog($t('로그인필요'), 'error');
       return;
     }
 
     isGenerating = true;
     completed = false;
     logs = [];
-    addLog('✅ 테스트 데이터 생성 시작', 'success');
-    addLog(`사용자: ${login.data?.displayName || login.email}`, 'info');
+    addLog($t('테스트데이터생성시작'), 'success');
+    addLog($t('사용자정보', { user: login.data?.displayName || login.email }), 'info');
 
     const categories = [
-      { value: 'community', label: '커뮤니티' },
-      { value: 'qna', label: '질문과답변' },
-      { value: 'news', label: '뉴스' },
-      { value: 'market', label: '회원장터' }
+      { value: 'community', label: $t('커뮤니티') },
+      { value: 'qna', label: $t('질문과답변') },
+      { value: 'news', label: $t('뉴스') },
+      { value: 'market', label: $t('회원장터') }
     ];
 
     for (const category of categories) {
       progress = { current: 0, total: 100, category: category.label };
-      addLog(`\n📂 [${category.label}] 생성 중...`, 'info');
+      addLog($t('카테고리생성중', { category: category.label }), 'info');
 
       const categoryTemplates = templates[category.value];
       let successCount = 0;
@@ -154,7 +155,7 @@
             uid: login.uid,
             title,
             content,
-            author: login.data?.displayName || login.email || '익명',
+            author: login.data?.displayName || login.email || $t('익명'),
             category: category.value,
             createdAt: now - Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000),
             updatedAt: now
@@ -167,21 +168,21 @@
           progress = { ...progress, current: i + 1 };
 
           if ((i + 1) % 20 === 0) {
-            addLog(`  ✓ ${i + 1}/100 완료`, 'success');
+            addLog($t('생성진행', { current: i + 1, total: 100 }), 'success');
           }
 
           // API 제한 방지 딜레이
           await new Promise(resolve => setTimeout(resolve, 50));
         } catch (error) {
-          addLog(`  ✗ 실패: ${error.message}`, 'error');
+          addLog($t('생성실패', { error: error.message }), 'error');
         }
       }
 
-      addLog(`✅ [${category.label}] 완료: ${successCount}개 생성`, 'success');
+      addLog($t('카테고리생성완료', { category: category.label, count: successCount }), 'success');
     }
 
-    addLog('\n🎉 모든 테스트 데이터 생성 완료!', 'success');
-    addLog('총 400개의 게시글이 생성되었습니다.', 'success');
+    addLog($t('모든데이터생성완료'), 'success');
+    addLog($t('총400개생성'), 'success');
     isGenerating = false;
     completed = true;
   }
@@ -190,14 +191,14 @@
 <div class="generator-page">
   <div class="generator-container">
     <div class="header">
-      <h1>📝 테스트 게시글 생성</h1>
-      <p>각 카테고리별로 100개씩, 총 400개의 재미있는 테스트 게시글을 생성합니다.</p>
+      <h1>{$t('테스트게시글생성타이틀')}</h1>
+      <p>{$t('테스트게시글생성설명')}</p>
     </div>
 
     {#if !login.isAuthenticated}
       <div class="warning-box">
-        <p>⚠️ 로그인이 필요합니다.</p>
-        <a href="/user/login">로그인하러 가기</a>
+        <p>{$t('로그인필요')}</p>
+        <a href="/user/login">{$t('로그인하러가기')}</a>
       </div>
     {:else}
       <div class="action-box">
@@ -206,7 +207,7 @@
           onclick={generatePosts}
           disabled={isGenerating}
         >
-          {isGenerating ? '생성 중...' : '게시글 생성 시작'}
+          {isGenerating ? $t('생성중') : $t('게시글생성시작')}
         </button>
 
         {#if isGenerating}
@@ -225,7 +226,7 @@
 
       {#if logs.length > 0}
         <div class="logs-container">
-          <h3>실행 로그</h3>
+          <h3>{$t('실행로그')}</h3>
           <div class="logs">
             {#each logs as log}
               <div class="log-item log-{log.type}">
@@ -239,8 +240,8 @@
 
       {#if completed}
         <div class="success-box">
-          <p>✅ 완료! 게시판 페이지에서 확인해보세요.</p>
-          <a href="/post/list" class="btn-view">게시판 보기</a>
+          <p>{$t('생성완료확인메시지')}</p>
+          <a href="/post/list" class="btn-view">{$t('게시판보기')}</a>
         </div>
       {/if}
     {/if}

@@ -115,7 +115,7 @@
    * 컴포넌트 마운트 시 페이지 제목 설정
    */
   onMount(() => {
-    setPageTitle('프로필 수정');
+    setPageTitle($t('프로필수정'));
   });
 
   /**
@@ -156,24 +156,24 @@
     if (!file) return;
 
     if (isPhotoUpdating) {
-      showErrorMessage('다른 사진 작업이 진행 중입니다. 잠시 후 다시 시도해주세요.');
+      showErrorMessage($t('사진작업진행중'));
       return;
     }
 
     if (!login.isAuthenticated || !login.uid) {
-      showErrorMessage('로그인 후 이용해주세요.');
+      showErrorMessage($t('로그인필요'));
       return;
     }
 
     // 파일 타입 확인
     if (!file.type.startsWith('image/')) {
-      showErrorMessage('이미지 파일만 선택 가능합니다.');
+      showErrorMessage($t('이미지파일만가능'));
       return;
     }
 
     // 파일 크기 확인 (5MB 제한)
     if (file.size > 5 * 1024 * 1024) {
-      showErrorMessage('파일 크기는 5MB 이하여야 합니다.');
+      showErrorMessage($t('파일크기5MB제한'));
       return;
     }
 
@@ -210,7 +210,7 @@
     if (isPhotoUpdating) return;
 
     if (!login.isAuthenticated || !login.uid) {
-      showErrorMessage('로그인 후 이용해주세요.');
+      showErrorMessage($t('로그인필요'));
       return;
     }
 
@@ -226,10 +226,10 @@
     try {
       isPhotoUpdating = true;
       await login.updateProfile({ photoUrl: null });
-      showSuccessMessage('프로필 사진이 제거되었습니다.');
+      showSuccessMessage($t('프로필사진제거완료'));
     } catch (error) {
       console.error('프로필 사진 제거 오류:', error);
-      showErrorMessage(`사진 제거 실패: ${error.message || '알 수 없는 오류가 발생했습니다.'}`);
+      showErrorMessage($t('사진제거실패', { error: error.message || $t('알수없는오류') }));
       photoPreview = previousPreview;
       formData.photoUrl = previousPhotoUrl;
     } finally {
@@ -246,7 +246,7 @@
    */
   async function uploadAndSavePhoto(file, { showSuccess = true } = {}) {
     if (!login.isAuthenticated || !login.uid) {
-      showErrorMessage('로그인 후 이용해주세요.');
+      showErrorMessage($t('로그인필요'));
       throw new Error('User is not authenticated');
     }
 
@@ -266,13 +266,13 @@
       await login.updateProfile({ photoUrl: downloadURL });
 
       if (showSuccess) {
-        showSuccessMessage('프로필 사진이 저장되었습니다.');
+        showSuccessMessage($t('프로필사진저장완료'));
       }
 
       return downloadURL;
     } catch (error) {
       console.error('프로필 사진 업로드 오류:', error);
-      showErrorMessage(`사진 저장 실패: ${error.message || '알 수 없는 오류가 발생했습니다.'}`);
+      showErrorMessage($t('사진저장실패', { error: error.message || $t('알수없는오류') }));
       throw error;
     } finally {
       isPhotoUpdating = false;
@@ -320,11 +320,11 @@
       // Firebase Auth 및 Realtime Database 업데이트
       await login.updateProfile(updateData);
 
-      showSuccessMessage('프로필이 성공적으로 업데이트되었습니다!');
+      showSuccessMessage($t('프로필업데이트완료'));
       console.log('프로필 업데이트 완료:', updateData);
     } catch (error) {
       console.error('프로필 업데이트 오류:', error);
-      showErrorMessage(`오류: ${error.message || '알 수 없는 오류가 발생했습니다.'}`);
+      showErrorMessage($t('프로필업데이트실패', { error: error.message || $t('알수없는오류') }));
     } finally {
       isSaving = false;
     }
@@ -347,7 +347,7 @@
          프로필 사진 섹션
          ======================================================================== -->
     <div class="form-section">
-      <label class="form-label">프로필 사진</label>
+      <label class="form-label">{$t('프로필사진')}</label>
 
       <div class="photo-area">
         <input
@@ -356,7 +356,7 @@
           bind:this={fileInput}
           onchange={handlePhotoChange}
           style="display: none;"
-          aria-label="프로필 사진 선택"
+          aria-label={$t('프로필사진선택')}
         />
 
         <div class="photo-wrapper">
@@ -365,7 +365,7 @@
             class="photo-trigger"
             onclick={handlePhotoButtonClick}
             disabled={isSaving || isPhotoUpdating}
-            aria-label={photoPreview ? '프로필 사진 변경' : '프로필 사진 추가'}
+            aria-label={photoPreview ? $t('프로필사진변경') : $t('프로필사진추가')}
           >
             {#if photoPreview}
               <div
@@ -376,7 +376,7 @@
             {:else}
               <div class="photo-placeholder">
                 <span class="placeholder-icon">📷</span>
-                <span class="placeholder-text">사진 없음</span>
+                <span class="placeholder-text">{$t('사진없음')}</span>
               </div>
             {/if}
           </button>
@@ -387,7 +387,7 @@
               class="photo-remove-button"
               onclick={handleRemovePhoto}
               disabled={isSaving || isPhotoUpdating}
-              aria-label="프로필 사진 제거"
+              aria-label={$t('프로필사진제거')}
             >
               <X size={18} stroke-width={3} />
             </button>
@@ -397,10 +397,10 @@
           </span>
         </div>
 
-        <p class="photo-instruction">프로필 사진을 클릭하여 변경</p>
+        <p class="photo-instruction">{$t('프로필사진클릭변경')}</p>
 
         {#if isPhotoUpdating}
-          <p class="upload-status">사진을 저장하는 중입니다...</p>
+          <p class="upload-status">{$t('사진저장중')}</p>
         {/if}
       </div>
     </div>
@@ -409,35 +409,35 @@
          닉네임 입력 필드
          ======================================================================== -->
     <div class="form-section">
-      <label class="form-label" for="displayName">닉네임</label>
+      <label class="form-label" for="displayName">{$t('닉네임')}</label>
       <input
         type="text"
         id="displayName"
         class="form-input"
-        placeholder="닉네임을 입력하세요"
+        placeholder={$t('닉네임입력')}
         bind:value={formData.displayName}
         maxlength="50"
         disabled={isSaving}
         required
       />
-      <p class="form-helper">최대 50자까지 입력할 수 있습니다</p>
+      <p class="form-helper">{$t('닉네임최대50자')}</p>
     </div>
 
     <!-- ========================================================================
          성별 선택
          ======================================================================== -->
     <div class="form-section">
-      <label class="form-label" for="gender">성별</label>
+      <label class="form-label" for="gender">{$t('성별')}</label>
       <select
         id="gender"
         class="form-select"
         bind:value={formData.gender}
         disabled={isSaving}
       >
-        <option value="">선택하지 않음</option>
-        <option value="male">남자</option>
-        <option value="female">여자</option>
-        <option value="other">기타</option>
+        <option value="">{$t('선택하지않음')}</option>
+        <option value="male">{$t('남자')}</option>
+        <option value="female">{$t('여자')}</option>
+        <option value="other">{$t('기타')}</option>
       </select>
     </div>
 
@@ -445,7 +445,7 @@
          생년월일 선택
          ======================================================================== -->
     <div class="form-section">
-      <label class="form-label" for="dateOfBirth">생년월일</label>
+      <label class="form-label" for="dateOfBirth">{$t('생년월일')}</label>
       <input
         type="date"
         id="dateOfBirth"
@@ -453,7 +453,7 @@
         bind:value={formData.dateOfBirth}
         disabled={isSaving}
       />
-      <p class="form-helper">YYYY-MM-DD 형식으로 선택해주세요</p>
+      <p class="form-helper">{$t('생년월일형식')}</p>
     </div>
 
     <!-- ========================================================================
@@ -480,7 +480,7 @@
         class="btn-primary btn-large"
         disabled={isSaving || isPhotoUpdating || !login.isAuthenticated}
       >
-        {isSaving ? '저장 중...' : '저장'}
+        {isSaving ? $t('저장중') : $t('저장')}
       </button>
       <button
         type="button"
@@ -488,7 +488,7 @@
         onclick={goBack}
         disabled={isSaving}
       >
-        취소
+        {$t('취소')}
       </button>
     </div>
   </form>

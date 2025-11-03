@@ -28,10 +28,10 @@ const STORAGE_KEY = 'sns-web-locale';
  * 지원하는 언어 목록
  */
 export const SUPPORTED_LOCALES = [
-  { code: 'ko', labelKey: '언어_한국어' },
-  { code: 'en', labelKey: '언어_영어' },
-  { code: 'ja', labelKey: '언어_일본어' },
-  { code: 'zh', labelKey: '언어_중국어' }
+  { code: 'ko', label: '🇰🇷 한국어' },
+  { code: 'en', label: '🇺🇸 English' },
+  { code: 'ja', label: '🇯🇵 日本語' },
+  { code: 'zh', label: '🇨🇳 中文' }
 ];
 
 /**

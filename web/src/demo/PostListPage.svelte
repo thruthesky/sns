@@ -5,28 +5,31 @@
    * Svelte 5 Runes를 사용한 반응형 상태 관리를 구현합니다.
    */
 
-  import { onMount } from 'svelte';
-  import { auth } from '../lib/utils/firebase.js';
-  import { createPost } from '../lib/services/forum.js';
-  import { FORUM_CATEGORIES } from '../lib/constants/forum.js';
-  import { setPageTitle } from '../lib/stores/pageTitle.js';
-  import { showToast } from '../lib/stores/toast.js';
-  import DatabaseListView from '../lib/components/DatabaseListView.svelte';
+  import { onMount } from "svelte";
+  import { auth } from "../lib/utils/firebase.js";
+  import { createPost } from "../lib/services/forum.js";
+  import { FORUM_CATEGORIES } from "../lib/constants/forum.js";
+  import { setPageTitle } from "../lib/stores/pageTitle.js";
+  import { showToast } from "../lib/stores/toast.js";
+  import { t } from "../lib/stores/i18n.js";
+  import DatabaseListView from "../lib/components/DatabaseListView.svelte";
 
   // 인증 상태
   let userId = $state(null);
-  let userName = $state('');
+  let userName = $state("");
   let isAuthLoading = $state(true);
 
   // URL 쿼리 파라미터에서 카테고리 가져오기
-  const urlParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
-  let currentCategory = $state(urlParams.get('category') || 'community');
+  const urlParams = new URLSearchParams(
+    typeof window !== "undefined" ? window.location.search : ""
+  );
+  let currentCategory = $state(urlParams.get("category") || "community");
 
   // 글쓰기 모달 상태
   let isDialogOpen = $state(false);
-  let postCategory = $state('');
-  let postTitle = $state('');
-  let postContent = $state('');
+  let postCategory = $state("");
+  let postTitle = $state("");
+  let postContent = $state("");
   let isSubmitting = $state(false);
 
   /**
@@ -35,17 +38,17 @@
    */
   onMount(() => {
     // 페이지 제목 설정
-    setPageTitle('게시판');
+    setPageTitle($t("게시판"));
 
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
         userId = user.uid;
         // 사용자 이름 가져오기
-        const displayName = user.displayName || user.email || '익명';
+        const displayName = user.displayName || user.email || $t("익명");
         userName = displayName;
       } else {
         userId = null;
-        userName = '';
+        userName = "";
       }
       // ⚠️ 중요: 인증 상태 확인 완료
       isAuthLoading = false;
@@ -55,7 +58,6 @@
     return () => unsubscribe();
   });
 
-
   /**
    * 게시글 작성 버튼 클릭 핸들러
    * 로그인 상태를 확인하고 모달을 엽니다.
@@ -63,7 +65,7 @@
   function handleCreatePost() {
     if (!userId) {
       // 로그인하지 않은 경우 로그인 페이지로 이동
-      window.location.href = '/user/login';
+      window.location.href = "/user/login";
       return;
     }
     // 글쓰기 모달 열기
@@ -76,9 +78,9 @@
    */
   function handleCancel() {
     isDialogOpen = false;
-    postCategory = '';
-    postTitle = '';
-    postContent = '';
+    postCategory = "";
+    postTitle = "";
+    postContent = "";
   }
 
   /**
@@ -88,20 +90,20 @@
   async function handleSubmit() {
     // 1. 입력 유효성 검사
     if (!postCategory) {
-      alert('카테고리를 선택해주세요.');
+      alert($t("카테고리선택필요"));
       return;
     }
     if (!postTitle.trim()) {
-      alert('제목을 입력해주세요.');
+      alert($t("제목입력필요"));
       return;
     }
     if (!postContent.trim()) {
-      alert('내용을 입력해주세요.');
+      alert($t("내용입력필요"));
       return;
     }
 
     if (!userId || !userName) {
-      alert('로그인 정보를 확인할 수 없습니다.');
+      alert($t("로그인정보확인불가"));
       return;
     }
 
@@ -124,23 +126,23 @@
 
         // 5. 모달 닫기 및 초기화
         isDialogOpen = false;
-        postCategory = '';
-        postTitle = '';
-        postContent = '';
+        postCategory = "";
+        postTitle = "";
+        postContent = "";
 
         // 6. 성공 메시지 표시 (Toast)
-        showToast('게시글이 작성되었습니다.', 'success');
+        showToast($t("게시글작성완료"), "success");
 
-        // 7. $effect를 통해 자동으로 새로운 게시글을 로드합니다
-        // (currentCategory를 savedCategory로 변경할 필요 없음. listenToPosts가 자동으로 새 게시글 감시)
-        // 필요시 카테고리 변경:
-        // currentCategory = savedCategory;
+        // 7. DatabaseListView가 실시간으로 데이터를 감시하므로 별도 갱신이 필요 없습니다.
       } else {
-        showToast(`게시글 저장 실패: ${result.error || 'Unknown error'}`, 'error');
+        showToast(
+          $t("게시글저장실패", { error: result.error || "Unknown error" }),
+          "error"
+        );
       }
     } catch (error) {
-      console.error('게시글 저장 오류:', error);
-      showToast('게시글 저장 중 오류가 발생했습니다.', 'error');
+      console.error("게시글 저장 오류:", error);
+      showToast($t("게시글저장중오류"), "error");
     } finally {
       // 6. 전송 중 상태 해제
       isSubmitting = false;
@@ -153,110 +155,141 @@
    */
   function handleCategoryChange(category) {
     currentCategory = category;
-    window.history.pushState({}, '', `/post/list?category=${category}`);
+    window.history.pushState({}, "", `/post/list?category=${category}`);
   }
+
+  // 현재 선택된 카테고리 정보
+  // Svelte 5 runes 모드: $: 대신 $derived 사용
+  let currentCategoryInfo = $derived(
+    FORUM_CATEGORIES.find((cat) => cat.value === currentCategory) ??
+      FORUM_CATEGORIES[0]
+  );
 </script>
 
 <!-- 인증 로딩 중일 때 로딩 화면 표시 -->
 {#if isAuthLoading}
   <div class="loading-screen">
-    <p>로딩 중...</p>
+    <p>{$t("로딩중")}</p>
   </div>
 {:else}
   <div class="post-list-container">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">{$t("게시판")}</h1>
+        <p class="page-subtitle">
+          {currentCategoryInfo.label}{$t("게시판설명")}
+        </p>
+      </div>
+      <div class="page-header-action">
+        <span class="category-chip">{currentCategoryInfo.label}</span>
+      </div>
+    </div>
+
     <!-- 카테고리 + 글쓰기 -->
     <div class="toolbar">
-      <!-- 카테고리 탭 -->
-      <div class="category-tabs">
-        {#each FORUM_CATEGORIES as category (category.value)}
-          <button
-            class="tab {currentCategory === category.value ? 'active' : ''}"
-            onclick={() => handleCategoryChange(category.value)}
-          >
-            {category.label}
-          </button>
-        {/each}
+      <div class="toolbar-left">
+        <!-- 카테고리 탭 -->
+        <div class="category-tabs">
+          {#each FORUM_CATEGORIES as category (category.value)}
+            <button
+              class="tab {currentCategory === category.value ? 'active' : ''}"
+              onclick={() => handleCategoryChange(category.value)}
+            >
+              {category.label}
+            </button>
+          {/each}
+        </div>
       </div>
 
       <!-- 게시글 작성 버튼 -->
       <button class="btn-create-post" onclick={handleCreatePost}>
-        ✏️ 글쓰기
+        ✏️ {$t("글쓰기")}
       </button>
     </div>
 
-    <!-- 게시글 목록 (무한 스크롤) -->
-    <DatabaseListView
-      path={`posts/${currentCategory}`}
-      orderBy="createdAt"
-      reverse={true}
-      pageSize={20}
-    >
-      {#snippet item(itemData, index)}
-        <!-- 개별 게시글 아이템 -->
-        <div class="post-item">
-          <!-- 게시글 제목 (번호 포함) -->
-          <h3 class="post-title">
-            <span class="post-number">{index + 1}.</span> {itemData.data.title}
-          </h3>
-
-          <!-- 게시글 내용 미리보기 -->
-          <p class="post-content">{itemData.data.content}</p>
-
-          <!-- 게시글 메타 정보 -->
-          <div class="post-meta">
-            <span class="post-author">작성자: {itemData.data.author}</span>
-            <span class="post-date">
-              {new Date(itemData.data.createdAt).toLocaleDateString('ko-KR', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit'
-              })}
-            </span>
+    <div class="post-list-surface">
+      <!-- 게시글 목록 (무한 스크롤) -->
+      <DatabaseListView
+        path={`posts/${currentCategory}`}
+        orderBy="createdAt"
+        reverse={true}
+        pageSize={20}
+      >
+        {#snippet item(itemData, index)}
+          {@const itemCategory =
+            FORUM_CATEGORIES.find((cat) => cat.value === itemData.data?.category) ??
+            currentCategoryInfo}
+          <div class="post-item">
+            <div class="post-item-top">
+              <span class="post-category-pill">{itemCategory.label}</span>
+              <span class="post-number">#{String(index + 1).padStart(2, "0")}</span>
+            </div>
+            <h3 class="post-title">{itemData.data.title}</h3>
+            <p class="post-content">{itemData.data.content}</p>
+            <div class="post-meta">
+              <div class="author-chip">
+                <span class="author-avatar">
+                  {(itemData.data.author || $t("익명")).charAt(0).toUpperCase()}
+                </span>
+                <span class="post-author">{itemData.data.author || $t("익명")}</span>
+              </div>
+              <span class="post-date">
+                {new Date(itemData.data.createdAt).toLocaleDateString("ko-KR", {
+                  year: "numeric",
+                  month: "2-digit",
+                  day: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit"
+                })}
+              </span>
+            </div>
           </div>
-        </div>
-      {/snippet}
+        {/snippet}
 
-      {#snippet empty()}
-        <!-- 게시글이 없는 경우 -->
-        <div class="empty-state">
-          <div class="empty-icon">📝</div>
-          <p class="empty-message">게시글이 없습니다</p>
-          <p class="empty-hint">첫 번째 게시글을 작성해보세요!</p>
-        </div>
-      {/snippet}
+        {#snippet empty()}
+          <div class="empty-state">
+            <div class="empty-illustration">🗂️</div>
+            <h3 class="empty-title">{$t("게시글없음")}</h3>
+            <p class="empty-message">
+              {$t("첫게시글공유")}
+            </p>
+            <button class="btn-create-post ghost" onclick={handleCreatePost}>
+              ✏️ {$t("새글작성")}
+            </button>
+          </div>
+        {/snippet}
 
-      {#snippet loading()}
-        <!-- 초기 로딩 중 표시 -->
-        <div class="loading-more">
-          <p>게시글을 불러오는 중...</p>
-        </div>
-      {/snippet}
+        {#snippet loading()}
+          <div class="loading-state">
+            <div class="spinner"></div>
+            <p>{$t("게시글로딩중")}</p>
+          </div>
+        {/snippet}
 
-      {#snippet error(errorMessage)}
-        <!-- 에러 발생 시 표시 -->
-        <div class="error-state">
-          <div class="error-icon">⚠️</div>
-          <p class="error-message">게시글을 불러오는 중 오류가 발생했습니다</p>
-          <p class="error-detail">{errorMessage}</p>
-        </div>
-      {/snippet}
+        {#snippet error(errorMessage)}
+          <div class="error-state">
+            <div class="error-icon">⚠️</div>
+            <div>
+              <p class="error-message">{$t("게시글로드실패")}</p>
+              <p class="error-detail">{errorMessage}</p>
+            </div>
+          </div>
+        {/snippet}
 
-      {#snippet loadingMore()}
-        <!-- 추가 로딩 중 표시 (무한 스크롤) -->
-        <div class="loading-more">
-          <p>더 많은 게시글을 불러오는 중...</p>
-        </div>
-      {/snippet}
+        {#snippet loadingMore()}
+          <div class="loading-more">
+            <div class="spinner small"></div>
+            <p>{$t("더많은게시글로딩")}</p>
+          </div>
+        {/snippet}
 
-      {#snippet noMore()}
-        <!-- 더 이상 게시글이 없을 때 표시 -->
-        <div class="no-more">
-          <p>모든 게시글을 불러왔습니다</p>
-        </div>
-      {/snippet}
-    </DatabaseListView>
+        {#snippet noMore()}
+          <div class="no-more">
+            <p>{$t("모든게시글확인")}</p>
+          </div>
+        {/snippet}
+      </DatabaseListView>
+    </div>
   </div>
 
   <!-- 글쓰기 모달 다이얼로그 -->
@@ -265,20 +298,33 @@
       class="modal-backdrop"
       role="presentation"
       onclick={() => (isDialogOpen = false)}
-      onkeydown={(e) => e.key === 'Escape' && (isDialogOpen = false)}
+      onkeydown={(e) => e.key === "Escape" && (isDialogOpen = false)}
     >
-      <div class="modal" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+      <div
+        class="modal"
+        onclick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+      >
         <div class="modal-header">
-          <h2>새 게시글 작성</h2>
-          <button type="button" class="btn-close" onclick={() => (isDialogOpen = false)}>×</button>
+          <h2>{$t("새게시글작성")}</h2>
+          <button
+            type="button"
+            class="btn-close"
+            onclick={() => (isDialogOpen = false)}>×</button
+          >
         </div>
 
         <div class="modal-content">
           <!-- 카테고리 선택 -->
           <div class="form-group">
-            <label for="category">카테고리</label>
-            <select id="category" bind:value={postCategory} class="form-control">
-              <option value="">카테고리 선택</option>
+            <label for="category">{$t("카테고리")}</label>
+            <select
+              id="category"
+              bind:value={postCategory}
+              class="form-control"
+            >
+              <option value="">{$t("카테고리선택")}</option>
               {#each FORUM_CATEGORIES as category (category.value)}
                 <option value={category.value}>{category.label}</option>
               {/each}
@@ -287,23 +333,23 @@
 
           <!-- 제목 입력 -->
           <div class="form-group">
-            <label for="title">제목</label>
+            <label for="title">{$t("제목")}</label>
             <input
               id="title"
               type="text"
               bind:value={postTitle}
-              placeholder="제목을 입력하세요"
+              placeholder={$t("제목입력")}
               class="form-control"
             />
           </div>
 
           <!-- 내용 입력 -->
           <div class="form-group">
-            <label for="content">내용</label>
+            <label for="content">{$t("내용")}</label>
             <textarea
               id="content"
               bind:value={postContent}
-              placeholder="내용을 입력하세요"
+              placeholder={$t("내용입력")}
               class="form-control textarea"
               rows="8"
             ></textarea>
@@ -312,15 +358,19 @@
 
         <!-- 모달 버튼 -->
         <div class="modal-footer">
-          <button class="btn-cancel" onclick={handleCancel} disabled={isSubmitting}>
-            취소
+          <button
+            class="btn-cancel"
+            onclick={handleCancel}
+            disabled={isSubmitting}
+          >
+            {$t("취소")}
           </button>
           <button
             class="btn-submit"
             onclick={handleSubmit}
             disabled={isSubmitting}
           >
-            {isSubmitting ? '전송 중...' : '전송'}
+            {isSubmitting ? $t("전송중") : $t("전송")}
           </button>
         </div>
       </div>
@@ -329,62 +379,100 @@
 {/if}
 
 <style>
-  /* 게시판 컨테이너 */
+  /* 레이아웃 컨테이너 */
   .post-list-container {
     width: 100%;
-    max-width: 64rem;
+    max-width: 72rem;
     margin: 0 auto;
-    padding: 2rem 1rem;
+    padding: 3rem 2rem 4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
   }
 
-  /* 상단 도구 모음 (카테고리 + 글쓰기) */
+  .page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1.5rem;
+  }
+
+  .page-header-action {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .page-title {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .page-subtitle {
+    margin: 0.5rem 0 0 0;
+    color: #6b7280;
+    font-size: 0.95rem;
+    max-width: 36rem;
+  }
+
+  .category-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.875rem;
+    border-radius: 9999px;
+    background: linear-gradient(135deg, #dbeafe, #c7d2fe);
+    color: #1d4ed8;
+    font-weight: 600;
+    font-size: 0.875rem;
+    white-space: nowrap;
+  }
+
+  /* 상단 도구 모음 */
   .toolbar {
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     justify-content: space-between;
-    gap: 1rem;
-    padding-bottom: 0.75rem;
-    margin-bottom: 1.5rem;
-    border-bottom: 1px solid #e5e7eb;
+    gap: 1.5rem;
+    padding: 1rem 1.5rem;
+    background-color: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.75rem;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
   }
 
-  /* 글쓰기 버튼 */
-  .btn-create-post {
-    padding: 0.75rem 1.5rem;
-    background-color: #3b82f6;
-    color: #ffffff;
-    border: none;
-    border-radius: 0.375rem;
-    font-size: 0.95rem;
-    font-weight: 500;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: background-color 0.2s ease;
-    flex-shrink: 0;
+  .toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
   }
 
-  .btn-create-post:hover {
-    background-color: #2563eb;
-  }
-
-  /* 카테고리 탭 */
   .category-tabs {
     display: flex;
     gap: 0.5rem;
     overflow-x: auto;
-    flex: 1;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .category-tabs::-webkit-scrollbar {
+    display: none;
   }
 
   .tab {
-    padding: 0.75rem 1rem;
+    padding: 0.55rem 0.9rem;
+    border-radius: 9999px;
+    border: 1px solid transparent;
     background-color: transparent;
-    border: none;
-    color: #6b7280;
-    font-size: 0.95rem;
+    color: #4b5563;
+    font-size: 0.85rem;
     font-weight: 500;
     cursor: pointer;
-    white-space: nowrap;
     transition: all 0.2s ease;
+    white-space: nowrap;
   }
 
   .tab:hover {
@@ -392,96 +480,229 @@
   }
 
   .tab.active {
-    background-color: #1f2937;
+    background-color: #111827;
+    border-color: #111827;
     color: #ffffff;
-    border-radius: 0.25rem 0.25rem 0 0;
+    box-shadow: 0 8px 18px rgba(17, 24, 39, 0.2);
   }
 
-  /* 빈 상태 */
-  .empty-state {
-    background-color: #f9fafb;
-    border: 1px solid #e5e7eb;
-    border-radius: 0.5rem;
-    padding: 3rem;
-    text-align: center;
-  }
-
-  .empty-icon {
-    font-size: 2.5rem;
-    margin-bottom: 1rem;
-    display: block;
-  }
-
-  .empty-message {
-    margin: 0 0 0.5rem 0;
-    font-size: 1rem;
-    color: #111827;
-    font-weight: 600;
-  }
-
-  .empty-hint {
-    margin: 0;
+  /* 글쓰기 버튼 */
+  .btn-create-post {
+    padding: 0.65rem 1.25rem;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: #ffffff;
+    border: none;
+    border-radius: 0.75rem;
     font-size: 0.875rem;
-    color: #6b7280;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    flex-shrink: 0;
   }
 
-  /* 게시글 목록 */
-  .posts-list {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
+  .btn-create-post:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 24px rgba(37, 99, 235, 0.25);
+  }
+
+  .btn-create-post.ghost {
+    background: #ffffff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+    box-shadow: none;
+  }
+
+  .btn-create-post.ghost:hover {
+    background: #eff6ff;
+  }
+
+  /* 게시글 목록 배경 */
+  .post-list-surface {
+    background: transparent;
+    /* 테두리 제거 - 각 글 카드의 보더가 있으므로 불필요 */
+    border: none;
+    border-radius: 1rem;
+    padding: 0.75rem 0.75rem 1.5rem;
+    box-shadow: none;
   }
 
   .post-item {
-    background-color: #ffffff;
+    padding: 1.5rem 1.75rem;
+    border-radius: 0.85rem;
+    background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
     border: 1px solid #e5e7eb;
-    border-radius: 0.5rem;
-    padding: 1.5rem;
-    transition: box-shadow 0.2s ease, transform 0.2s ease;
-    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .post-item + .post-item {
+    /* 각 글 카드 사이의 여백 증가 */
+    margin-top: 1.25rem;
   }
 
   .post-item:hover {
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     transform: translateY(-2px);
+    box-shadow: 0 16px 28px rgba(17, 24, 39, 0.12);
+  }
+
+  .post-item-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .post-category-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #1d4ed8;
+    background-color: #eff6ff;
+  }
+
+  .post-number {
+    font-weight: 700;
+    color: #9ca3af;
+    font-size: 0.9rem;
   }
 
   .post-title {
-    margin: 0 0 1rem 0;
-    font-size: 1.125rem;
-    font-weight: 600;
-    color: #111827;
-  }
-
-  /* 게시글 번호 */
-  .post-number {
-    display: inline-block;
-    min-width: 2.5rem;
-    color: #3b82f6;
+    margin: 0;
+    font-size: 1.2rem;
     font-weight: 700;
-    font-size: 1rem;
+    color: #111827;
+    line-height: 1.5;
   }
 
   .post-content {
-    margin: 0 0 1rem 0;
-    font-size: 0.875rem;
-    color: #6b7280;
+    margin: 0;
+    font-size: 0.925rem;
+    color: #4b5563;
+    line-height: 1.7;
     display: -webkit-box;
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
 
   .post-meta {
     display: flex;
+    align-items: center;
+    justify-content: space-between;
     gap: 1rem;
-    font-size: 0.75rem;
-    color: #9ca3af;
+    font-size: 0.8rem;
+    color: #6b7280;
   }
 
-  .post-author,
+  .author-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .author-avatar {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 9999px;
+    background: #1d4ed8;
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+  }
+
   .post-date {
-    display: inline-block;
+    color: #9ca3af;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* 빈 상태 */
+  .empty-state {
+    padding: 4rem 2rem;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    align-items: center;
+    background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+    border-radius: 1rem;
+    border: 1px dashed #dbeafe;
+  }
+
+  .empty-illustration {
+    font-size: 3rem;
+  }
+
+  .empty-title {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #0f172a;
+  }
+
+  .empty-message {
+    margin: 0 0 1rem 0;
+    font-size: 0.95rem;
+    color: #475569;
+  }
+
+  /* 로딩 / 에러 */
+  .loading-state,
+  .loading-more,
+  .error-state,
+  .no-more {
+    padding: 2rem 1rem;
+    text-align: center;
+    color: #6b7280;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid #e5e7eb;
+    border-top-color: #3b82f6;
+    border-radius: 9999px;
+    animation: spin 0.8s linear infinite;
+  }
+
+  .spinner.small {
+    width: 20px;
+    height: 20px;
+    border-width: 2px;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .error-state {
+    flex-direction: row;
+    justify-content: center;
+    gap: 1rem;
+    background: #fef2f2;
+    border-radius: 0.75rem;
+    border: 1px solid #fecaca;
+    color: #b91c1c;
+  }
+
+  .error-icon {
+    font-size: 1.5rem;
   }
 
   /* 로딩 화면 */
@@ -655,32 +876,54 @@
   }
 
   /* 반응형 */
-  @media (max-width: 640px) {
+  @media (max-width: 768px) {
     .post-list-container {
-      padding: 1rem;
+      padding: 2rem 1rem 3rem;
     }
 
-    .header {
+    .page-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+
+    .category-chip {
+      font-size: 0.8rem;
+    }
+
+    .toolbar {
       flex-direction: column;
       align-items: stretch;
+      gap: 1rem;
     }
 
-    .btn-create-post {
+    .toolbar-left {
       width: 100%;
     }
 
-    .modal {
-      width: calc(100% - 2rem);
-      max-height: 85vh;
+    .btn-create-post {
+      justify-content: center;
+      width: 100%;
     }
 
-    .header-content h1 {
-      font-size: 1.5rem;
+    .post-item {
+      padding: 1.25rem 1.35rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .post-title {
+      font-size: 1.05rem;
     }
 
-    .category-tabs {
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
+    .post-content {
+      font-size: 0.85rem;
+    }
+
+    .post-meta {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.6rem;
     }
   }
 </style>
