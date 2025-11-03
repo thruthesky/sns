@@ -9,6 +9,7 @@
   import { auth } from '../lib/utils/firebase.js';
   import { createPost, listenToPosts } from '../lib/services/forum.js';
   import { FORUM_CATEGORIES } from '../lib/constants/forum.js';
+  import { setPageTitle } from '../lib/stores/pageTitle.js';
 
   // 인증 상태
   let userId = $state(null);
@@ -34,6 +35,9 @@
    * 페이지 로드 시 사용자 정보를 가져옵니다.
    */
   onMount(() => {
+    // 페이지 제목 설정
+    setPageTitle('게시판');
+
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
         userId = user.uid;
@@ -175,13 +179,8 @@
   </div>
 {:else}
   <div class="post-list-container">
-    <!-- 헤더 영역 -->
+    <!-- 헤더 영역 (글쓰기 버튼) -->
     <div class="header">
-      <div class="header-content">
-        <h1 class="page-title">게시판</h1>
-        <p class="page-subtitle">커뮤니티와 정보를 공유하세요</p>
-      </div>
-
       <!-- 게시글 작성 버튼 -->
       <button class="btn-create-post" onclick={handleCreatePost}>
         ✏️ 글쓰기
@@ -319,23 +318,9 @@
   /* 헤더 영역 */
   .header {
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
+    justify-content: flex-end;
+    align-items: center;
     margin-bottom: 1.5rem;
-    gap: 1rem;
-  }
-
-  .header-content h1 {
-    margin: 0 0 0.5rem 0;
-    font-size: 2rem;
-    font-weight: bold;
-    color: #111827;
-  }
-
-  .header-content p {
-    margin: 0;
-    font-size: 0.95rem;
-    color: #6b7280;
   }
 
   /* 글쓰기 버튼 */

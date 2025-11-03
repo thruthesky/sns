@@ -10,6 +10,8 @@
   import DatabaseListView from "../lib/components/DatabaseListView.svelte";
   import { t } from "../lib/stores/i18n.js";
   import { login } from "../lib/utils/firebase-login-user.svelte.js";
+  import { onMount } from "svelte";
+  import { setPageTitle } from "../lib/stores/pageTitle.js";
 
   /**
    * 날짜 포맷팅 함수
@@ -25,6 +27,14 @@
       day: "numeric",
     });
   }
+
+  /**
+   * 페이지 초기화
+   * 페이지 제목을 설정합니다.
+   */
+  onMount(() => {
+    setPageTitle($t("사용자찾기"));
+  });
 
   /**
    * 사용자 프로필로 이동
@@ -44,14 +54,6 @@
 
 <!-- 사용자 목록 페이지 -->
 <div class="user-list-page">
-  <!-- 페이지 헤더 -->
-  <div class="page-header">
-    <h1>{$t("사용자찾기")}</h1>
-    <p class="page-description">
-      등록된 사용자 목록을 확인하고 친구를 찾아보세요.
-    </p>
-  </div>
-
   <!-- 사용자 목록 (무한 스크롤) -->
   <!--
     임시로 nickname으로 정렬합니다.
@@ -82,9 +84,9 @@
         >
           <!-- 프로필 사진 -->
           <div class="user-avatar">
-            {#if itemData.data?.photoURL}
+            {#if itemData.data?.photoUrl || itemData.data?.photoURL}
               <img
-                src={itemData.data.photoURL}
+                src={itemData.data?.photoUrl ?? itemData.data?.photoURL}
                 alt={itemData.data?.displayName || "사용자"}
               />
             {:else}
@@ -184,26 +186,6 @@
     padding: 2rem 1rem;
     max-width: 800px;
     margin: 0 auto;
-  }
-
-  /* ============================================================================
-     페이지 헤더
-     ============================================================================ */
-  .page-header {
-    margin-bottom: 2rem;
-  }
-
-  .page-header h1 {
-    font-size: 1.875rem;
-    font-weight: bold;
-    color: #111827;
-    margin: 0 0 0.5rem 0;
-  }
-
-  .page-description {
-    color: #6b7280;
-    font-size: 0.875rem;
-    margin: 0;
   }
 
   /* ============================================================================

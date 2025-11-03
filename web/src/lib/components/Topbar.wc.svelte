@@ -15,6 +15,7 @@
   import { user, signOut } from '../stores/auth.js';
   import { login } from '../utils/firebase-login-user.svelte.js';
   import { t } from '../stores/i18n.js';
+  import { pageTitle } from '../stores/pageTitle.js';
   import { onMount } from 'svelte';
 
   // 반응형 상태
@@ -128,6 +129,13 @@
         {/each}
       </div>
     </a>
+
+    <!-- 중앙: 페이지 제목 -->
+    {#if $pageTitle}
+      <div class="page-title-container">
+        <h1 class="page-title">{$pageTitle}</h1>
+      </div>
+    {/if}
 
     <!-- 오른쪽: 네비게이션 -->
     <nav class="nav">
@@ -298,7 +306,6 @@
     display: flex;
     height: 4rem;
     align-items: center;
-    justify-content: space-between;
     padding: 0 1rem;
   }
 
@@ -309,6 +316,7 @@
     gap: 0.5rem;
     text-decoration: none;
     color: inherit;
+    flex-shrink: 0;
   }
 
   .logo {
@@ -356,11 +364,29 @@
     transition-delay: 0.15s;
   }
 
+  /* 페이지 제목 컨테이너 */
+  .page-title-container {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  /* 페이지 제목 */
+  .page-title {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #1f2937;
+  }
+
   /* 네비게이션 */
   .nav {
     display: flex;
     align-items: center;
     gap: 0.25rem;
+    flex-shrink: 0;
+    margin-left: auto;
   }
 
   /* 데스크톱 메뉴 */

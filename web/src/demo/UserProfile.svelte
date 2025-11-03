@@ -16,6 +16,7 @@
   import { login } from '../lib/utils/firebase-login-user.svelte.js';
   import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
   import { storage } from '../lib/utils/firebase.js';
+  import { onDestroy } from 'svelte';
 
   // ============================================================================
   // 반응형 상태 관리
@@ -29,7 +30,7 @@
     displayName: '',
     gender: '', // 'male', 'female', 'other', ''
     dateOfBirth: '', // YYYY-MM-DD 형식
-    photoURL: ''
+    photoUrl: ''
   });
 
   /**
@@ -49,6 +50,11 @@
    * @type {boolean}
    */
   let isSaving = $state(false);
+  /**
+   * 사진 업로드/삭제 중 상태
+   * @type {boolean}
+   */
+  let isPhotoUpdating = $state(false);
 
   /**
    * 성공 메시지
@@ -62,6 +68,43 @@
    */
   let errorMessage = $state(null);
 
+  /**
+   * 메시지 타이머
+   */
+  let successTimer = null;
+  let errorTimer = null;
+
+  function showSuccessMessage(message) {
+    successMessage = message;
+    if (successTimer) {
+      clearTimeout(successTimer);
+    }
+    successTimer = setTimeout(() => {
+      successMessage = null;
+      successTimer = null;
+    }, 3000);
+  }
+
+  function showErrorMessage(message) {
+    errorMessage = message;
+    if (errorTimer) {
+      clearTimeout(errorTimer);
+    }
+    errorTimer = setTimeout(() => {
+      errorMessage = null;
+      errorTimer = null;
+    }, 5000);
+  }
+
+  onDestroy(() => {
+    if (successTimer) {
+      clearTimeout(successTimer);
+    }
+    if (errorTimer) {
+      clearTimeout(errorTimer);
+    }
+  });
+
   // ============================================================================
   // 초기화 효과
   // ============================================================================
@@ -74,8 +117,9 @@
       formData.displayName = login.data.displayName || '';
       formData.gender = login.data.gender || '';
       formData.dateOfBirth = login.data.dateOfBirth || '';
-      formData.photoURL = login.data.photoURL || '';
-      photoPreview = login.data.photoURL || null;
+      const initialPhoto = login.data.photoUrl ?? login.data.photoURL ?? '';
+      formData.photoUrl = initialPhoto;
+      photoPreview = initialPhoto || null;
     }
   });
 
@@ -87,6 +131,7 @@
    * 파일 선택 창 열기
    */
   function handlePhotoButtonClick() {
+    if (isPhotoUpdating) return;
     fileInput?.click();
   }
 
@@ -96,23 +141,34 @@
    * 선택한 이미지 파일을 미리보기로 표시합니다.
    * @param {Event} event - 파일 입력 이벤트
    */
-  function handlePhotoChange(event) {
+  async function handlePhotoChange(event) {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    if (isPhotoUpdating) {
+      showErrorMessage('다른 사진 작업이 진행 중입니다. 잠시 후 다시 시도해주세요.');
+      return;
+    }
+
+    if (!login.isAuthenticated || !login.uid) {
+      showErrorMessage('로그인 후 이용해주세요.');
+      return;
+    }
+
     // 파일 타입 확인
     if (!file.type.startsWith('image/')) {
-      errorMessage = '이미지 파일만 선택 가능합니다.';
-      setTimeout(() => { errorMessage = null; }, 5000);
+      showErrorMessage('이미지 파일만 선택 가능합니다.');
       return;
     }
 
     // 파일 크기 확인 (5MB 제한)
     if (file.size > 5 * 1024 * 1024) {
-      errorMessage = '파일 크기는 5MB 이하여야 합니다.';
-      setTimeout(() => { errorMessage = null; }, 5000);
+      showErrorMessage('파일 크기는 5MB 이하여야 합니다.');
       return;
     }
+
+    const previousPreview = photoPreview;
+    const previousPhotoUrl = formData.photoUrl;
 
     // 미리보기 생성
     const reader = new FileReader();
@@ -120,16 +176,95 @@
       photoPreview = e.target?.result;
     };
     reader.readAsDataURL(file);
+
+    try {
+      await uploadAndSavePhoto(file);
+    } catch (error) {
+      // 실패 시 이전 상태로 복구
+      photoPreview = previousPreview;
+      formData.photoUrl = previousPhotoUrl;
+      if (fileInput) {
+        fileInput.value = '';
+      }
+    }
   }
 
   /**
    * 프로필 사진 제거
    */
-  function handleRemovePhoto() {
+  async function handleRemovePhoto() {
+    if (isPhotoUpdating) return;
+
+    if (!login.isAuthenticated || !login.uid) {
+      showErrorMessage('로그인 후 이용해주세요.');
+      return;
+    }
+
+    const previousPreview = photoPreview;
+    const previousPhotoUrl = formData.photoUrl;
+
     photoPreview = null;
-    formData.photoURL = '';
+    formData.photoUrl = '';
     if (fileInput) {
       fileInput.value = '';
+    }
+
+    try {
+      isPhotoUpdating = true;
+      await login.updateProfile({ photoUrl: null });
+      showSuccessMessage('프로필 사진이 제거되었습니다.');
+    } catch (error) {
+      console.error('프로필 사진 제거 오류:', error);
+      showErrorMessage(`사진 제거 실패: ${error.message || '알 수 없는 오류가 발생했습니다.'}`);
+      photoPreview = previousPreview;
+      formData.photoUrl = previousPhotoUrl;
+    } finally {
+      isPhotoUpdating = false;
+    }
+  }
+
+  /**
+   * Firebase Storage 업로드 및 DB 저장
+   * @param {File} file - 업로드할 파일
+   * @param {Object} options
+   * @param {boolean} [options.showSuccess=true] - 성공 메시지 출력 여부
+   * @returns {Promise<string>} 다운로드 URL
+   */
+  async function uploadAndSavePhoto(file, { showSuccess = true } = {}) {
+    if (!login.isAuthenticated || !login.uid) {
+      showErrorMessage('로그인 후 이용해주세요.');
+      throw new Error('User is not authenticated');
+    }
+
+    try {
+      isPhotoUpdating = true;
+
+      const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const fileName = `profile_${login.uid}_${Date.now()}.${extension}`;
+      const photoStorageRef = storageRef(storage, `users/${login.uid}/profile/${fileName}`);
+
+      const snapshot = await uploadBytes(photoStorageRef, file);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+
+      formData.photoUrl = downloadURL;
+      photoPreview = downloadURL;
+
+      await login.updateProfile({ photoUrl: downloadURL });
+
+      if (showSuccess) {
+        showSuccessMessage('프로필 사진이 저장되었습니다.');
+      }
+
+      return downloadURL;
+    } catch (error) {
+      console.error('프로필 사진 업로드 오류:', error);
+      showErrorMessage(`사진 저장 실패: ${error.message || '알 수 없는 오류가 발생했습니다.'}`);
+      throw error;
+    } finally {
+      isPhotoUpdating = false;
+      if (fileInput) {
+        fileInput.value = '';
+      }
     }
   }
 
@@ -147,19 +282,17 @@
 
     try {
       // 1. 프로필 사진 업로드 (변경된 경우)
-      let photoURL = formData.photoURL;
+      let photoUrl = formData.photoUrl;
       const file = fileInput?.files?.[0];
 
       if (file) {
-        // 새 파일이 선택된 경우 Firebase Storage에 업로드
-        const fileName = `profile_${login.uid}_${Date.now()}.${file.name.split('.').pop()}`;
-        const photoStorageRef = storageRef(storage, `users/${login.uid}/profile/${fileName}`);
-
-        // 파일 업로드
-        const snapshot = await uploadBytes(photoStorageRef, file);
-        photoURL = await getDownloadURL(snapshot.ref);
-
-        console.log('프로필 사진 업로드 완료:', photoURL);
+        try {
+          photoUrl = await uploadAndSavePhoto(file, { showSuccess: false });
+        } catch (error) {
+          // 업로드 실패 시 폼 저장 중단
+          isSaving = false;
+          return;
+        }
       }
 
       // 2. 데이터베이스에 모든 정보 저장
@@ -167,20 +300,17 @@
         displayName: formData.displayName,
         gender: formData.gender,
         dateOfBirth: formData.dateOfBirth,
-        photoURL: photoURL || null
+        photoUrl: photoUrl || null
       };
 
       // Firebase Auth 및 Realtime Database 업데이트
       await login.updateProfile(updateData);
 
-      successMessage = '프로필이 성공적으로 업데이트되었습니다!';
+      showSuccessMessage('프로필이 성공적으로 업데이트되었습니다!');
       console.log('프로필 업데이트 완료:', updateData);
-
-      // 3초 후 메시지 초기화
-      setTimeout(() => { successMessage = null; }, 3000);
     } catch (error) {
       console.error('프로필 업데이트 오류:', error);
-      errorMessage = `오류: ${error.message || '알 수 없는 오류가 발생했습니다'}`;
+      showErrorMessage(`오류: ${error.message || '알 수 없는 오류가 발생했습니다.'}`);
     } finally {
       isSaving = false;
     }
@@ -243,7 +373,7 @@
           type="button"
           class="btn-primary"
           onclick={handlePhotoButtonClick}
-          disabled={isSaving}
+          disabled={isSaving || isPhotoUpdating}
         >
           📤 {photoPreview ? '사진 변경' : '사진 선택'}
         </button>
@@ -252,12 +382,16 @@
             type="button"
             class="btn-secondary"
             onclick={handleRemovePhoto}
-            disabled={isSaving}
+            disabled={isSaving || isPhotoUpdating}
           >
             🗑️ 사진 제거
           </button>
         {/if}
       </div>
+
+      {#if isPhotoUpdating}
+        <p class="upload-status">사진을 저장하는 중입니다...</p>
+      {/if}
     </div>
 
     <!-- ========================================================================
@@ -333,7 +467,7 @@
       <button
         type="submit"
         class="btn-primary btn-large"
-        disabled={isSaving || !login.isAuthenticated}
+        disabled={isSaving || isPhotoUpdating || !login.isAuthenticated}
       >
         {isSaving ? '저장 중...' : '저장'}
       </button>
@@ -457,6 +591,12 @@
     display: flex;
     gap: 1rem;
     flex-wrap: wrap;
+  }
+
+  .upload-status {
+    margin-top: 0.75rem;
+    color: #2563eb;
+    font-size: 0.875rem;
   }
 
   /* ============================================================================
