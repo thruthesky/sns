@@ -194,8 +194,10 @@
       {#snippet item(itemData, index)}
         <!-- 개별 게시글 아이템 -->
         <div class="post-item">
-          <!-- 게시글 제목 -->
-          <h3 class="post-title">{itemData.data.title}</h3>
+          <!-- 게시글 제목 (번호 포함) -->
+          <h3 class="post-title">
+            <span class="post-number">{index + 1}.</span> {itemData.data.title}
+          </h3>
 
           <!-- 게시글 내용 미리보기 -->
           <p class="post-content">{itemData.data.content}</p>
@@ -426,6 +428,15 @@
     font-size: 1.125rem;
     font-weight: 600;
     color: #111827;
+  }
+
+  /* 게시글 번호 */
+  .post-number {
+    display: inline-block;
+    min-width: 2.5rem;
+    color: #3b82f6;
+    font-weight: 700;
+    font-size: 1rem;
   }
 
   .post-content {
