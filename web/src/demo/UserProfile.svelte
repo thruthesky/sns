@@ -148,12 +148,11 @@
    * 프로필 사진 파일 선택 처리
    *
    * 선택한 이미지 파일을 미리보기로 표시합니다.
-   * @param {Event} event - 파일 입력 이벤트
+   * @param {Event & { currentTarget: HTMLInputElement; target: HTMLInputElement }} event - 파일 입력 이벤트
    */
   async function handlePhotoChange(event) {
-    /** @type {HTMLInputElement} */
-    const target = event.target;
-    const file = target.files?.[0];
+    const input = event.currentTarget;
+    const file = input?.files?.[0];
     if (!file) return;
 
     if (isPhotoUpdating) {

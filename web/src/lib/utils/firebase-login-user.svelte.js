@@ -206,11 +206,11 @@ class FirebaseLoginUser {
      * 사용자 프로필 업데이트
      *
      * Firebase Auth와 Realtime Database 모두 업데이트합니다.
-     * 업데이트 가능한 필드: displayName, photoURL 등
+     * 업데이트 가능한 필드: displayName, photoUrl 등
      *
      * @param {Object} profileData - 업데이트할 프로필 데이터
      * @param {string} [profileData.displayName] - 표시 이름
-     * @param {string} [profileData.photoURL] - 프로필 사진 URL
+     * @param {string} [profileData.photoUrl] - 프로필 사진 URL
      * @returns {Promise<void>}
      * @throws {Error} 사용자가 로그인하지 않았거나 업데이트에 실패한 경우
      *
@@ -218,10 +218,10 @@ class FirebaseLoginUser {
      * // displayName 업데이트
      * await firebaseLoginUser.updateProfile({ displayName: '홍길동' });
      *
-     * // displayName과 photoURL 동시 업데이트
+     * // displayName과 photoUrl 동시 업데이트
      * await firebaseLoginUser.updateProfile({
      *   displayName: '홍길동',
-     *   photoURL: 'https://example.com/photo.jpg'
+     *   photoUrl: 'https://example.com/photo.jpg'
      * });
      */
     async updateProfile(profileData) {
@@ -236,9 +236,9 @@ class FirebaseLoginUser {
                 authUpdateData.displayName = profileData.displayName;
             }
             if (profileData.photoUrl !== undefined) {
-                authUpdateData.photoURL = profileData.photoUrl;
-            } else if (profileData.photoURL !== undefined) {
-                authUpdateData.photoURL = profileData.photoURL;
+                authUpdateData.photoUrl = profileData.photoUrl;
+            } else if (profileData.photoUrl !== undefined) {
+                authUpdateData.photoUrl = profileData.photoUrl;
             }
 
             if (Object.keys(authUpdateData).length > 0) {
@@ -248,11 +248,11 @@ class FirebaseLoginUser {
 
             // 2. Realtime Database 업데이트
             const dbUpdateData = { ...profileData };
-            if (dbUpdateData.photoURL !== undefined) {
+            if (dbUpdateData.photoUrl !== undefined) {
                 if (dbUpdateData.photoUrl === undefined) {
-                    dbUpdateData.photoUrl = dbUpdateData.photoURL;
+                    dbUpdateData.photoUrl = dbUpdateData.photoUrl;
                 }
-                delete dbUpdateData.photoURL;
+                delete dbUpdateData.photoUrl;
             }
 
             const userRef = dbRef(database, `users/${this.uid}`);
@@ -293,16 +293,16 @@ class FirebaseLoginUser {
     }
 
     /**
-     * photoURL 업데이트 (단축 메서드)
+     * photoUrl 업데이트 (단축 메서드)
      *
-     * @param {string} photoURL - 프로필 사진 URL
+     * @param {string} photoUrl - 프로필 사진 URL
      * @returns {Promise<void>}
      *
      * @example
-     * await firebaseLoginUser.updatePhotoURL('https://example.com/photo.jpg');
+     * await firebaseLoginUser.updatePhotoUrl('https://example.com/photo.jpg');
      */
-    async updatePhotoURL(photoURL) {
-        return this.updateProfile({ photoUrl: photoURL });
+    async updatePhotoUrl(photoUrl) {
+        return this.updateProfile({ photoUrl: photoUrl });
     }
 
     /**
