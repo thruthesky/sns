@@ -5,17 +5,16 @@
  * 게시글 생성, 조회, 수정, 삭제 기능을 구현합니다.
  *
  * 데이터 구조:
- * /forum/
+ * /posts/
  *   {category}/
- *     posts/
- *       {postId}/
- *         uid: "사용자 UID"
- *         title: "게시글 제목"
- *         content: "게시글 내용"
- *         author: "작성자 displayName"
- *         category: "카테고리"
- *         createdAt: 1234567890 (Unix timestamp 밀리초)
- *         updatedAt: 1234567890 (Unix timestamp 밀리초)
+ *     {postId}/
+ *       uid: "사용자 UID"
+ *       title: "게시글 제목"
+ *       content: "게시글 내용"
+ *       author: "작성자 displayName"
+ *       category: "카테고리"
+ *       createdAt: 1234567890 (Unix timestamp 밀리초)
+ *       updatedAt: 1234567890 (Unix timestamp 밀리초)
  *
  * 사용 예시:
  * import { createPost, listenToPosts } from '$lib/services/forum.js';
@@ -46,7 +45,7 @@ import { ref, push, set, update, remove, query, orderByChild, limitToLast, onVal
  * @returns {Promise<{success: boolean, postId?: string, error?: string}>}
  *
  * 기능:
- * - 새 게시글을 `/forum/{category}/posts/` 경로에 저장
+ * - 새 게시글을 `/posts/{category}/` 경로에 저장
  * - 자동으로 postId 생성 (Firebase push key)
  * - createdAt, updatedAt 자동 설정 (현재 시간)
  *
@@ -79,8 +78,8 @@ export async function createPost(category, uid, author, title, content) {
       updatedAt: now
     };
 
-    // Firebase 경로: /forum/{category}/posts/
-    const postsRef = ref(database, `forum/${category}/posts`);
+    // Firebase 경로: /posts/{category}/
+    const postsRef = ref(database, `posts/${category}`);
 
     // push() - Firebase가 자동으로 고유한 key 생성
     const newPostRef = await push(postsRef, postData);
@@ -134,8 +133,8 @@ export async function createPost(category, uid, author, title, content) {
  */
 export function listenToPosts(category, limit = 10, callback) {
   try {
-    // Firebase 경로: /forum/{category}/posts
-    const postsRef = ref(database, `forum/${category}/posts`);
+    // Firebase 경로: /posts/{category}
+    const postsRef = ref(database, `posts/${category}`);
 
     // 쿼리 생성: createdAt 기준 내림차순, 최신 N개만
     const postsQuery = query(
@@ -212,8 +211,8 @@ export async function updatePost(category, postId, updates) {
       updatedAt: Date.now()
     };
 
-    // Firebase 경로: /forum/{category}/posts/{postId}
-    const postRef = ref(database, `forum/${category}/posts/${postId}`);
+    // Firebase 경로: /posts/{category}/{postId}
+    const postRef = ref(database, `posts/${category}/${postId}`);
 
     // update() - 특정 필드만 수정
     await update(postRef, updateData);
@@ -253,8 +252,8 @@ export async function updatePost(category, postId, updates) {
  */
 export async function deletePost(category, postId) {
   try {
-    // Firebase 경로: /forum/{category}/posts/{postId}
-    const postRef = ref(database, `forum/${category}/posts/${postId}`);
+    // Firebase 경로: /posts/{category}/{postId}
+    const postRef = ref(database, `posts/${category}/${postId}`);
 
     // remove() - 데이터 삭제
     await remove(postRef);

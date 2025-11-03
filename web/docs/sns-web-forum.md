@@ -52,27 +52,26 @@
 
 ### 게시판 데이터 구조
 
-게시판 데이터는 `/forum/` 경로 아래에 저장됩니다.
+게시판 데이터는 `/posts/` 경로 아래에 저장됩니다.
 
 ```
-/forum/
+/posts/
   {category}/              # 카테고리 (community, qna, news, market)
-    posts/
-      {postId}/            # Firebase 자동 생성 ID
-        uid: "사용자 UID"
-        title: "게시글 제목"
-        content: "게시글 내용"
-        author: "작성자 displayName"
-        category: "카테고리"
-        createdAt: 1234567890  # Unix timestamp (밀리초)
-        updatedAt: 1234567890  # Unix timestamp (밀리초)
+    {postId}/            # Firebase 자동 생성 ID
+      uid: "사용자 UID"
+      title: "게시글 제목"
+      content: "게시글 내용"
+      author: "작성자 displayName"
+      category: "카테고리"
+      createdAt: 1234567890  # Unix timestamp (밀리초)
+      updatedAt: 1234567890  # Unix timestamp (밀리초)
 ```
 
 **예시 경로:**
 ```
-/forum/community/posts/abc123def456/
-/forum/qna/posts/xyz789uvw012/
-/forum/news/posts/mno345pqr678/
+/posts/community/abc123def456/
+/posts/qna/xyz789uvw012/
+/posts/news/mno345pqr678/
 ```
 
 ---
@@ -169,7 +168,7 @@ export async function createPost(category, uid, author, title, content) {
 ```
 
 **기능:**
-- 새 게시글을 `/forum/{category}/posts/` 경로에 저장
+- 새 게시글을 `/posts/{category}/` 경로에 저장
 - 자동으로 postId 생성 (Firebase push key)
 - createdAt, updatedAt 자동 설정 (현재 시간)
 
@@ -781,12 +780,12 @@ Svelte 5의 Runes를 사용하여 반응형 상태를 관리합니다.
 ### 4. 댓글 기능
 - 게시글에 댓글 작성, 수정, 삭제
 - 실시간 댓글 동기화
-- 데이터 구조: `/forum/{category}/posts/{postId}/comments/`
+- 데이터 구조: `/posts/{category}/{postId}/comments/`
 
 ### 5. 좋아요/싫어요 기능
 - 게시글에 좋아요/싫어요 추가
 - 중복 방지 (한 사용자당 한 번만)
-- 데이터 구조: `/forum/{category}/posts/{postId}/likes/`
+- 데이터 구조: `/posts/{category}/{postId}/likes/`
 
 ### 6. 검색 및 필터링
 - 제목, 내용, 작성자로 검색

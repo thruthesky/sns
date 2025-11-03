@@ -127,17 +127,16 @@ Firebase Realtime Database의 보안 규칙은 JSON 형식으로 작성되며, �
 **경로 구조:**
 
 ```
-/forum/
+/posts/
   {category}/
-    posts/
-      {postId}/
-        uid: 작성자 UID
-        title: 게시글 제목
-        content: 게시글 내용
-        author: 작성자 이름
-        category: 카테고리
-        createdAt: 작성 시간
-        updatedAt: 수정 시간
+    {postId}/
+      uid: 작성자 UID
+      title: 게시글 제목
+      content: 게시글 내용
+      author: 작성자 이름
+      category: 카테고리
+      createdAt: 작성 시간
+      updatedAt: 수정 시간
 ```
 
 **보안 규칙:**
@@ -145,54 +144,52 @@ Firebase Realtime Database의 보안 규칙은 JSON 형식으로 작성되며, �
 ```json
 {
   "rules": {
-    "forum": {
+    "posts": {
       // 게시판 읽기: 인증된 사용자만
       ".read": "auth != null",
 
       "{category}": {
-        "posts": {
-          // 게시글 목록 읽기
+        // 게시글 목록 읽기
+        ".read": "auth != null",
+
+        "{postId}": {
+          // 게시글 데이터 읽기
           ".read": "auth != null",
 
-          "{postId}": {
-            // 게시글 데이터 읽기
-            ".read": "auth != null",
-
-            // 게시글 쓰기: 작성자만 가능
-            ".write": "root.child('forum').child(data.child('category').val()).child('posts').child($postId).child('uid').val() === auth.uid || !data.exists()",
+          // 게시글 쓰기: 작성자만 가능
+          ".write": "root.child('posts').child(data.child('category').val()).child($postId).child('uid').val() === auth.uid || !data.exists()",
 
             // 게시글 필드별 유효성 검사
-            ".validate": "newData.hasChildren(['uid', 'title', 'content', 'author', 'category', 'createdAt', 'updatedAt'])",
+          ".validate": "newData.hasChildren(['uid', 'title', 'content', 'author', 'category', 'createdAt', 'updatedAt'])",
 
-            // 제목 필드: 1-500자
-            "title": {
-              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 500"
-            },
+          // 제목 필드: 1-500자
+          "title": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 500"
+          },
 
-            // 내용 필드: 1-50000자
-            "content": {
-              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 50000"
-            },
+          // 내용 필드: 1-50000자
+          "content": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 50000"
+          },
 
-            // 작성자 필드: 1-100자
-            "author": {
-              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100"
-            },
+          // 작성자 필드: 1-100자
+          "author": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100"
+          },
 
-            // UID 필드: 읽기만 가능, 변경 불가
-            "uid": {
-              ".validate": "newData.val() === auth.uid && newData.isString()"
-            },
+          // UID 필드: 읽기만 가능, 변경 불가
+          "uid": {
+            ".validate": "newData.val() === auth.uid && newData.isString()"
+          },
 
-            // createdAt 필드: 처음 생성 시만 설정, 이후 변경 불가
-            "createdAt": {
-              ".validate": "newData.isNumber() && newData.val() > 0 && (!data.exists() || data.val() === newData.val())"
-            },
+          // createdAt 필드: 처음 생성 시만 설정, 이후 변경 불가
+          "createdAt": {
+            ".validate": "newData.isNumber() && newData.val() > 0 && (!data.exists() || data.val() === newData.val())"
+          },
 
-            // updatedAt 필드: 수정할 때마다 갱신
-            "updatedAt": {
-              ".validate": "newData.isNumber() && newData.val() > 0"
-            }
+          // updatedAt 필드: 수정할 때마다 갱신
+          "updatedAt": {
+            ".validate": "newData.isNumber() && newData.val() > 0"
           }
         }
       }
@@ -406,7 +403,7 @@ firebase database:get / --pretty
   "auth": null,
   "request": {
     "method": "get",
-    "path": "/forum/community/posts/post-123"
+    "path": "/posts/community/post-123"
   }
 }
 // 결과: ❌ 접근 거부
@@ -418,7 +415,7 @@ firebase database:get / --pretty
   },
   "request": {
     "method": "get",
-    "path": "/forum/community/posts/post-456"
+    "path": "/posts/community/post-456"
   }
 }
 // 결과: ✅ 접근 허용
@@ -430,7 +427,7 @@ firebase database:get / --pretty
   },
   "request": {
     "method": "put",
-    "path": "/forum/community/posts/post-789",
+    "path": "/posts/community/post-789",
     "data": {
       "uid": "user-123",
       "title": "수정된 제목",
@@ -447,7 +444,7 @@ firebase database:get / --pretty
   },
   "request": {
     "method": "put",
-    "path": "/forum/community/posts/post-abc",
+    "path": "/posts/community/post-abc",
     "data": {
       "uid": "user-456",
       "title": "타인의 게시글 수정 시도",
@@ -505,7 +502,7 @@ export function listenToPosts(category, limit = 10, callback) {
   lastRequestTime[key] = now;
 
   // 실제 요청
-  const postsRef = ref(database, `forum/${category}/posts`);
+  const postsRef = ref(database, `posts/${category}`);
   const postsQuery = query(
     postsRef,
     orderByChild('createdAt'),
@@ -538,15 +535,15 @@ export function listenToPosts(category, limit = 10, callback) {
 
 **나쁜 예 (깊은 중첩):**
 ```
-/forum/community/posts/post-123/comments/comment-456/replies/reply-789
+/posts/community/post-123/comments/comment-456/replies/reply-789
 ```
 → 각 레벨마다 데이터 읽기 비용 발생
 
 **좋은 예 (얕은 구조):**
 ```
-/forum/community/posts/post-123
-/forum/community/comments/comment-456
-/forum/community/replies/reply-789
+/posts/community/post-123
+/posts/community/comments/comment-456
+/posts/community/replies/reply-789
 ```
 → 필요한 데이터만 읽기
 
@@ -563,7 +560,7 @@ admin.initializeApp();
 
 // 게시글 생성 트리거
 export const onPostCreate = functions.database
-  .ref("forum/{category}/posts/{postId}")
+  .ref("posts/{category}/{postId}")
   .onCreate(async (snapshot, context) => {
     const { category } = context.params;
     const postData = snapshot.val();
