@@ -43,7 +43,7 @@
       </a>
 
       <!-- 사용자 목록 -->
-      <a href="/users" class="menu-item">
+      <a href="/user/list" class="menu-item">
         <Users size={20} />
         <span>{$t('사용자목록')}</span>
       </a>
@@ -94,7 +94,7 @@
     <!-- 링크 섹션 -->
     <div class="menu">
       <!-- 회원 목록 -->
-      <a href="/users" class="menu-item-small">
+      <a href="/user/list" class="menu-item-small">
         <Users size={16} />
         <span>{$t('회원목록')}</span>
       </a>

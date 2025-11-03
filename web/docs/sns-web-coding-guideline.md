@@ -91,15 +91,15 @@ const user = rtdb('users/123');
 
 ---
 
-# Firebase 로그인 사용자 관리 (firebaseLoginUser)
+# Firebase 로그인 사용자 관리 (login)
 
-`firebaseLoginUser`는 현재 로그인한 사용자의 정보를 반응형으로 관리하는 Singleton 인스턴스입니다.
+`login`은 현재 로그인한 사용자의 정보를 반응형으로 관리하는 Singleton 인스턴스입니다.
 Firebase Auth와 Realtime Database를 자동으로 연동하여 사용자 정보를 실시간으로 동기화합니다.
 
 ## 1. Singleton 패턴
 
 ```javascript
-import { firebaseLoginUser } from '$lib/utils/firebase-login-user.svelte.js';
+import { login } from '$lib/utils/firebase-login-user.svelte.js';
 
 // 애플리케이션 전체에서 동일한 인스턴스 사용
 // 어디서든 import하면 같은 객체를 참조합니다
@@ -107,7 +107,7 @@ import { firebaseLoginUser } from '$lib/utils/firebase-login-user.svelte.js';
 
 ## 2. 반응형 상태와 Static 속성
 
-`firebaseLoginUser`는 다음과 같은 속성들을 제공합니다:
+`login` 인스턴스는 다음과 같은 속성들을 제공합니다:
 
 ### 반응형 속성 (Reactive - $state)
 
@@ -128,7 +128,7 @@ import { firebaseLoginUser } from '$lib/utils/firebase-login-user.svelte.js';
 
 ## 3. onValue() 함수 활용
 
-`firebaseLoginUser`는 내부적으로 Firebase의 `onValue()` 함수를 사용하여 실시간 데이터베이스와 연동합니다:
+`login` 인스턴스는 내부적으로 Firebase의 `onValue()` 함수를 사용하여 실시간 데이터베이스와 연동합니다:
 
 - **자동 경로 설정**: 로그인 시 `onValue(dbRef(database, 'users/<uid>'), ...)` 자동 구독
 - **실시간 동기화**: Firebase 데이터 변경 시 `data` 속성 자동 업데이트
@@ -140,19 +140,19 @@ Firebase Auth와 Realtime Database를 **동시에 업데이트**합니다:
 
 ```javascript
 // 전체 프로필 업데이트
-await firebaseLoginUser.updateProfile({
+await login.updateProfile({
   displayName: '홍길동',
   photoURL: 'https://example.com/photo.jpg'
 });
 
 // 이름만 업데이트 (단축 메서드)
-await firebaseLoginUser.updateDisplayName('홍길동');
+await login.updateDisplayName('홍길동');
 
 // 사진만 업데이트 (단축 메서드)
-await firebaseLoginUser.updatePhotoURL('https://example.com/photo.jpg');
+await login.updatePhotoURL('https://example.com/photo.jpg');
 
 // 특정 필드 업데이트
-await firebaseLoginUser.updateField('bio', '안녕하세요');
+await login.updateField('bio', '안녕하세요');
 ```
 
 ## 5. 사용 예시
@@ -161,21 +161,21 @@ await firebaseLoginUser.updateField('bio', '안녕하세요');
 
 ```svelte
 <script>
-  import { firebaseLoginUser } from '$lib/utils/firebase-login-user.svelte.js';
+  import { login } from '$lib/utils/firebase-login-user.svelte.js';
 </script>
 
 <!-- 로딩 상태 -->
-{#if firebaseLoginUser.loading}
+{#if login.loading}
   <p>⏳ 로딩 중...</p>
 
 <!-- 로그인 상태 -->
-{:else if firebaseLoginUser.isAuthenticated}
+{:else if login.isAuthenticated}
   <div class="user-info">
     <h2>환영합니다!</h2>
-    <p>이름: {firebaseLoginUser.data?.displayName}</p>
-    <p>UID: {firebaseLoginUser.uid}</p>
-    <p>Email: {firebaseLoginUser.email}</p>
-    <p>전화번호: {firebaseLoginUser.phoneNumber}</p>
+    <p>이름: {login.data?.displayName}</p>
+    <p>UID: {login.uid}</p>
+    <p>Email: {login.email}</p>
+    <p>전화번호: {login.phoneNumber}</p>
   </div>
 
 <!-- 로그아웃 상태 -->
@@ -189,7 +189,7 @@ await firebaseLoginUser.updateField('bio', '안녕하세요');
 
 ```svelte
 <script>
-  import { firebaseLoginUser } from '$lib/utils/firebase-login-user.svelte.js';
+  import { login } from '$lib/utils/firebase-login-user.svelte.js';
 
   let displayName = $state('');
   let updating = $state(false);
@@ -197,7 +197,7 @@ await firebaseLoginUser.updateField('bio', '안녕하세요');
   async function handleUpdate() {
     updating = true;
     try {
-      await firebaseLoginUser.updateDisplayName(displayName);
+      await login.updateDisplayName(displayName);
       alert('프로필이 업데이트되었습니다!');
     } catch (error) {
       alert('업데이트 실패: ' + error.message);
@@ -207,14 +207,14 @@ await firebaseLoginUser.updateField('bio', '안녕하세요');
   }
 </script>
 
-{#if firebaseLoginUser.isAuthenticated}
+{#if login.isAuthenticated}
   <form onsubmit={handleUpdate}>
     <label>
       이름:
       <input
         type="text"
         bind:value={displayName}
-        placeholder={firebaseLoginUser.data?.displayName}
+        placeholder={login.data?.displayName}
       />
     </label>
     <button type="submit" disabled={updating}>
@@ -228,19 +228,19 @@ await firebaseLoginUser.updateField('bio', '안녕하세요');
 
 ```javascript
 // 페이지 로드 시 인증 상태 확인 (loading이 false가 될 때까지 대기)
-// firebaseLoginUser는 자동으로 초기화되므로, loading 상태를 확인하면 됩니다
+// login 인스턴스는 자동으로 초기화되므로, loading 상태를 확인하면 됩니다
 
 // 방법 1: 템플릿에서 loading 체크
-{#if firebaseLoginUser.loading}
+{#if login.loading}
   <p>로딩 중...</p>
-{:else if firebaseLoginUser.isAuthenticated}
-  <p>UID: {firebaseLoginUser.uid}</p>
+{:else if login.isAuthenticated}
+  <p>UID: {login.uid}</p>
 {/if}
 
 // 방법 2: 스크립트에서 사용 (즉시 실행)
-if (firebaseLoginUser.isAuthenticated) {
+if (login.isAuthenticated) {
   console.log('사용자가 로그인되어 있습니다');
-  console.log('UID:', firebaseLoginUser.uid);
+  console.log('UID:', login.uid);
 } else {
   console.log('로그아웃 상태입니다');
 }
@@ -248,25 +248,12 @@ if (firebaseLoginUser.isAuthenticated) {
 
 ## 6. 고급 사용법
 
-### RTDB 인스턴스 직접 접근
-
-```javascript
-// RTDB 인스턴스 가져오기
-const rtdbInstance = firebaseLoginUser.getRtdbInstance();
-
-if (rtdbInstance) {
-  // 직접 RTDB 메서드 호출
-  await rtdbInstance.set({ customField: 'value' });
-  await rtdbInstance.update({ status: 'online' });
-}
-```
-
 ### 에러 처리
 
 ```javascript
 // 에러 발생 시
-if (firebaseLoginUser.error) {
-  console.error('Firebase 에러:', firebaseLoginUser.error.message);
+if (login.error) {
+  console.error('Firebase 에러:', login.error.message);
 }
 ```
 
@@ -276,11 +263,11 @@ if (firebaseLoginUser.error) {
 
 ```javascript
 // ❌ 잘못된 방법 - 반응성 손실
-const { isAuthenticated, data } = firebaseLoginUser;
+const { isAuthenticated, data } = login;
 
 // ✅ 올바른 방법 - 객체 자체 사용
-if (firebaseLoginUser.isAuthenticated) {
-  console.log(firebaseLoginUser.data);
+if (login.isAuthenticated) {
+  console.log(login.data);
 }
 ```
 
@@ -288,7 +275,7 @@ if (firebaseLoginUser.isAuthenticated) {
 
 ```javascript
 // ✅ import 후 바로 사용
-import { firebaseLoginUser } from '$lib/utils/firebase-login-user.svelte.js';
+import { login } from '$lib/utils/firebase-login-user.svelte.js';
 
 // ❌ 새 인스턴스 생성 시도하지 않기
 // const loginUser = new FirebaseLoginUser(); // 불가능!
@@ -303,53 +290,55 @@ import { firebaseLoginUser } from '$lib/utils/firebase-login-user.svelte.js';
 2. **로그인 감지**
    - Firebase Auth에서 사용자 감지
    - `isAuthenticated = true`
-   - `rtdb('users/<uid>')` 자동 생성
+   - static 속성 업데이트: `uid`, `email`, `phoneNumber`
+   - `onValue(dbRef(database, 'users/<uid>'), ...)` 자동 구독
    - 실시간 데이터 동기화 시작
 
 3. **로그아웃 감지**
    - `isAuthenticated = false`
+   - static 속성 초기화: `uid = null`, `email = null`, `phoneNumber = null`
    - `data = null`
-   - RTDB 리스너 자동 해제
+   - onValue 리스너 자동 해제
 
 4. **정리** (선택사항)
    ```javascript
    // 필요 시 수동 정리
-   firebaseLoginUser.dispose();
+   login.dispose();
    ```
 
 ---
 
-## 9. firebaseLoginUser와 rtdb() 함께 사용하기
+## 9. login과 rtdb() 함께 사용하기
 
-`firebaseLoginUser`는 현재 로그인한 사용자를 관리하지만, 필요에 따라 다른 사용자나 데이터를 조회하기 위해 별도의 `rtdb()` 인스턴스를 함께 사용할 수 있습니다.
+`login` 인스턴스는 현재 로그인한 사용자를 관리하지만, 필요에 따라 다른 사용자나 데이터를 조회하기 위해 별도의 `rtdb()` 인스턴스를 함께 사용할 수 있습니다.
 
 ### 사용 예시: 현재 사용자 + 특정 사용자 데이터 조회
 
 ```svelte
 <script>
-  import { firebaseLoginUser } from '../lib/utils/firebase-login-user.svelte.js';
+  import { login } from '../lib/utils/firebase-login-user.svelte.js';
   import { rtdb } from '../lib/utils/firebase-realtime-database.svelte.js';
 
-  // 현재 로그인 사용자 (firebaseLoginUser 사용)
-  // - firebaseLoginUser.user: Firebase Auth 정보
-  // - firebaseLoginUser.data: RTDB의 users/<uid> 데이터
+  // 현재 로그인 사용자 (login 사용)
+  // - login.uid, email, phoneNumber: Firebase Auth 정보 (static)
+  // - login.data: RTDB의 users/<uid> 데이터 (reactive)
 
   // 특정 사용자 데이터 조회 (별도 rtdb 인스턴스 사용)
   const userRtdb = rtdb('/users/apple');
 </script>
 
 <!-- 현재 로그인 사용자 정보 표시 -->
-{#if firebaseLoginUser.loading}
+{#if login.loading}
   <p>⏳ 로딩 중...</p>
-{:else if firebaseLoginUser.isAuthenticated}
+{:else if login.isAuthenticated}
   <div class="user-info">
     <h2>환영합니다!</h2>
 
-    <!-- firebaseLoginUser의 데이터 사용 -->
-    <p>이름: {firebaseLoginUser.data?.displayName}</p>
-    <p>UID: {firebaseLoginUser.user?.uid}</p>
-    <p>Email: {firebaseLoginUser.user?.email}</p>
-    <p>전화번호: {firebaseLoginUser.user?.phoneNumber}</p>
+    <!-- login의 데이터 사용 -->
+    <p>이름: {login.data?.displayName}</p>
+    <p>UID: {login.uid}</p>
+    <p>Email: {login.email}</p>
+    <p>전화번호: {login.phoneNumber}</p>
 
     <!-- 별도 rtdb 인스턴스의 데이터 사용 -->
     <p>RTDB 가입일: {userRtdb.data?.createdAt}</p>
@@ -368,7 +357,7 @@ import { firebaseLoginUser } from '$lib/utils/firebase-login-user.svelte.js';
 
 ### 주의사항
 
-- `firebaseLoginUser`는 항상 현재 로그인한 사용자의 `users/<uid>` 경로만 관리합니다
+- `login` 인스턴스는 항상 현재 로그인한 사용자의 `users/<uid>` 경로만 관리합니다
 - 다른 경로나 다른 사용자 데이터가 필요하면 별도의 `rtdb()` 인스턴스를 생성하세요
 - 각 `rtdb()` 인스턴스는 독립적으로 반응형 상태를 관리합니다
 
@@ -377,7 +366,8 @@ import { firebaseLoginUser } from '$lib/utils/firebase-login-user.svelte.js';
 ## 10. 요약
 
 - ✅ **Singleton 패턴**: 전역에서 하나의 인스턴스만 사용
-- ✅ **반응형 상태**: `$state` 기반 자동 UI 업데이트
-- ✅ **자동 동기화**: Firebase Auth + RTDB 자동 연동
-- ✅ **간편한 API**: 직관적인 메서드 제공
-- ❌ **Destructuring 금지**: 반응성 손실 방지
+- ✅ **반응형 상태**: `$state` 기반 자동 UI 업데이트 (loading, isAuthenticated, data, error)
+- ✅ **Static 속성**: 반응형이 필요 없는 Auth 정보 (uid, email, phoneNumber)
+- ✅ **자동 동기화**: Firebase Auth + RTDB onValue() 자동 연동
+- ✅ **간편한 API**: 직관적인 메서드 제공 (updateProfile, updateDisplayName 등)
+- ❌ **Destructuring 금지**: 반응형 속성의 반응성 손실 방지
