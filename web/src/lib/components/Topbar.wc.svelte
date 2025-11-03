@@ -143,7 +143,7 @@
           </a>
 
           <!-- 사용자 찾기 버튼 -->
-          <a href="/users" class="nav-button">
+          <a href="/user/list" class="nav-button">
             <Users size={16} />
             <span>{$t('사용자찾기')}</span>
           </a>
@@ -195,7 +195,7 @@
           <a href="/forum/list" class="icon-button" title={$t('포럼')}>
             <LayoutGrid size={20} />
           </a>
-          <a href="/users" class="icon-button" title={$t('사용자찾기')}>
+          <a href="/user/list" class="icon-button" title={$t('사용자찾기')}>
             <Users size={20} />
           </a>
           <a href="/chat/list" class="icon-button" title={$t('채팅')}>

@@ -14,6 +14,19 @@ SNS 개발 지침
   - [ ] 각 기술 스택에 맞는 MCP 를 활용해야 한다.
 
 
+# 코딩 가이드라인
+
+## 반응형 상태 관리
+
+- **Firebase Realtime Database 사용 시 `rtdb()` 함수를 최대한 활용합니다**
+  - `rtdb()` 함수는 Svelte 5의 `$state` 기반 반응형 래퍼로 실시간 데이터를 자동으로 동기화합니다
+  - 데이터 변경 시 자동으로 UI가 업데이트되므로 수동 구독 관리가 불필요합니다
+  - 사용 예시: `const userRtdb = rtdb('users/uid');`
+
+- **상세한 코딩 가이드라인은 별도 문서를 참조하세요**
+  - [docs/sns-web-coding-guideline.md](docs/sns-web-coding-guideline.md) - 상세한 코딩 규칙 및 패턴
+
+
 # 프로젝트 구조
 
 앱과 웹을 하나의 저장소에서 관리하는 모노레포(Monorepo) 구조를 따릅니다.

@@ -81,6 +81,8 @@
   "home.techStack.flutterDesc": "AndroidおよびiOSアプリ開発",
   "home.techStack.firebase": "Firebase",
   "home.techStack.firebaseDesc": "リアルタイムデータベースとして選択",
+  "home.techStack.dokplay": "Dokplay",
+  "home.techStack.dokplayDesc": "セルフホスティング",
   "home.aiTruth.title": "AI時代の真実",
   "home.aiTruth.item1.title": "AI時代に変わらないものはあなた",
   "home.aiTruth.item1.content": "AIがどれだけ発展しても、結局何かを作りたい人、問題を解決したい人はあなたです。AIはツールに過ぎず、主人公は依然としてあなたです。",

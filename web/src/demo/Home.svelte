@@ -6,8 +6,9 @@
    * 프로젝트 소개, AI 진실, 개발 로드맵, 프로젝트 개요 등을 표시합니다.
    */
 
-  import { t } from '../lib/stores/i18n.js';
-  import { ChevronDown, CheckCircle2, Circle } from 'lucide-svelte';
+  import { t } from "../lib/stores/i18n.js";
+  import { ChevronDown, CheckCircle2, Circle } from "lucide-svelte";
+  import { rtdb } from "../lib/utils/firebase-realtime-database.svelte.js";
 
   // 현재 열려있는 아코디언 아이템
   let openAccordionItem = $state(null);
@@ -25,24 +26,24 @@
    */
   const accordionItems = [
     {
-      id: 'item1',
-      titleKey: 'home.aiTruth.item1.title',
-      contentKey: 'home.aiTruth.item1.content',
-      hintKey: null
+      id: "item1",
+      titleKey: "home.aiTruth.item1.title",
+      contentKey: "home.aiTruth.item1.content",
+      hintKey: null,
     },
     {
-      id: 'item2',
-      titleKey: 'home.aiTruth.item2.title',
-      contentKey: 'home.aiTruth.item2.content',
-      hintKey: 'home.aiTruth.item2.hint'
+      id: "item2",
+      titleKey: "home.aiTruth.item2.title",
+      contentKey: "home.aiTruth.item2.content",
+      hintKey: "home.aiTruth.item2.hint",
     },
     {
-      id: 'item3',
-      titleKey: 'home.aiTruth.item3.title',
-      contentKey: 'home.aiTruth.item3.content',
-      hintKey: 'home.aiTruth.item3.hint',
-      showGpl: true
-    }
+      id: "item3",
+      titleKey: "home.aiTruth.item3.title",
+      contentKey: "home.aiTruth.item3.content",
+      hintKey: "home.aiTruth.item3.hint",
+      showGpl: true,
+    },
   ];
 
   /**
@@ -50,126 +51,140 @@
    */
   const todoItems = [
     {
-      labelKey: 'home.todo.item1.label',
-      descriptionKey: 'home.todo.item1.description',
+      labelKey: "home.todo.item1.label",
+      descriptionKey: "home.todo.item1.description",
       completed: true,
-      subitems: []
+      subitems: [],
     },
     {
-      labelKey: 'home.todo.item2.label',
-      descriptionKey: 'home.todo.item2.description',
+      labelKey: "home.todo.item2.label",
+      descriptionKey: "home.todo.item2.description",
       completed: true,
-      subitems: []
+      subitems: [],
     },
     {
-      labelKey: 'home.todo.item3.label',
-      descriptionKey: 'home.todo.item3.description',
+      labelKey: "home.todo.item3.label",
+      descriptionKey: "home.todo.item3.description",
       completed: true,
       subitems: [
-        { key: 'home.todo.item3.subitem1', completed: true },
-        { key: 'home.todo.item3.subitem2', completed: true }
-      ]
+        { key: "home.todo.item3.subitem1", completed: true },
+        { key: "home.todo.item3.subitem2", completed: true },
+      ],
     },
     {
-      labelKey: 'home.todo.item4.label',
+      labelKey: "home.todo.item4.label",
       descriptionKey: null,
       completed: false,
-      subitems: []
+      subitems: [],
     },
     {
-      labelKey: 'home.todo.item5.label',
-      descriptionKey: null,
-      completed: false,
-      subitems: [
-        { key: 'home.todo.item5.subitem1', completed: false },
-        { key: 'home.todo.item5.subitem2', completed: false },
-        { key: 'home.todo.item5.subitem3', completed: false },
-        { key: 'home.todo.item5.subitem4', completed: false }
-      ]
-    },
-    {
-      labelKey: 'home.todo.item6.label',
+      labelKey: "home.todo.item5.label",
       descriptionKey: null,
       completed: false,
       subitems: [
-        { key: 'home.todo.item6.subitem1', completed: false },
-        { key: 'home.todo.item6.subitem2', completed: false }
-      ]
+        { key: "home.todo.item5.subitem1", completed: false },
+        { key: "home.todo.item5.subitem2", completed: false },
+        { key: "home.todo.item5.subitem3", completed: false },
+        { key: "home.todo.item5.subitem4", completed: false },
+      ],
     },
     {
-      labelKey: 'home.todo.item7.label',
+      labelKey: "home.todo.item6.label",
       descriptionKey: null,
       completed: false,
       subitems: [
-        { key: 'home.todo.item7.subitem1', completed: false }
-      ]
-    }
+        { key: "home.todo.item6.subitem1", completed: false },
+        { key: "home.todo.item6.subitem2", completed: false },
+      ],
+    },
+    {
+      labelKey: "home.todo.item7.label",
+      descriptionKey: null,
+      completed: false,
+      subitems: [{ key: "home.todo.item7.subitem1", completed: false }],
+    },
   ];
 
   /**
    * 프로젝트 배지 목록
    */
   const badges = [
-    'home.overview.badge1',
-    'home.overview.badge2',
-    'home.overview.badge3',
-    'home.overview.badge4'
+    "home.overview.badge1",
+    "home.overview.badge2",
+    "home.overview.badge3",
+    "home.overview.badge4",
   ];
+
+  // Firebase RTDB 사용자 데이터 가져오기
+  // ⚠️ 중요: destructuring하지 않고 객체 자체를 사용해야 반응성이 유지됩니다
+  const userRtdb = rtdb("/users/apple");
 </script>
 
 <div class="home">
   <!-- Vibe 배너 -->
   <div class="vibe-banner">
-    <span class="vibe-text">✨ {$t('home.vibeBanner')}</span>
+    <span class="vibe-text">✨ {$t("home.vibeBanner")}</span>
   </div>
 
   <!-- 메인 타이틀 -->
   <div class="hero-section">
-    <h1 class="hero-title">{$t('home.title')}</h1>
+    <h1 class="hero-title">{$t("home.title")}</h1>
     <p class="hero-description">
-      {$t('home.description.part1')}
+      {$t("home.description.part1")}
       <a
         href="https://open.kakao.com/o/gdj4M4Tg"
         target="_blank"
         rel="noopener noreferrer"
         class="hero-link"
       >
-        {$t('home.description.linkText')}
+        {$t("home.description.linkText")}
       </a>
-      {$t('home.description.part2')}
+      {$t("home.description.part2")}
     </p>
   </div>
 
   <!-- 기술 스택 -->
   <section class="section techstack-section">
-    <h2 class="section-title">{$t('home.techStack.title')}</h2>
+    <h2 class="section-title">{$t("home.techStack.title")}</h2>
     <div class="techstack-grid">
       <!-- Svelte -->
       <div class="techstack-item">
         <div class="techstack-icon svelte-icon">⚡</div>
-        <h3 class="techstack-name">{$t('home.techStack.svelte')}</h3>
-        <p class="techstack-description">{$t('home.techStack.svelteDesc')}</p>
+        <h3 class="techstack-name">{$t("home.techStack.svelte")}</h3>
+        <p class="techstack-description">{$t("home.techStack.svelteDesc")}</p>
       </div>
 
       <!-- Flutter -->
       <div class="techstack-item">
         <div class="techstack-icon flutter-icon">📱</div>
-        <h3 class="techstack-name">{$t('home.techStack.flutter')}</h3>
-        <p class="techstack-description">{$t('home.techStack.flutterDesc')}</p>
+        <h3 class="techstack-name">{$t("home.techStack.flutter")}</h3>
+        <p class="techstack-description">{$t("home.techStack.flutterDesc")}</p>
       </div>
 
       <!-- Firebase -->
       <div class="techstack-item">
         <div class="techstack-icon firebase-icon">🔥</div>
-        <h3 class="techstack-name">{$t('home.techStack.firebase')}</h3>
-        <p class="techstack-description">{$t('home.techStack.firebaseDesc')}</p>
+        <h3 class="techstack-name">{$t("home.techStack.firebase")}</h3>
+        <p class="techstack-description">{$t("home.techStack.firebaseDesc")}</p>
       </div>
+
+      <!-- Dokplay -->
+      <a
+        href="https://dokploy.com/"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="techstack-item"
+      >
+        <div class="techstack-icon dokplay-icon">☁️</div>
+        <h3 class="techstack-name">{$t("home.techStack.dokplay")}</h3>
+        <p class="techstack-description">{$t("home.techStack.dokplayDesc")}</p>
+      </a>
     </div>
   </section>
 
   <!-- AI 시대의 진실 (Accordion) -->
   <section class="section">
-    <h2 class="section-title">{$t('home.aiTruth.title')}</h2>
+    <h2 class="section-title">{$t("home.aiTruth.title")}</h2>
     <div class="accordion">
       {#each accordionItems as item}
         <div class="accordion-item">
@@ -179,7 +194,10 @@
             aria-expanded={openAccordionItem === item.id}
           >
             <span class="accordion-title">{$t(item.titleKey)}</span>
-            <span class="accordion-icon" class:open={openAccordionItem === item.id}>
+            <span
+              class="accordion-icon"
+              class:open={openAccordionItem === item.id}
+            >
               <ChevronDown size={20} />
             </span>
           </button>
@@ -188,7 +206,7 @@
             <div class="accordion-content">
               <p>{$t(item.contentKey)}</p>
               {#if item.showGpl}
-                <div class="gpl-badge">{$t('home.aiTruth.item3.gpl')}</div>
+                <div class="gpl-badge">{$t("home.aiTruth.item3.gpl")}</div>
               {/if}
               {#if item.hintKey}
                 <div class="hint">{$t(item.hintKey)}</div>
@@ -202,7 +220,7 @@
 
   <!-- 개발 로드맵 (TODO) -->
   <section class="section">
-    <h2 class="section-title">{$t('home.todo.title')}</h2>
+    <h2 class="section-title">{$t("home.todo.title")}</h2>
     <div class="todo-list">
       {#each todoItems as item}
         <div class="todo-item">
@@ -228,14 +246,20 @@
             <div class="todo-subitems">
               {#each item.subitems as subitem}
                 <div class="todo-subitem">
-                  <span class="todo-subicon" class:completed={subitem.completed}>
+                  <span
+                    class="todo-subicon"
+                    class:completed={subitem.completed}
+                  >
                     {#if subitem.completed}
                       <CheckCircle2 size={16} />
                     {:else}
                       <Circle size={16} />
                     {/if}
                   </span>
-                  <span class="todo-subtext" class:completed={subitem.completed}>
+                  <span
+                    class="todo-subtext"
+                    class:completed={subitem.completed}
+                  >
                     {$t(subitem.key)}
                   </span>
                 </div>
@@ -249,10 +273,12 @@
 
   <!-- 프로젝트 개요 -->
   <section class="section overview-section">
-    <h2 class="section-title">{$t('home.overview.title')}</h2>
+    <h2 class="section-title">{$t("home.overview.title")}</h2>
     <div class="overview-content">
       <p class="overview-text">
-        <strong>{$t('home.overview.brand')}</strong>{$t('home.overview.description')}
+        <strong>{$t("home.overview.brand")}</strong>{$t(
+          "home.overview.description"
+        )}
       </p>
       <div class="badges">
         {#each badges as badgeKey}
@@ -264,14 +290,15 @@
 
   <!-- AI 시대의 변화와 성장 -->
   <section class="section change-section">
-    <h2 class="section-title">{$t('home.aiChange.title')}</h2>
+    <h2 class="section-title">{$t("home.aiChange.title")}</h2>
     <div class="change-content">
-      <p class="change-description">{$t('home.aiChange.description')}</p>
+      <p class="change-description">{$t("home.aiChange.description")}</p>
       <p class="change-emphasis">
-        {$t('home.aiChange.emphasis')}
-        <strong class="change-highlight">{$t('home.aiChange.highlight')}</strong>{$t('home.aiChange.conclusion')}
+        {$t("home.aiChange.emphasis")}
+        <strong class="change-highlight">{$t("home.aiChange.highlight")}</strong
+        >{$t("home.aiChange.conclusion")}
       </p>
-      <div class="hint">{$t('home.aiChange.hint')}</div>
+      <div class="hint">{$t("home.aiChange.hint")}</div>
     </div>
   </section>
 </div>
@@ -330,6 +357,8 @@
     border: 1px solid #f0f0f0;
     flex: 0 1 auto;
     min-width: 170px;
+    text-decoration: none;
+    color: inherit;
   }
 
   .techstack-item:hover {
@@ -360,6 +389,10 @@
 
   .techstack-icon.firebase-icon {
     background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%);
+  }
+
+  .techstack-icon.dokplay-icon {
+    background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
   }
 
   .techstack-name {
