@@ -53,13 +53,18 @@
   </div>
 
   <!-- 사용자 목록 (무한 스크롤) -->
+  <!--
+    임시로 nickname으로 정렬합니다.
+    실제로는 Firebase 데이터에 createdAt 필드를 추가하고 indexOn을 설정한 후
+    orderBy="createdAt"으로 변경해야 합니다.
+  -->
   <div class="list-container">
     <DatabaseListView
       path="users"
       pageSize={20}
-      orderBy="createdAt"
+      orderBy="nicknameLowerCase"
       threshold={300}
-      reverse={true}
+      reverse={false}
     >
       <!-- 개별 사용자 카드 -->
       {#snippet item(itemData)}
