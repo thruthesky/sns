@@ -147,15 +147,16 @@
       </a>
     </div>
 
-    <!-- 언어 설정 섹션 (향후 구현) -->
+    <!-- 언어 설정 섹션 -->
     <div class="section language-section">
       <h3 class="section-subtitle">{$t('언어설정')}</h3>
-      <div class="language-current">
-        <span class="language-current-label">{$t('현재언어')}</span>
-        <span class="language-current-value">
-          {$t(LANGUAGE_OPTIONS.find(option => option.code === $locale)?.labelKey ?? '언어_한국어')}
-        </span>
-      </div>
+      {#if true}
+        {@const currentLanguage = LANGUAGE_OPTIONS.find(option => option.code === $locale) ?? LANGUAGE_OPTIONS[0]}
+        <div class="language-current">
+          <span class="language-current-label">{$t('현재언어')}</span>
+          <span class="language-current-value">{$t(currentLanguage.labelKey)}</span>
+        </div>
+      {/if}
       <div class="language-options">
         {#each LANGUAGE_OPTIONS as option}
           <button
@@ -308,13 +309,56 @@
     border-top: 1px solid #e5e7eb;
   }
 
-  .language-notice {
-    padding: 0.75rem;
-    background-color: #f3f4f6;
-    border-radius: 0.375rem;
+  .language-current {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    background-color: #f9fafb;
+    margin-bottom: 0.75rem;
+  }
+
+  .language-current-label {
     font-size: 0.75rem;
     color: #6b7280;
-    text-align: center;
+  }
+
+  .language-current-value {
+    font-weight: 600;
+    color: #111827;
+    font-size: 0.9rem;
+  }
+
+  .language-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+    gap: 0.5rem;
+  }
+
+  .language-button {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    background-color: #ffffff;
+    color: #374151;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .language-button:hover {
+    background-color: #f3f4f6;
+    border-color: #3b82f6;
+    color: #1f2937;
+  }
+
+  .language-button.active {
+    background-color: #3b82f6;
+    border-color: #3b82f6;
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
   }
 
   /* 빌드 정보 */
