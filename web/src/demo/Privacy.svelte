@@ -1,4 +1,21 @@
 <script>
+  /**
+   * 개인정보 처리방침 페이지
+   * 개인정보 처리방침을 표시합니다.
+   */
+  import { onMount } from 'svelte';
+  import { setPageTitle } from '../lib/stores/pageTitle.js';
+
+  /**
+   * 컴포넌트 마운트 시 페이지 제목 설정
+   */
+  onMount(() => {
+    setPageTitle('개인정보처리방침');
+  });
+
+  /**
+   * 메뉴로 돌아가기
+   */
   function goBack() {
     window.history.pushState({}, '', '/menu');
     window.dispatchEvent(new PopStateEvent('popstate'));
@@ -7,7 +24,6 @@
 
 <div class="privacy-container">
   <div class="privacy-card">
-    <h2 class="page-title">개인정보 처리방침</h2>
     <div class="construction-content">
       <div class="construction-icon">🚧</div>
       <p class="construction-message">이 페이지는 공사중입니다</p>
@@ -30,14 +46,6 @@
     border-radius: 0.5rem;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     padding: 2rem;
-  }
-
-  .page-title {
-    margin: 0 0 2rem 0;
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: #111827;
-    text-align: center;
   }
 
   .construction-content {
@@ -83,10 +91,6 @@
   @media (max-width: 640px) {
     .privacy-card {
       padding: 1.5rem;
-    }
-
-    .page-title {
-      font-size: 1.25rem;
     }
   }
 </style>

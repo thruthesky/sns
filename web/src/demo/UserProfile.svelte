@@ -16,7 +16,9 @@
   import { login } from '../lib/utils/firebase-login-user.svelte.js';
   import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
   import { storage } from '../lib/utils/firebase.js';
-  import { onDestroy } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
+  import { setPageTitle } from '../lib/stores/pageTitle.js';
+  import { Camera, X } from 'lucide-svelte';
 
   // ============================================================================
   // 반응형 상태 관리
@@ -108,6 +110,13 @@
   // ============================================================================
   // 초기화 효과
   // ============================================================================
+
+  /**
+   * 컴포넌트 마운트 시 페이지 제목 설정
+   */
+  onMount(() => {
+    setPageTitle('프로필 수정');
+  });
 
   /**
    * 컴포넌트 마운트 시 로그인한 사용자의 정보를 폼에 로드
@@ -327,12 +336,6 @@
 
 <!-- 회원 정보 수정 페이지 -->
 <div class="profile-container">
-  <!-- 페이지 헤더 -->
-  <div class="page-header">
-    <h1>회원 정보 수정</h1>
-    <p>프로필 정보를 수정하세요</p>
-  </div>
-
   <!-- 프로필 수정 폼 -->
   <form class="profile-form" onsubmit={handleSubmit}>
     <!-- ========================================================================
@@ -341,57 +344,56 @@
     <div class="form-section">
       <label class="form-label">프로필 사진</label>
 
-      <!-- 프로필 사진 미리보기 -->
-      <div class="photo-preview-container">
-        {#if photoPreview}
-          <!-- 선택된 사진 표시 -->
-          <div class="photo-preview">
-            <img src={photoPreview} alt="프로필 사진 미리보기" />
-          </div>
-        {:else}
-          <!-- 기본 아바타 -->
-          <div class="photo-placeholder">
-            <div class="placeholder-icon">📷</div>
-            <p>프로필 사진이 없습니다</p>
-          </div>
-        {/if}
-      </div>
+      <div class="photo-area">
+        <input
+          type="file"
+          accept="image/*"
+          bind:this={fileInput}
+          onchange={handlePhotoChange}
+          style="display: none;"
+          aria-label="프로필 사진 선택"
+        />
 
-      <!-- 숨겨진 파일 입력 -->
-      <input
-        type="file"
-        accept="image/*"
-        bind:this={fileInput}
-        onchange={handlePhotoChange}
-        style="display: none;"
-        aria-label="프로필 사진 선택"
-      />
-
-      <!-- 사진 업로드/변경 버튼들 -->
-      <div class="photo-buttons">
-        <button
-          type="button"
-          class="btn-primary"
-          onclick={handlePhotoButtonClick}
-          disabled={isSaving || isPhotoUpdating}
-        >
-          📤 {photoPreview ? '사진 변경' : '사진 선택'}
-        </button>
-        {#if photoPreview}
+        <div class="photo-wrapper">
           <button
             type="button"
-            class="btn-secondary"
-            onclick={handleRemovePhoto}
+            class="photo-trigger"
+            onclick={handlePhotoButtonClick}
             disabled={isSaving || isPhotoUpdating}
+            aria-label={photoPreview ? '프로필 사진 변경' : '프로필 사진 추가'}
           >
-            🗑️ 사진 제거
+            {#if photoPreview}
+              <img src={photoPreview} alt="프로필 사진" class="photo-image" />
+            {:else}
+              <div class="photo-placeholder">
+                <span class="placeholder-icon">📷</span>
+                <span class="placeholder-text">사진 없음</span>
+              </div>
+            {/if}
+            <span class="camera-badge" aria-hidden="true">
+              <Camera size={20} stroke-width={2} />
+            </span>
           </button>
+
+          {#if photoPreview}
+            <button
+              type="button"
+              class="photo-remove-button"
+              onclick={handleRemovePhoto}
+              disabled={isSaving || isPhotoUpdating}
+              aria-label="프로필 사진 제거"
+            >
+              <X size={18} stroke-width={3} />
+            </button>
+          {/if}
+        </div>
+
+        <p class="photo-instruction">프로필 사진을 클릭하여 변경</p>
+
+        {#if isPhotoUpdating}
+          <p class="upload-status">사진을 저장하는 중입니다...</p>
         {/if}
       </div>
-
-      {#if isPhotoUpdating}
-        <p class="upload-status">사진을 저장하는 중입니다...</p>
-      {/if}
     </div>
 
     <!-- ========================================================================
@@ -495,27 +497,6 @@
   }
 
   /* ============================================================================
-     페이지 헤더
-     ============================================================================ */
-  .page-header {
-    text-align: center;
-    margin-bottom: 2rem;
-  }
-
-  .page-header h1 {
-    font-size: 1.875rem;
-    font-weight: bold;
-    color: #111827;
-    margin: 0 0 0.5rem 0;
-  }
-
-  .page-header p {
-    color: #6b7280;
-    font-size: 0.95rem;
-    margin: 0;
-  }
-
-  /* ============================================================================
      폼 스타일
      ============================================================================ */
   .profile-form {
@@ -550,47 +531,121 @@
   /* ============================================================================
      프로필 사진 섹션
      ============================================================================ */
-  .photo-preview-container {
-    background-color: #f9fafb;
-    border: 2px dashed #d1d5db;
-    border-radius: 0.5rem;
-    padding: 2rem;
-    text-align: center;
-    margin-bottom: 1rem;
+  .photo-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
   }
 
-  .photo-preview {
-    width: 100%;
-    max-width: 250px;
-    margin: 0 auto;
+  .photo-wrapper {
+    position: relative;
+    width: 180px;
+    height: 180px;
   }
 
-  .photo-preview img {
+  .photo-trigger {
     width: 100%;
-    height: auto;
-    border-radius: 0.5rem;
+    height: 100%;
+    border-radius: 50%;
+    border: 4px solid #e5e7eb;
+    background-color: #f3f4f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    cursor: pointer;
+    position: relative;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .photo-trigger:hover:not(:disabled) {
+    transform: scale(1.01);
+    border-color: #2563eb;
+    box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25);
+  }
+
+  .photo-trigger:focus-visible {
+    outline: 3px solid #2563eb;
+    outline-offset: 4px;
+  }
+
+  .photo-trigger:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+  }
+
+  .photo-image {
+    width: 100%;
+    height: 100%;
     object-fit: cover;
   }
 
   .photo-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
     color: #6b7280;
   }
 
   .placeholder-icon {
-    font-size: 3rem;
-    margin-bottom: 0.5rem;
+    font-size: 2.5rem;
   }
 
-  .photo-placeholder p {
-    margin: 0;
-    font-size: 0.95rem;
+  .placeholder-text {
+    font-size: 0.9rem;
   }
 
-  /* 사진 버튼 그룹 */
-  .photo-buttons {
+  .camera-badge {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    width: 48px;
+    height: 48px;
+    border-radius: 9999px;
+    background-color: #111827;
+    color: #ffffff;
     display: flex;
-    gap: 1rem;
-    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.35);
+    pointer-events: none;
+  }
+
+  .photo-remove-button {
+    position: absolute;
+    top: 0;
+    right: 0;
+    transform: translate(35%, -35%);
+    width: 40px;
+    height: 40px;
+    border-radius: 9999px;
+    background-color: #ef4444;
+    color: #ffffff;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 10px 24px rgba(239, 68, 68, 0.35);
+    cursor: pointer;
+  }
+
+  .photo-remove-button:hover:not(:disabled) {
+    background-color: #dc2626;
+  }
+
+  .photo-remove-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  .photo-instruction {
+    margin-top: 0.25rem;
+    color: #4b5563;
+    font-size: 0.95rem;
+    text-align: center;
   }
 
   .upload-status {

@@ -4,7 +4,16 @@
    * 모든 페이지로의 네비게이션 메뉴를 제공합니다.
    */
 
+  import { onMount } from 'svelte';
   import { t } from '../lib/stores/i18n.js';
+  import { setPageTitle } from '../lib/stores/pageTitle.js';
+
+  /**
+   * 컴포넌트 마운트 시 페이지 제목 설정
+   */
+  onMount(() => {
+    setPageTitle('메뉴');
+  });
 
   /**
    * 경로로 이동
@@ -34,7 +43,6 @@
 
 <div class="menu-container">
   <div class="menu-card">
-    <h2 class="menu-title">{$t('데모제목')} - 메뉴</h2>
     <p class="menu-description">아래에서 이동할 페이지를 선택하세요</p>
 
     <nav class="menu-list">
@@ -62,14 +70,6 @@
     border-radius: 0.5rem;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     padding: 2rem;
-  }
-
-  /* 메뉴 제목 */
-  .menu-title {
-    margin: 0 0 0.5rem 0;
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: #111827;
   }
 
   /* 메뉴 설명 */
@@ -113,10 +113,6 @@
   @media (max-width: 640px) {
     .menu-card {
       padding: 1.5rem;
-    }
-
-    .menu-title {
-      font-size: 1.25rem;
     }
   }
 </style>
