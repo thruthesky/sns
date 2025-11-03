@@ -23,6 +23,17 @@ SNS 개발 지침
   - 데이터 변경 시 자동으로 UI가 업데이트되므로 수동 구독 관리가 불필요합니다
   - 사용 예시: `const userRtdb = rtdb('users/uid');`
 
+## DatabaseListView 컴포넌트
+
+- **무한 스크롤 리스트 구현 시 `DatabaseListView` 컴포넌트를 활용합니다**
+  - Firebase Realtime Database의 데이터를 무한 스크롤로 표시하는 재사용 가능한 컴포넌트입니다
+  - 두 가지 스크롤 방식 지원:
+    - **Body 스크롤**: DatabaseListView를 body에 직접 마운트하여 전체 페이지 스크롤 사용
+    - **Container 스크롤**: 래퍼 컨테이너로 감싸고 높이를 지정하여 특정 영역만 스크롤
+  - 자세한 사용법은 [docs/sns-web-coding-guideline.md](docs/sns-web-coding-guideline.md)의 "DatabaseListView 컴포넌트" 섹션 참조
+
+## 상세한 코딩 가이드라인
+
 - **상세한 코딩 가이드라인은 별도 문서를 참조하세요**
   - [docs/sns-web-coding-guideline.md](docs/sns-web-coding-guideline.md) - 상세한 코딩 규칙 및 패턴
 
@@ -325,6 +336,7 @@ sns/
 | Firebase 보안 규칙 | `sns-web-security.md` (필수) |
 | 파일 & 사진 업로드 | `sns-web-storage.md` (필수) |
 | 사용자 프로필 관리 | `sns-web-user.md` (필수) |
+| 무한 스크롤 리스트 구현 | `sns-web-coding-guideline.md` - DatabaseListView 섹션 (필수) |
 | 빌드 & 배포 | `sns-web-deploy.md` |
 | 전체 서비스 컨셉 확인 | `sns.md` |
 | 워크플로우 확인 | `sns-web.md` |
