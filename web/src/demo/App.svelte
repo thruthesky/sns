@@ -24,6 +24,7 @@
   import Terms from './Terms.svelte';
   import Privacy from './Privacy.svelte';
   import Contact from './Contact.svelte';
+  import GenerateTestPosts from './GenerateTestPosts.svelte';
 
   // 현재 경로 상태
   let currentPath = $state(window.location.pathname);
@@ -84,6 +85,9 @@
     {:else if currentPath === '/contact'}
       <!-- 문의하기 페이지 -->
       <Contact />
+    {:else if currentPath === '/dev/generate-posts'}
+      <!-- 테스트 게시글 생성 페이지 (개발자 도구) -->
+      <GenerateTestPosts />
     {:else}
       <!-- 홈 페이지 (기본값) -->
       <Home />

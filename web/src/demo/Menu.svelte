@@ -37,7 +37,8 @@
     { label: '도움말', path: '/help' },
     { label: '이용 약관', path: '/terms' },
     { label: '개인정보 처리방침', path: '/privacy' },
-    { label: '문의하기', path: '/contact' }
+    { label: '문의하기', path: '/contact' },
+    { label: '[개발] 테스트 게시글 생성', path: '/dev/generate-posts' }
   ];
 </script>
 
