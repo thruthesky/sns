@@ -546,8 +546,9 @@
     transition: transform 0.2s ease, box-shadow 0.2s ease;
   }
 
-  .post-item + .post-item {
-    /* 각 글 카드 사이 여백: 위아래 약간의 간격 */
+  /* 첫 번째 글 카드를 제외한 모든 글 카드에 위쪽 여백 적용 */
+  /* :not(:first-child) 선택자는 DatabaseListView의 래핑 구조에 상관없이 작동 */
+  .post-item:not(:first-child) {
     margin-top: 0.75rem;
   }
 
