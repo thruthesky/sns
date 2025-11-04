@@ -20929,14 +20929,14 @@ const Nc = nr(null), pI = nr(!0);
 uf(Kt, (t) => {
   Nc.set(t), pI.set(!1);
 });
-async function dC(t, e) {
+async function hC(t, e) {
   try {
     return await cf(Kt, t, e), { success: !0 };
   } catch (n) {
     return console.error("로그인 오류:", n), { success: !1, error: Gp(n.code) };
   }
 }
-async function hC(t, e, n = "") {
+async function fC(t, e, n = "") {
   try {
     const i = await lf(Kt, t, e);
     return n && await jl(i.user, {
@@ -23141,18 +23141,37 @@ function cC(t, e) {
 }
 er(["click"]);
 customElements.define("test-fab", fe(cC, {}, [], [], !1));
-function fC(t) {
-  const { subscribe: e, set: n } = nr(null), i = Et(It, t);
-  return os(i, (r) => {
-    const s = r.val();
-    n(s);
-  }), {
+function uC(t) {
+  const { subscribe: e, set: n } = nr({
+    data: null,
+    loading: !0,
+    error: null
+  }), i = Et(It, t);
+  return os(
+    i,
+    (r) => {
+      const s = r.val();
+      n({
+        data: s,
+        loading: !1,
+        error: null
+      }), console.log(`✅ 실시간 데이터 로드 성공: ${t}`, s);
+    },
+    (r) => {
+      console.error(`❌ 실시간 데이터 로드 실패: ${t}`, r), n({
+        data: null,
+        loading: !1,
+        error: r
+      });
+    }
+  ), {
     subscribe: e,
-    // 컴포넌트 언마운트 시 구독 해제
+    // 컴포넌트 언마운트 시 구독 해제 (메모리 누수 방지)
     unsubscribe: () => Ac(i)
   };
 }
-async function pC(t, e) {
+const pC = uC;
+async function mC(t, e) {
   try {
     const n = Et(It, t);
     return await Xo(n, e), { success: !0 };
@@ -23160,7 +23179,7 @@ async function pC(t, e) {
     return console.error("데이터 쓰기 오류:", n), { success: !1, error: n.message };
   }
 }
-async function mC(t, e) {
+async function _C(t, e) {
   try {
     const n = Et(It, t);
     return await Eo(n, e), { success: !0 };
@@ -23168,7 +23187,7 @@ async function mC(t, e) {
     return console.error("데이터 업데이트 오류:", n), { success: !1, error: n.message };
   }
 }
-async function _C(t) {
+async function gC(t) {
   try {
     const e = Et(It, t);
     return await nE(e), { success: !0 };
@@ -23176,7 +23195,7 @@ async function _C(t) {
     return console.error("데이터 삭제 오류:", e), { success: !1, error: e.message };
   }
 }
-async function gC(t, e) {
+async function vC(t, e) {
   try {
     const n = Et(It, t), i = tE(n);
     return await Xo(i, e), { success: !0, key: i.key };
@@ -23184,7 +23203,7 @@ async function gC(t, e) {
     return console.error("데이터 추가 오류:", n), { success: !1, error: n.message };
   }
 }
-async function vC(t) {
+async function bC(t) {
   try {
     const e = Et(It, t), n = await iE(e);
     return n.exists() ? { success: !0, data: n.val() } : { success: !0, data: null };
@@ -23192,7 +23211,7 @@ async function vC(t) {
     return console.error("데이터 읽기 오류:", e), { success: !1, error: e.message };
   }
 }
-function bC(t) {
+function yC(t) {
   const e = Et(It, `status/${t}`), n = Et(It, ".info/connected");
   return os(n, (i) => {
     i.val() === !0 && (Xo(e, {
@@ -23214,17 +23233,18 @@ function bC(t) {
 console.log("SNS Web Components 로드됨 ✅");
 export {
   Kt as auth,
-  fC as createRealtimeStore,
+  uC as createRealtimeStore,
   It as database,
-  _C as deleteData,
+  gC as deleteData,
   pI as loading,
-  gC as pushData,
-  vC as readData,
-  bC as setupPresence,
-  dC as signIn,
+  vC as pushData,
+  bC as readData,
+  pC as rtdb,
+  yC as setupPresence,
+  hC as signIn,
   mI as signOut,
-  hC as signUp,
-  mC as updateData,
+  fC as signUp,
+  _C as updateData,
   Nc as user,
-  pC as writeData
+  mC as writeData
 };
