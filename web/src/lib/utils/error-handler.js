@@ -109,11 +109,16 @@ export function mapFirebaseErrorCode(code) {
 }
 
 /**
+ * Firebase 에러 타입 정의
+ * @typedef {Error & {code?: string}} FirebaseError
+ */
+
+/**
  * Firebase 에러를 처리하고 사용자 친화적인 정보 반환
  *
- * @param {Error} error - Firebase에서 발생한 에러 객체
+ * @param {FirebaseError | Error | null} error - Firebase에서 발생한 에러 객체
  * @param {string} context - 에러 발생 컨텍스트 (예: 'createPost', 'updateUser', 'uploadPhoto')
- * @returns {Object} 에러 정보 객체
+ * @returns {{key: string, code: string | null, message: string, context: string}} 에러 정보 객체
  *   - key: i18n 번역 키 (예: 'error.db.permissionDenied')
  *   - code: 원본 Firebase 에러 코드 (예: 'PERMISSION_DENIED')
  *   - message: 원본 에러 메시지 (디버깅용)
@@ -146,7 +151,8 @@ export function handleFirebaseError(error, context = 'unknown') {
   // Firebase 에러 코드 추출
   // error.code (Firebase SDK v9+)
   // error.message에서 코드 추출 시도
-  let errorCode = error.code || null;
+  // @ts-ignore - Firebase 에러는 code 속성을 가짐
+  let errorCode = error.code ?? null;
 
   // 에러 메시지에서 코드 추출 시도 (fallback)
   if (!errorCode && error.message) {
