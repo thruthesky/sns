@@ -231,14 +231,14 @@ class FirebaseLoginUser {
 
         try {
             // 1. Firebase Auth 프로필 업데이트
+            // ⚠️ 중요: Firebase Auth는 photoURL (대문자 URL)을 사용합니다
             const authUpdateData = {};
             if (profileData.displayName !== undefined) {
                 authUpdateData.displayName = profileData.displayName;
             }
             if (profileData.photoUrl !== undefined) {
-                authUpdateData.photoUrl = profileData.photoUrl;
-            } else if (profileData.photoUrl !== undefined) {
-                authUpdateData.photoUrl = profileData.photoUrl;
+                // photoUrl을 photoURL로 변환 (Firebase Auth 스펙)
+                authUpdateData.photoURL = profileData.photoUrl;
             }
 
             if (Object.keys(authUpdateData).length > 0) {
@@ -247,13 +247,9 @@ class FirebaseLoginUser {
             }
 
             // 2. Realtime Database 업데이트
+            // ⚠️ 중요: RTDB는 photoUrl (camelCase url)을 사용합니다
+            // profileData를 그대로 DB에 저장 (photoUrl 포함)
             const dbUpdateData = { ...profileData };
-            if (dbUpdateData.photoUrl !== undefined) {
-                if (dbUpdateData.photoUrl === undefined) {
-                    dbUpdateData.photoUrl = dbUpdateData.photoUrl;
-                }
-                delete dbUpdateData.photoUrl;
-            }
 
             const userRef = dbRef(database, `users/${this.uid}`);
             await dbUpdate(userRef, dbUpdateData);

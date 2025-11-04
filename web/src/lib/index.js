@@ -26,6 +26,9 @@ import './components/Layout.wc.svelte';
 // UI 컴포넌트
 import './components/Accordion.wc.svelte';
 
+// 개발 도구 컴포넌트
+import './components/TestFab.wc.svelte';
+
 // Firebase 유틸리티 내보내기
 export { auth, database } from './utils/firebase.js';
 

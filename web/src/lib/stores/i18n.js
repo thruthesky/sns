@@ -36,13 +36,14 @@ export const SUPPORTED_LOCALES = [
 
 /**
  * 저장된 Locale 가져오기
+ * @returns {'ko' | 'en' | 'ja' | 'zh' | null} 저장된 언어 코드 또는 null
  */
 function getStoredLocale() {
   if (typeof localStorage === 'undefined') return null;
   const stored = localStorage.getItem(STORAGE_KEY);
   if (!stored) return null;
   const matched = SUPPORTED_LOCALES.find((option) => option.code === stored);
-  return matched ? matched.code : null;
+  return matched ? /** @type {'ko' | 'en' | 'ja' | 'zh'} */ (matched.code) : null;
 }
 
 // 브라우저 언어 자동 감지하여 초기 locale 설정

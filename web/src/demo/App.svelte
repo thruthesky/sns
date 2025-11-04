@@ -99,6 +99,9 @@
 <!-- Toast 알림 컴포넌트 -->
 <Toast />
 
+<!-- 테스트용 Floating Action Button (개발 환경 전용) -->
+<test-fab></test-fab>
+
 <style>
   /* 콘텐츠 */
   .content {

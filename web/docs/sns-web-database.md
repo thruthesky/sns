@@ -13,6 +13,32 @@ Firebase Realtime Database 구조:
 # 사용자 정보
 
 - 사용자 정보는 `users` 노드에 저장됩니다.
+
+## ⚠️ 중요: Firebase Auth vs RTDB 필드명 차이
+
+**프로필 사진 필드명이 다릅니다:**
+- **Firebase Authentication**: `photoURL` (대문자 URL)
+- **Realtime Database**: `photoUrl` (camelCase url)
+
+```javascript
+// Firebase Auth 업데이트 시
+await updateProfile(user, {
+  photoURL: 'https://...'  // ✅ 대문자 URL
+});
+
+// RTDB 업데이트 시
+await update(ref(database, `users/${uid}`), {
+  photoUrl: 'https://...'  // ✅ camelCase url
+});
+```
+
+**주의사항:**
+- Firebase Auth API는 `photoURL`을 요구하므로 대문자를 사용해야 합니다
+- RTDB에 저장할 때는 프로젝트 네이밍 규칙에 따라 `photoUrl`을 사용합니다
+- 코드 작성 시 이 차이를 반드시 고려해야 합니다
+
+---
+
 - 데이터 구조 예제:
 
 

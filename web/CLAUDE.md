@@ -16,6 +16,45 @@ SNS 개발 지침
 
 # 코딩 가이드라인
 
+## ⚠️ Firebase Auth vs RTDB 필드명 차이 (매우 중요)
+
+**프로필 사진 필드명이 서로 다릅니다:**
+- **Firebase Authentication**: `photoURL` (대문자 URL) 사용
+- **Realtime Database**: `photoUrl` (camelCase url) 사용
+
+### 올바른 사용 예시
+
+```javascript
+// ✅ Firebase Auth 업데이트 시
+import { updateProfile } from 'firebase/auth';
+await updateProfile(user, {
+  photoURL: 'https://...'  // 대문자 URL 사용
+});
+
+// ✅ RTDB 업데이트 시
+import { ref, update } from 'firebase/database';
+await update(ref(database, `users/${uid}`), {
+  photoUrl: 'https://...'  // camelCase url 사용
+});
+
+// ✅ 두 곳을 모두 업데이트하는 헬퍼 함수 예시
+async function updateUserPhoto(user, photoUrl) {
+  // 1. Firebase Auth 업데이트 (photoURL)
+  await updateProfile(user, { photoURL: photoUrl });
+
+  // 2. RTDB 업데이트 (photoUrl)
+  await update(ref(database, `users/${user.uid}`), { photoUrl: photoUrl });
+}
+```
+
+### 주의사항
+- ❌ **절대로 혼용하지 마세요**: Auth에 `photoUrl`이나 RTDB에 `photoURL`을 사용하면 안 됩니다
+- ✅ Firebase Auth API는 `photoURL` 대문자를 요구합니다 (Firebase SDK 스펙)
+- ✅ RTDB에는 프로젝트 네이밍 규칙에 따라 `photoUrl` camelCase를 사용합니다
+- ✅ 코드 작성 시 이 차이를 항상 인지하고 있어야 합니다
+
+---
+
 ## 반응형 상태 관리
 
 - **Firebase Realtime Database 사용 시 `rtdb()` 함수를 최대한 활용합니다**
