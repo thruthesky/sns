@@ -20,15 +20,22 @@
     "build": "npm run build:lib && npm run build:demo",
     "build:lib": "vite build",
     "build:demo": "vite build --config vite.demo.config.js",
-    "preview": "vite preview --config vite.demo.config.js"
+    "preview": "vite preview --config vite.demo.config.js",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^6.2.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/svelte": "^5.2.8",
     "autoprefixer": "^10.4.21",
+    "happy-dom": "^20.0.10",
     "postcss": "^8.5.6",
     "svelte": "^5.43.2",
     "tailwindcss": "^4.1.16",
-    "vite": "^7.1.7"
+    "vite": "^7.1.7",
+    "vitest": "^4.0.6"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.16",

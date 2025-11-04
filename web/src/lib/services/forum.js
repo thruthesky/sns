@@ -33,6 +33,7 @@
 
 import { database } from '../utils/firebase.js';
 import { ref, push, set, update, remove, query, orderByChild, limitToLast, onValue, off } from 'firebase/database';
+import { handleFirebaseError } from '../utils/error-handler.js';
 
 /**
  * 새 게시글을 Firebase Realtime Database에 저장합니다.
@@ -91,10 +92,11 @@ export async function createPost(category, uid, author, title, content) {
     };
   } catch (error) {
     // ❌ 게시글 생성 실패
-    console.error('게시글 생성 실패:', error);
+    const errorInfo = handleFirebaseError(error, 'createPost');
     return {
       success: false,
-      error: error.message
+      error: errorInfo.key,  // i18n 키 반환
+      errorMessage: errorInfo.message  // 원본 메시지 (디버깅용)
     };
   }
 }
@@ -223,10 +225,11 @@ export async function updatePost(category, postId, updates) {
     };
   } catch (error) {
     // ❌ 게시글 수정 실패
-    console.error('게시글 수정 실패:', error);
+    const errorInfo = handleFirebaseError(error, 'updatePost');
     return {
       success: false,
-      error: error.message
+      error: errorInfo.key,  // i18n 키 반환
+      errorMessage: errorInfo.message  // 원본 메시지 (디버깅용)
     };
   }
 }
@@ -264,10 +267,11 @@ export async function deletePost(category, postId) {
     };
   } catch (error) {
     // ❌ 게시글 삭제 실패
-    console.error('게시글 삭제 실패:', error);
+    const errorInfo = handleFirebaseError(error, 'deletePost');
     return {
       success: false,
-      error: error.message
+      error: errorInfo.key,  // i18n 키 반환
+      errorMessage: errorInfo.message  // 원본 메시지 (디버깅용)
     };
   }
 }

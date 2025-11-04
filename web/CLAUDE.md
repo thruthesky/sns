@@ -55,6 +55,84 @@ async function updateUserPhoto(user, photoUrl) {
 
 ---
 
+## 🔥 Firebase 에러 처리 (매우 중요)
+
+**모든 Firebase 관련 작업 시 반드시 `error-handler.js`를 사용해야 합니다.**
+
+Firebase에서 발생하는 에러를 사용자가 **읽기 쉽고 이해하기 쉬운 메시지**로 변환하여 표시해야 합니다.
+
+### 필수 사용 규칙
+
+- ✅ **모든 Firebase 작업(Authentication, Database, Storage)에서 `handleFirebaseError()` 사용 필수**
+- ✅ 에러 메시지는 i18n 키로 반환하여 다국어 지원
+- ✅ 사용자에게는 친화적인 메시지, 개발자에게는 상세한 로그 제공
+- ❌ 절대로 `error.message`를 직접 사용자에게 표시하지 마세요
+
+### 서비스 레이어에서의 에러 처리
+
+```javascript
+// src/lib/services/forum.js 예시
+import { handleFirebaseError } from '../utils/error-handler.js';
+
+export async function createPost(category, uid, author, title, content) {
+  try {
+    // Firebase 작업
+    const newPostRef = await push(postsRef, postData);
+
+    return {
+      success: true,
+      postId: newPostRef.key
+    };
+  } catch (error) {
+    // ✅ 올바른 방법: error-handler 사용
+    const errorInfo = handleFirebaseError(error, 'createPost');
+    return {
+      success: false,
+      error: errorInfo.key,         // i18n 키 (예: 'error.db.permissionDenied')
+      errorMessage: errorInfo.message  // 원본 메시지 (디버깅용)
+    };
+  }
+}
+```
+
+### UI 컴포넌트에서의 에러 표시
+
+```javascript
+// Svelte 컴포넌트 예시
+import { showToast } from '$lib/stores/toast.js';
+import { t } from '$lib/stores/i18n.js';
+import { createPost } from '$lib/services/forum.js';
+
+async function handleSubmit() {
+  const result = await createPost(...);
+
+  if (result.success) {
+    showToast($t("게시글작성완료"), "success");
+  } else {
+    // ✅ 올바른 방법: i18n 키를 번역하여 표시
+    showToast($t(result.error), "error");
+    // 사용자에게는 "이 작업을 수행할 권한이 없습니다." 같은 친화적인 메시지 표시
+  }
+}
+```
+
+### 지원하는 에러 타입
+
+- **Authentication 에러**: `auth/invalid-email`, `auth/user-not-found`, `auth/wrong-password` 등
+- **Database 에러**: `PERMISSION_DENIED`, `network-error`, `authentication-required` 등
+- **Storage 에러**: `storage/unauthorized`, `storage/quota-exceeded` 등
+
+모든 에러는 자동으로 4개 언어(한국어, 영어, 일본어, 중국어)로 번역됩니다.
+
+### 참고 파일
+
+- [src/lib/utils/error-handler.js](src/lib/utils/error-handler.js) - 에러 처리 로직
+- [src/lib/i18n/ko.json](src/lib/i18n/ko.json) - 한국어 에러 메시지 (264-290줄)
+- [src/lib/services/forum.js](src/lib/services/forum.js) - 사용 예시 (게시판)
+- [src/lib/services/comment.js](src/lib/services/comment.js) - 사용 예시 (댓글)
+
+---
+
 ## 반응형 상태 관리
 
 - **Firebase Realtime Database 사용 시 `rtdb()` 함수를 최대한 활용합니다**

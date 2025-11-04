@@ -9,6 +9,7 @@
   import { createRealtimeStore } from "../lib/stores/database.js";
   import { showToast } from "../lib/stores/toast.js";
   import { t } from "../lib/stores/i18n.js";
+  import { createTopLevelComment } from "../lib/services/comment.js";
 
   // Props
   let { itemData, index, category, userId, onLike = () => {} } = $props();
@@ -23,6 +24,11 @@
   // 게시글 좋아요 수를 실시간으로 구독
   // posts 정보에서 likeCount 필드를 직접 구독하여 실시간 업데이트
   const postStore = createRealtimeStore(`posts/${category}/${itemData.key}`);
+
+  // 댓글 모달 상태 관리
+  let isCommentDialogOpen = $state(false);
+  let commentContent = $state('');
+  let isSubmitting = $state(false);
 
   /**
    * 좋아요 버튼 클릭 핸들러
@@ -66,6 +72,70 @@
       showToast("좋아요 처리 중 오류가 발생했습니다.", "error");
     }
   }
+
+  /**
+   * 댓글 버튼 클릭 핸들러
+   */
+  function handleCommentClick() {
+    // 1. 로그인 확인
+    if (!userId) {
+      alert($t("로그인필요"));
+      window.location.href = "/user/login";
+      return;
+    }
+
+    // 2. 모달 열기
+    isCommentDialogOpen = true;
+  }
+
+  /**
+   * 댓글 작성 제출 핸들러
+   */
+  async function handleCommentSubmit() {
+    // 1. 댓글 내용 검증
+    if (!commentContent.trim()) {
+      showToast($t("댓글내용입력필요"), "error");
+      return;
+    }
+
+    // 2. 댓글 생성 시작
+    isSubmitting = true;
+
+    try {
+      // 3. Firebase에 댓글 저장
+      const result = await createTopLevelComment(
+        itemData.key,      // 게시글 ID
+        category,          // 게시글 카테고리
+        userId,            // 작성자 UID
+        commentContent     // 댓글 내용
+      );
+
+      // 4. 결과 처리
+      if (result.success) {
+        showToast($t("댓글이작성되었습니다"), "success");
+        isCommentDialogOpen = false;
+        commentContent = '';
+      } else {
+        // result.error는 i18n 키 (예: 'error.db.permissionDenied')
+        // i18n 키를 번역하여 사용자 친화적인 메시지 표시
+        showToast($t(result.error), "error");
+      }
+    } catch (error) {
+      // 예상치 못한 에러 발생 시 기본 에러 메시지 표시
+      console.error('댓글 생성 오류:', error);
+      showToast($t("error.unknown"), "error");
+    } finally {
+      isSubmitting = false;
+    }
+  }
+
+  /**
+   * 댓글 작성 취소 핸들러
+   */
+  function handleCommentCancel() {
+    isCommentDialogOpen = false;
+    commentContent = '';
+  }
 </script>
 
 <div class="post-item">
@@ -99,7 +169,7 @@
   <div class="post-actions">
     <!-- 왼쪽 버튼 그룹 -->
     <div class="post-actions-left">
-      <button class="action-btn" title={$t("댓글")}>
+      <button class="action-btn" title={$t("댓글")} onclick={handleCommentClick}>
         💬 {$t("댓글")}
       </button>
 
@@ -139,6 +209,43 @@
     </div>
   </div>
 </div>
+
+<!-- 댓글 작성 모달 다이얼로그 -->
+{#if isCommentDialogOpen}
+  <div class="modal-backdrop" onclick={handleCommentCancel}>
+    <div class="modal" onclick={(e) => e.stopPropagation()}>
+      <!-- 모달 헤더 -->
+      <div class="modal-header">
+        <h2>{$t("댓글작성")}</h2>
+        <button class="btn-close" onclick={handleCommentCancel}>×</button>
+      </div>
+
+      <!-- 모달 내용 -->
+      <div class="modal-content">
+        <textarea
+          bind:value={commentContent}
+          placeholder={$t("댓글내용입력")}
+          rows="5"
+          autofocus
+        ></textarea>
+      </div>
+
+      <!-- 모달 푸터 -->
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick={handleCommentCancel}>
+          {$t("취소")}
+        </button>
+        <button
+          class="btn-submit"
+          onclick={handleCommentSubmit}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? $t("전송중") : $t("전송")}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
 
 <style>
   .post-item {
@@ -292,5 +399,138 @@
   .count {
     font-weight: 600;
     font-size: 0.75rem;
+  }
+
+  /* === 모달 다이얼로그 스타일 === */
+
+  /* 모달 배경 (반투명 오버레이) */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 1rem;
+  }
+
+  /* 모달 컨테이너 */
+  .modal {
+    background-color: #ffffff;
+    border-radius: 1rem;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    max-width: 500px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  /* 모달 헤더 */
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .modal-header h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .btn-close {
+    background: none;
+    border: none;
+    font-size: 2rem;
+    color: #6b7280;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    transition: all 0.2s ease;
+  }
+
+  .btn-close:hover {
+    background-color: #f3f4f6;
+    color: #111827;
+  }
+
+  /* 모달 내용 */
+  .modal-content {
+    padding: 1.5rem;
+  }
+
+  .modal-content textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    font-size: 0.95rem;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 120px;
+    transition: border-color 0.2s ease;
+  }
+
+  .modal-content textarea:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
+  /* 모달 푸터 */
+  .modal-footer {
+    display: flex;
+    gap: 0.75rem;
+    padding: 1.5rem;
+    border-top: 1px solid #e5e7eb;
+    justify-content: flex-end;
+  }
+
+  .btn-cancel,
+  .btn-submit {
+    padding: 0.65rem 1.25rem;
+    border-radius: 0.5rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s ease;
+  }
+
+  .btn-cancel {
+    background-color: #f3f4f6;
+    color: #374151;
+  }
+
+  .btn-cancel:hover {
+    background-color: #e5e7eb;
+  }
+
+  .btn-submit {
+    background-color: #3b82f6;
+    color: #ffffff;
+  }
+
+  .btn-submit:hover:not(:disabled) {
+    background-color: #2563eb;
+  }
+
+  .btn-submit:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .btn-submit:active:not(:disabled) {
+    transform: scale(0.98);
   }
 </style>
