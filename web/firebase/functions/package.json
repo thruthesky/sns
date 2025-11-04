@@ -7,8 +7,9 @@
     "serve": "npm run build && firebase emulators:start --only functions",
     "shell": "npm run build && firebase functions:shell",
     "start": "npm run shell",
-    "deploy": "firebase deploy --only functions:onPostCreate,functions:onCommentCreate,functions:onPostLike,functions:onCommentLike,functions:onUserRegister",
-    "logs": "firebase functions:log"
+    "deploy": "firebase deploy --only functions:onPostCreate,functions:onPostDelete,functions:onCommentCreate,functions:onCommentDelete,functions:onLike,functions:onCancelLike,functions:onUserCreate",
+    "logs": "firebase functions:log",
+    "generate:posts": "npm run build && node lib/scripts/generate-sample-posts.js"
   },
   "engines": {
     "node": "22"

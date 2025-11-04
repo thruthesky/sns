@@ -1,6 +1,6 @@
 <svelte:options customElement="sns-right-sidebar" />
 
-<script>
+<script lang="ts">
   /**
    * 오른쪽 사이드바 컴포넌트 (Web Component)
    *
@@ -13,8 +13,20 @@
   import { User, TrendingUp, FileText, MessageCircle } from 'lucide-svelte';
   import { t } from '../stores/i18n.js';
 
-  // 통계 정보 (추후 Firebase RTDB에서 실시간으로 가져올 예정)
-  let stats = $state({
+  /**
+   * 통계 데이터 타입
+   */
+  type StatsData = {
+    totalUsers: number;
+    totalScore: number;
+    totalPosts: number;
+    totalMessages: number;
+  };
+
+  /**
+   * 통계 정보 (추후 Firebase RTDB에서 실시간으로 가져올 예정)
+   */
+  let stats = $state<StatsData>({
     totalUsers: 8,
     totalScore: 1,
     totalPosts: 0,

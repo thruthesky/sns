@@ -1,8 +1,7 @@
 기본적인 코딩 기법:
 - 본 문서는 SNS 웹 애플리케이션 개발 시 준수해야 할 코딩 가이드라인을 제공합니다.
 
-
-
+**⚠️ 중요 원칙**: 웹/앱 클라이언트에서는 **최소한의 정보만 RTDB에 기록**하고, **추가적인 정보 업데이트는 Firebase Cloud Functions 백엔드에서 처리**합니다.
 
 
 # Firebase Realtime Database 코딩 가이드라인
@@ -167,11 +166,11 @@ import { increment } from 'firebase/database';
 
 // ✅ 서버에서 원자적(atomic)으로 처리
 const updates = {};
-updates['posts/community/abc123/likeCount'] = increment(1);  // +1 증가
+updates['posts/abc123/likeCount'] = increment(1);  // +1 증가
 await update(ref(database), updates);
 
 // 감소는 음수 사용
-updates['posts/community/abc123/likeCount'] = increment(-1);  // -1 감소
+updates['posts/abc123/likeCount'] = increment(-1);  // -1 감소
 await update(ref(database), updates);
 ```
 
@@ -593,6 +592,7 @@ import { login } from '$lib/utils/firebase-login-user.svelte.js';
 | `path` | `string` | (필수) | Firebase RTDB 경로 (예: `"users"`, `"posts/community"`) |
 | `pageSize` | `number` | `10` | 한 번에 가져올 아이템 개수 |
 | `orderBy` | `string` | `"createdAt"` | 정렬 기준 필드 |
+| `sortPrefix` | `string` | `""` | 정렬 필드의 prefix 값으로 필터링 (예: `"community-"`) - 선택 사항 |
 | `threshold` | `number` | `300` | 스크롤 threshold (px) - 바닥에서 이 거리만큼 떨어지면 다음 페이지 로드 |
 | `reverse` | `boolean` | `false` | 역순 정렬 여부 |
 
@@ -607,7 +607,174 @@ DatabaseListView는 다양한 상태에 대한 커스터마이징 가능한 snip
 - `loadingMore()` - 더 로드 중 상태
 - `noMore()` - 더 이상 데이터 없음 상태
 
-## 5. 스크롤 방식 선택
+## 5. sortPrefix와 startAt(false) 필터링
+
+DatabaseListView는 Firebase 쿼리에서 **자동으로 null/undefined 값을 필터링**합니다.
+
+### 📌 기본 동작 (sortPrefix가 없는 경우)
+
+`sortPrefix`를 제공하지 않으면 `startAt(false)`가 자동으로 추가되어 **orderBy 필드가 null 또는 undefined인 항목을 제외**합니다.
+
+```svelte
+<DatabaseListView
+  path="users"
+  orderBy="createdAt"
+  pageSize={10}
+/>
+```
+
+**Firebase 쿼리 결과**:
+- ✅ `createdAt` 필드가 있는 항목만 조회됨
+- ❌ `createdAt` 필드가 `null` 또는 `undefined`인 항목은 제외됨
+- ✅ 숫자 타입인 경우 **가장 작은 값부터 정렬**됨
+
+**내부 쿼리**:
+```javascript
+query(
+  baseRef,
+  orderByChild('createdAt'),
+  startAt(false),  // ← null/undefined 필터링
+  limitToFirst(10)
+)
+```
+
+### 📌 sortPrefix를 사용하는 경우
+
+`sortPrefix`를 제공하면 해당 prefix로 시작하는 값만 필터링합니다:
+
+```svelte
+<DatabaseListView
+  path="posts"
+  orderBy="categoryKey"
+  sortPrefix="community-"
+  pageSize={20}
+/>
+```
+
+**Firebase 쿼리 결과**:
+- ✅ `categoryKey`가 `"community-"`로 시작하는 항목만 조회됨
+- ❌ `categoryKey`가 `"qna-"`, `"news-"` 등인 항목은 제외됨
+- ❌ `categoryKey`가 `null` 또는 `undefined`인 항목도 제외됨
+
+**내부 쿼리**:
+```javascript
+query(
+  baseRef,
+  orderByChild('categoryKey'),
+  startAt('community-'),
+  endAt('community-\uf8ff'),  // ← prefix 범위 필터링
+  limitToFirst(20)
+)
+```
+
+### 📌 startAt(false)가 필요한 이유
+
+Firebase Realtime Database의 `orderByChild()` 쿼리는 기본적으로 **null 값을 포함**합니다. 이로 인해:
+
+1. **페이지네이션 오류 발생**
+   - `orderBy` 필드가 없는 항목이 커서 값으로 사용됨
+   - 다음 페이지 로드 시 타입 불일치 에러 발생
+
+2. **불완전한 데이터 표시**
+   - 정렬 필드가 없는 항목이 리스트에 포함됨
+   - UI에서 의미 없는 데이터가 표시됨
+
+3. **성능 저하**
+   - 불필요한 데이터를 네트워크로 전송
+   - 클라이언트에서 추가 필터링 필요
+
+**`startAt(false)` 사용 시**:
+- ✅ Firebase 쿼리 단계에서 null/undefined 항목 제외
+- ✅ 네트워크 비용 절감 (불필요한 데이터 전송 방지)
+- ✅ 정확한 페이지네이션 동작 보장
+- ✅ 타입 안전성 확보 (커서 값이 항상 유효함)
+
+### 📌 사용 예시
+
+#### 예시 1: 사용자 목록 (createdAt 기준 정렬)
+
+```svelte
+<DatabaseListView
+  path="users"
+  orderBy="createdAt"
+  pageSize={15}
+>
+  {#snippet item(itemData)}
+    <div class="user-card">
+      <h3>{itemData.data.displayName}</h3>
+      <p>가입일: {new Date(itemData.data.createdAt).toLocaleDateString()}</p>
+    </div>
+  {/snippet}
+</DatabaseListView>
+```
+
+**결과**:
+- ✅ `createdAt` 필드가 있는 사용자만 표시
+- ✅ 가장 오래된 사용자부터 정렬 (작은 timestamp → 큰 timestamp)
+- ❌ `createdAt`가 없는 사용자는 리스트에서 제외
+
+#### 예시 2: 게시글 목록 (카테고리별 필터링)
+
+```svelte
+<DatabaseListView
+  path="posts"
+  orderBy="categoryKey"
+  sortPrefix="community-"
+  reverse={true}
+  pageSize={20}
+>
+  {#snippet item(itemData)}
+    <div class="post-card">
+      <h3>{itemData.data.title}</h3>
+      <p>{itemData.data.content}</p>
+    </div>
+  {/snippet}
+</DatabaseListView>
+```
+
+**결과**:
+- ✅ `categoryKey`가 `"community-"`로 시작하는 게시글만 표시
+- ✅ 카테고리 prefix가 다른 게시글은 제외
+- ✅ `reverse={true}`로 최신 글부터 표시
+
+### 📌 주의사항
+
+#### ⚠️ orderBy 필드는 반드시 존재해야 함
+
+DatabaseListView를 사용하려면 **모든 아이템이 orderBy 필드를 가지고 있어야** 합니다:
+
+```javascript
+// ❌ 잘못된 데이터 구조 - createdAt 필드 누락
+{
+  "users": {
+    "user1": {
+      "displayName": "홍길동",
+      // createdAt 없음!
+    }
+  }
+}
+
+// ✅ 올바른 데이터 구조 - createdAt 필드 포함
+{
+  "users": {
+    "user1": {
+      "displayName": "홍길동",
+      "createdAt": 1234567890123
+    }
+  }
+}
+```
+
+#### ⚠️ 자동 필드 생성 권장
+
+사용자 생성 시 `createdAt`, `updatedAt` 같은 필드를 자동으로 생성하는 것이 좋습니다:
+
+- **클라이언트 측**: `firebase-login-user.svelte.js`에서 자동 생성
+- **서버 측**: Firebase Cloud Functions의 `onUserRegister`에서 자동 생성
+
+참고: [firebase-login-user.svelte.js](../src/lib/utils/firebase-login-user.svelte.js) (lines 168-188)
+
+## 6. 스크롤 방식 선택
 
 DatabaseListView는 두 가지 스크롤 방식을 지원합니다:
 
@@ -721,7 +888,7 @@ DatabaseListView는 두 가지 스크롤 방식을 지원합니다:
 - ❌ 컨테이너 높이를 명시적으로 설정해야 함
 - ❌ 스크롤이 두 개 생길 수 있음 (페이지 스크롤 + 컨테이너 스크롤)
 
-## 6. 컨테이너 높이 설정 방법
+## 7. 컨테이너 높이 설정 방법
 
 ### 고정 높이
 
@@ -768,7 +935,7 @@ DatabaseListView는 두 가지 스크롤 방식을 지원합니다:
 }
 ```
 
-## 7. 실전 예제
+## 8. 실전 예제
 
 ### 예제 1: Body 스크롤 (사용자 목록 페이지)
 
@@ -890,7 +1057,7 @@ DatabaseListView는 두 가지 스크롤 방식을 지원합니다:
 </style>
 ```
 
-## 8. 주의사항
+## 9. 주의사항
 
 ### ⚠️ 컨테이너 높이 설정 필수
 
@@ -930,7 +1097,7 @@ DatabaseListView는 두 가지 스크롤을 **모두** 감지합니다:
 
 따라서 두 방식 중 어떤 것을 사용해도 무한 스크롤이 정상 작동합니다.
 
-## 9. 선택 가이드
+## 10. 선택 가이드
 
 | 요구사항 | 추천 방식 |
 |---------|----------|
@@ -941,8 +1108,10 @@ DatabaseListView는 두 가지 스크롤을 **모두** 감지합니다:
 | 복잡한 레이아웃 | 컨테이너 스크롤 |
 | 모바일 네이티브 느낌 | Body 스크롤 |
 
-## 10. 요약
+## 11. 요약
 
+- ✅ **자동 null/undefined 필터링**: sortPrefix가 없으면 startAt(false) 자동 적용
+- ✅ **sortPrefix 지원**: prefix 기반 범위 쿼리 지원
 - ✅ **두 가지 스크롤 방식**: Body 스크롤 (전체 페이지) vs 컨테이너 스크롤 (제한된 영역)
 - ✅ **자동 감지**: 두 방식 모두 자동으로 감지하여 무한 스크롤 작동
 - ✅ **높이 설정 필수**: 컨테이너 스크롤 사용 시 명시적인 높이 설정 필요

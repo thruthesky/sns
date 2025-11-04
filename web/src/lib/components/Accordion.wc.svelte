@@ -1,6 +1,6 @@
 <svelte:options customElement="sns-accordion" />
 
-<script>
+<script lang="ts">
   /**
    * Accordion Web Component
    *
@@ -24,22 +24,39 @@
   import { ChevronDown } from 'lucide-svelte';
 
   /**
-   * @typedef {Object} AccordionProps
-   * @property {string | Array<{icon?: string, title: string, content: string, hint?: string, gpl?: string}>} [items='[]'] - 아코디언 아이템 배열
-   * @property {'single' | 'multiple'} [type='single'] - 아코디언 타입
-   * @property {boolean | string} [collapsible=true] - 닫기 가능 여부
+   * 아코디언 아이템 타입 정의
    */
+  type AccordionItem = {
+    icon?: string;
+    title: string;
+    content: string;
+    hint?: string;
+    gpl?: string;
+  };
 
-  // Props - Web Components에서는 HTML 속성이 문자열 또는 boolean으로 전달될 수 있음
-  /** @type {AccordionProps} */
+  /**
+   * 아코디언 타입 ('single' 또는 'multiple')
+   */
+  type AccordionType = 'single' | 'multiple';
+
+  /**
+   * Props - Web Components에서는 HTML 속성이 문자열 또는 boolean으로 전달될 수 있음
+   */
   let {
     items = '[]',
-    type = 'single',
+    type = 'single' as AccordionType,
     collapsible = true
+  }: {
+    items?: string | AccordionItem[];
+    type?: AccordionType;
+    collapsible?: boolean | string;
   } = $props();
 
-  // Props 파싱 및 정규화
-  let parsedItems = $derived.by(() => {
+  /**
+   * Props 파싱 및 정규화
+   * items가 JSON 문자열이면 파싱하고, 배열이면 그대로 사용
+   */
+  let parsedItems = $derived.by((): AccordionItem[] => {
     try {
       const itemsArray = typeof items === 'string' ? JSON.parse(items) : items;
       return Array.isArray(itemsArray) ? itemsArray : [];
@@ -49,25 +66,29 @@
     }
   });
 
-  // collapsible prop 정규화
-  // HTML 속성: <sns-accordion collapsible> → '' (빈 문자열)
-  // HTML 속성: <sns-accordion collapsible="true"> → 'true'
-  // JavaScript: element.collapsible = true → true
-  let isCollapsible = $derived(() => {
+  /**
+   * collapsible prop 정규화
+   * HTML 속성: <sns-accordion collapsible> → '' (빈 문자열)
+   * HTML 속성: <sns-accordion collapsible="true"> → 'true'
+   * JavaScript: element.collapsible = true → true
+   */
+  let isCollapsible = $derived.by((): boolean => {
     const c = collapsible;
     if (typeof c === 'boolean') return c;
     if (typeof c === 'string') return c !== 'false';
     return true;
   });
 
-  // 열려있는 아이템들을 추적 (type="single"이면 하나만, "multiple"이면 여러 개)
-  let openItems = $state(new Set());
+  /**
+   * 열려있는 아이템들을 추적 (type="single"이면 하나만, "multiple"이면 여러 개)
+   */
+  let openItems = $state<Set<number>>(new Set());
 
   /**
    * 아이템 토글 함수
-   * @param {number} index - 토글할 아이템의 인덱스
+   * @param index - 토글할 아이템의 인덱스
    */
-  function toggleItem(index) {
+  function toggleItem(index: number): void {
     const newOpenItems = new Set(openItems);
 
     if (type === 'single') {
@@ -96,10 +117,10 @@
 
   /**
    * 아이템이 열려있는지 확인
-   * @param {number} index - 확인할 아이템의 인덱스
-   * @returns {boolean}
+   * @param index - 확인할 아이템의 인덱스
+   * @returns 열려있으면 true, 닫혀있으면 false
    */
-  function isOpen(index) {
+  function isOpen(index: number): boolean {
     return openItems.has(index);
   }
 </script>

@@ -10,10 +10,10 @@
  * - 사용자 친화적인 메시지 반환 (사용자용)
  *
  * 사용 예시:
- * ```javascript
- * import { handleFirebaseError } from '$lib/utils/error-handler.js';
+ * ```typescript
+ * import { handleFirebaseError } from '$lib/utils/error-handler';
  * import { get } from 'svelte/store';
- * import { t } from '$lib/stores/i18n.js';
+ * import { t } from '$lib/stores/i18n';
  *
  * try {
  *   // Firebase 작업
@@ -26,10 +26,34 @@
  */
 
 /**
+ * Firebase 에러 타입 정의
+ * Firebase SDK에서 발생하는 에러는 Error를 확장하여 code 속성을 포함합니다.
+ */
+export interface FirebaseError extends Error {
+  code?: string;
+}
+
+/**
+ * 에러 정보 타입
+ * handleFirebaseError 함수가 반환하는 에러 정보 객체
+ */
+export interface ErrorInfo {
+  key: string;           // i18n 번역 키 (예: 'error.db.permissionDenied')
+  code: string | null;   // 원본 Firebase 에러 코드 (예: 'PERMISSION_DENIED')
+  message: string;       // 원본 에러 메시지 (디버깅용)
+  context: string;       // 에러 발생 컨텍스트
+}
+
+/**
+ * 에러 코드 매핑 타입
+ */
+type ErrorCodeMap = Record<string, string>;
+
+/**
  * Firebase 에러 코드를 i18n 키로 매핑
  *
- * @param {string} code - Firebase 에러 코드 (예: 'auth/user-not-found', 'PERMISSION_DENIED')
- * @returns {string} i18n 번역 키
+ * @param code - Firebase 에러 코드 (예: 'auth/user-not-found', 'PERMISSION_DENIED')
+ * @returns i18n 번역 키
  *
  * 에러 코드 매핑:
  * - Authentication 에러: auth/* -> error.auth.*
@@ -37,14 +61,14 @@
  * - Storage 에러: storage/* -> error.storage.*
  * - 기타: error.unknown
  */
-export function mapFirebaseErrorCode(code) {
+export function mapFirebaseErrorCode(code: string | null | undefined): string {
   // 에러 코드가 없는 경우 기본값
   if (!code) {
     return 'error.unknown';
   }
 
   // Authentication 에러 매핑
-  const authErrorMap = {
+  const authErrorMap: ErrorCodeMap = {
     'auth/invalid-email': 'error.auth.invalidEmail',
     'auth/user-disabled': 'error.auth.userDisabled',
     'auth/user-not-found': 'error.auth.userNotFound',
@@ -62,7 +86,7 @@ export function mapFirebaseErrorCode(code) {
   };
 
   // Database 에러 매핑
-  const databaseErrorMap = {
+  const databaseErrorMap: ErrorCodeMap = {
     'PERMISSION_DENIED': 'error.db.permissionDenied',
     'permission-denied': 'error.db.permissionDenied',
     'network-error': 'error.db.networkError',
@@ -73,7 +97,7 @@ export function mapFirebaseErrorCode(code) {
   };
 
   // Storage 에러 매핑
-  const storageErrorMap = {
+  const storageErrorMap: ErrorCodeMap = {
     'storage/unauthorized': 'error.storage.unauthorized',
     'storage/bucket-not-found': 'error.storage.bucketNotFound',
     'storage/invalid-argument': 'error.storage.invalidArgument',
@@ -109,23 +133,18 @@ export function mapFirebaseErrorCode(code) {
 }
 
 /**
- * Firebase 에러 타입 정의
- * @typedef {Error & {code?: string}} FirebaseError
- */
-
-/**
  * Firebase 에러를 처리하고 사용자 친화적인 정보 반환
  *
- * @param {FirebaseError | Error | null} error - Firebase에서 발생한 에러 객체
- * @param {string} context - 에러 발생 컨텍스트 (예: 'createPost', 'updateUser', 'uploadPhoto')
- * @returns {{key: string, code: string | null, message: string, context: string}} 에러 정보 객체
+ * @param error - Firebase에서 발생한 에러 객체
+ * @param context - 에러 발생 컨텍스트 (예: 'createPost', 'updateUser', 'uploadPhoto')
+ * @returns 에러 정보 객체
  *   - key: i18n 번역 키 (예: 'error.db.permissionDenied')
  *   - code: 원본 Firebase 에러 코드 (예: 'PERMISSION_DENIED')
  *   - message: 원본 에러 메시지 (디버깅용)
  *   - context: 에러 발생 컨텍스트
  *
  * 사용 예시:
- * ```javascript
+ * ```typescript
  * try {
  *   await createPost(...);
  * } catch (error) {
@@ -136,7 +155,10 @@ export function mapFirebaseErrorCode(code) {
  * }
  * ```
  */
-export function handleFirebaseError(error, context = 'unknown') {
+export function handleFirebaseError(
+  error: unknown,
+  context: string = 'unknown'
+): ErrorInfo {
   // 에러 객체가 없는 경우
   if (!error) {
     console.error(`[${context}] 에러 객체가 없습니다.`);
@@ -148,16 +170,18 @@ export function handleFirebaseError(error, context = 'unknown') {
     };
   }
 
+  // Error 타입으로 캐스팅하여 message 접근
+  const err = error as Error & { code?: string };
+
   // Firebase 에러 코드 추출
   // error.code (Firebase SDK v9+)
   // error.message에서 코드 추출 시도
-  // @ts-ignore - Firebase 에러는 code 속성을 가짐
-  let errorCode = error.code ?? null;
+  let errorCode: string | null = err.code ?? null;
 
   // 에러 메시지에서 코드 추출 시도 (fallback)
-  if (!errorCode && error.message) {
+  if (!errorCode && err.message) {
     // "Firebase: Error (auth/invalid-email)." 같은 형식에서 코드 추출
-    const match = error.message.match(/\(([^)]+)\)/);
+    const match = err.message.match(/\(([^)]+)\)/);
     if (match && match[1]) {
       errorCode = match[1];
     }
@@ -166,8 +190,8 @@ export function handleFirebaseError(error, context = 'unknown') {
   // 원본 에러 로깅 (개발자용)
   console.error(`[${context}] Firebase 에러:`, {
     code: errorCode,
-    message: error.message,
-    stack: error.stack,
+    message: err.message,
+    stack: err.stack,
     originalError: error,
   });
 
@@ -178,25 +202,36 @@ export function handleFirebaseError(error, context = 'unknown') {
   return {
     key: i18nKey,
     code: errorCode,
-    message: error.message,
+    message: err.message || 'Unknown error',
     context,
   };
 }
 
 /**
+ * 토스트 표시 함수 타입
+ */
+export type ShowToastFunction = (message: string, type: 'success' | 'error' | 'info' | 'warning') => void;
+
+/**
+ * i18n 번역 함수 타입
+ */
+export type TranslateFunction = (key: string) => string;
+
+/**
  * 에러를 로깅하고 토스트 메시지로 표시
  *
- * @param {Error} error - Firebase 에러
- * @param {string} context - 에러 발생 컨텍스트
- * @param {Function} showToastFn - 토스트 표시 함수
- * @param {Function} tFn - i18n 번역 함수 (get(t) 결과)
+ * @param error - Firebase 에러
+ * @param context - 에러 발생 컨텍스트
+ * @param showToastFn - 토스트 표시 함수
+ * @param tFn - i18n 번역 함수 (get(t) 결과)
+ * @returns 에러 정보 객체
  *
  * 사용 예시:
- * ```javascript
- * import { logAndShowError } from '$lib/utils/error-handler.js';
- * import { showToast } from '$lib/stores/toast.js';
+ * ```typescript
+ * import { logAndShowError } from '$lib/utils/error-handler';
+ * import { showToast } from '$lib/stores/toast';
  * import { get } from 'svelte/store';
- * import { t } from '$lib/stores/i18n.js';
+ * import { t } from '$lib/stores/i18n';
  *
  * try {
  *   await deletePost(postId);
@@ -205,7 +240,12 @@ export function handleFirebaseError(error, context = 'unknown') {
  * }
  * ```
  */
-export function logAndShowError(error, context, showToastFn, tFn) {
+export function logAndShowError(
+  error: unknown,
+  context: string,
+  showToastFn: ShowToastFunction,
+  tFn: TranslateFunction
+): ErrorInfo {
   const errorInfo = handleFirebaseError(error, context);
 
   // i18n 키를 번역된 메시지로 변환

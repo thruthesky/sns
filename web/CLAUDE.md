@@ -12,6 +12,12 @@ SNS 개발 지침
   - [ ] 반드시 한글로 상세한 설명을 작성해야 한다.
   - [ ] 특히, 각 항목/요소/섹션/UI 별로 명칭을 적어서, 개발자간 소통을 원활하게 해야 한다.
   - [ ] 각 기술 스택에 맞는 MCP 를 활용해야 한다.
+- [ ] **문서 작성 및 수정 시 준수 사항**:
+  - [ ] 모든 `docs/*.md` 문서 상단에는 **목차 (Table of Contents)** 를 항상 업데이트해야 한다
+  - [ ] 새로운 섹션을 추가하면 목차에 해당 섹션을 즉시 추가한다
+  - [ ] 섹션 제목을 변경하면 목차도 함께 업데이트한다
+  - [ ] 섹션 삭제 시 목차에서도 해당 항목을 제거한다
+  - [ ] 목차는 Markdown 링크 형식으로 작성하여 클릭으로 이동 가능하게 한다
 
 
 # 코딩 가이드라인
@@ -130,6 +136,96 @@ async function handleSubmit() {
 - [src/lib/i18n/ko.json](src/lib/i18n/ko.json) - 한국어 에러 메시지 (264-290줄)
 - [src/lib/services/forum.js](src/lib/services/forum.js) - 사용 예시 (게시판)
 - [src/lib/services/comment.js](src/lib/services/comment.js) - 사용 예시 (댓글)
+
+---
+
+## ⚡ 숫자 값 증/감 연산 (increment 함수)
+
+**클라이언트와 서버 모두에서 숫자 값을 증감시킬 때는 반드시 `increment()` 함수를 사용해야 합니다.**
+
+### 🔥 강제 규칙 (매우 중요)
+
+- ✅ **모든 숫자 증/감 연산에서 `increment()` 함수 사용 필수**
+- ✅ **자식 노드 수를 세어서 `set()`으로 업데이트 절대 금지**
+- ✅ **전체 노드 수를 구할 때도 가능하면 increment() 패턴 사용**
+- ✅ Firebase Admin SDK에서는 `admin.database.ServerValue.increment(n)` 사용
+- ✅ `increment(1)` - 1씩 증가, `increment(-1)` - 1씩 감소
+- ✅ 동시성 안전함 (서버 측 원자적 연산)
+- ❌ **절대 금지**: 모든 자식 노드를 읽어서 개수를 세고 `set()`으로 업데이트하지 말 것
+- ❌ 트랜잭션 대신 `increment()` 사용 (더 효율적)
+- ❌ `currentCount + 1`이나 `set(newCount)` 사용하지 말 것
+
+### 🚫 반드시 피해야 할 패턴
+
+```typescript
+// ❌ 아주 나쁜 예시: 모든 자식 노드를 읽음
+const likesSnapshot = await db.ref("/likes")
+  .orderByKey()
+  .startAt(prefix)
+  .endAt(`${prefix}\uf8ff`)
+  .once("value");
+const likeCount = likesSnapshot.numChildren();  // 모든 데이터 전송!
+await postRef.child("likeCount").set(likeCount);  // set() 사용!
+
+// ❌ 나쁜 예시: 현재 값을 읽어서 증가
+const snapshot = await db.ref(`posts/${postId}`).once("value");
+const currentCount = snapshot.val().likeCount || 0;
+await db.ref(`posts/${postId}/likeCount`).set(currentCount + 1);  // 동시성 문제!
+
+// ❌ 트랜잭션 사용 (효율성 낮음)
+await db.ref(`posts/${postId}/likeCount`).transaction((currentCount) => {
+  return (currentCount || 0) + 1;
+});
+```
+
+### ✅ 올바른 패턴
+
+```typescript
+// ✅ 좋은 예시: increment() 직접 사용
+const updates = {} as Record<string, unknown>;
+updates[`posts/${postId}/likeCount`] = admin.database.ServerValue.increment(1);
+await admin.database().ref().update(updates);
+
+// ✅ 감소 연산
+updates[`posts/${postId}/likeCount`] = admin.database.ServerValue.increment(-1);
+await admin.database().ref().update(updates);
+```
+
+### 서버 사이드 (Cloud Functions) 예시
+
+```typescript
+// ✅ 올바른 방법: ServerValue.increment() 사용
+const updates = {} as Record<string, unknown>;
+updates[`posts/${postId}/commentCount`] = admin.database.ServerValue.increment(1);
+await admin.database().ref().update(updates);
+
+// 감소 연산
+updates[`categories/${category}/postCount`] = admin.database.ServerValue.increment(-1);
+await admin.database().ref().update(updates);
+
+// ✅ likeCount 업데이트 예시 (좋아요 기능)
+// 모든 자식 노드를 읽지 않고 increment() 사용
+await postRef.child("likeCount").set(admin.database.ServerValue.increment(1));
+```
+
+### 클라이언트 사이드 (Svelte) 예시
+
+```javascript
+// ✅ Firebase Client SDK에서도 increment() 사용
+import { ref, update, increment } from 'firebase/database';
+
+const updates = {};
+updates[`posts/${postId}/likeCount`] = increment(1);
+await update(ref(database), updates);
+```
+
+### 동시성 안전성
+
+`increment()`는 서버 측에서 원자적(atomic) 연산으로 처리되므로:
+- 여러 사용자가 동시에 같은 필드를 업데이트해도 정확함
+- 트랜잭션보다 빠르고 안정적
+- 네트워크 오류 후에도 정확한 값 유지
+- **모든 자식 노드를 읽을 필요가 없어서 비용 절감**
 
 ---
 

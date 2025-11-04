@@ -13,8 +13,6 @@
   // Props
   let {
     comment,
-    postId = '',
-    postCategory = '',
     userId = null
   } = $props();
 
@@ -55,15 +53,13 @@
     isSubmitting = true;
 
     try {
-      // 3. Firebase에 답글 저장
-      // 참고: commentCount는 Firebase Cloud Functions에서 자동으로 증가됨
-      const result = await createChildComment(
-        postCategory,        // 게시판 카테고리
-        postId,              // 게시글 ID
-        comment.commentId,   // 부모 댓글 ID
-        userId,              // 작성자 UID
-        replyContent         // 답글 내용
-      );
+      // 3. Firebase에 답글 저장 (Flat Style 구조)
+      // 참고: postId와 commentCount는 Firebase Cloud Functions에서 자동으로 관리됨
+      const result = await createChildComment({
+        parentCommentId: comment.commentId,  // 부모 댓글 ID
+        userId: userId,                      // 작성자 UID
+        content: replyContent                // 답글 내용
+      });
 
       // 4. 결과 처리
       if (result.success) {

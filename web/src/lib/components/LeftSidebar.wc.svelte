@@ -1,6 +1,6 @@
 <svelte:options customElement="sns-left-sidebar" />
 
-<script>
+<script lang="ts">
   /**
    * 왼쪽 사이드바 컴포넌트 (Web Component)
    *
@@ -23,6 +23,10 @@
   import { user } from '../stores/auth.js';
   import { t, locale, setLocale, SUPPORTED_LOCALES } from '../stores/i18n.js';
 
+  /**
+   * 언어 옵션 목록
+   * SUPPORTED_LOCALES에서 가져온 언어 설정 배열
+   */
   const LANGUAGE_OPTIONS = SUPPORTED_LOCALES;
 </script>
 

@@ -5,7 +5,7 @@
   }}
 />
 
-<script>
+<script lang="ts">
   /**
    * 테스트용 Floating Action Button 컴포넌트
    *
@@ -31,12 +31,23 @@
 
   import { onMount } from 'svelte';
   import { auth } from '../utils/firebase.js';
-  import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+  import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, type UserCredential } from 'firebase/auth';
   import { Settings, User, Server } from 'lucide-svelte';
 
-  // 테스트 계정 데이터
-  // Firebase Console의 "Authentication"에서 이메일/비밀번호로 로그인할 수 있는 계정들
-  const TEST_ACCOUNTS = [
+  /**
+   * 테스트 계정 타입 정의
+   */
+  type TestAccount = {
+    label: string;
+    name: string;
+    email: string;
+  };
+
+  /**
+   * 테스트 계정 데이터
+   * Firebase Console의 "Authentication"에서 이메일/비밀번호로 로그인할 수 있는 계정들
+   */
+  const TEST_ACCOUNTS: TestAccount[] = [
     { label: 'A', name: 'apple', email: 'apple@test.com' },
     { label: 'B', name: 'banana', email: 'banana@test.com' },
     { label: 'C', name: 'cherry', email: 'cherry@test.com' },
@@ -47,17 +58,23 @@
     { label: 'H', name: 'honeydew', email: 'honeydew@test.com' }
   ];
 
-  // 테스트 계정 공통 비밀번호
-  const TEST_PASSWORD = '12345a,*';
+  /**
+   * 테스트 계정 공통 비밀번호
+   */
+  const TEST_PASSWORD: string = '12345a,*';
 
-  // 상태 관리
-  let isMenuOpen = $state(false); // 메뉴 열림 상태
-  let isServerInfoOpen = $state(false); // 서버 정보 모달 열림 상태
-  let isLoading = $state(false); // 로그인 진행 중 상태
+  /**
+   * 상태 관리
+   */
+  let isMenuOpen = $state<boolean>(false); // 메뉴 열림 상태
+  let isServerInfoOpen = $state<boolean>(false); // 서버 정보 모달 열림 상태
+  let isLoading = $state<boolean>(false); // 로그인 진행 중 상태
 
-  // 빌드 버전 정보 (현재 시간 기준)
-  const buildTimestamp = Date.now();
-  const buildDate = new Date(buildTimestamp).toLocaleString('ko-KR', {
+  /**
+   * 빌드 버전 정보 (현재 시간 기준)
+   */
+  const buildTimestamp: number = Date.now();
+  const buildDate: string = new Date(buildTimestamp).toLocaleString('ko-KR', {
     year: '2-digit',
     month: '2-digit',
     day: '2-digit',
@@ -70,7 +87,7 @@
    * 환경 변수에서 프로젝트 ID 가져오기
    * Vite는 import.meta.env를 사용
    */
-  const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID || 'N/A';
+  const projectId: string = (import.meta.env.VITE_FIREBASE_PROJECT_ID as string) || 'N/A';
 
   /**
    * 컴포넌트 마운트 시 초기화
@@ -85,9 +102,9 @@
    * Firebase 이메일/비밀번호 인증을 사용하여 테스트 계정으로 로그인합니다.
    * 계정이 없으면 자동으로 회원가입 후 로그인합니다.
    *
-   * @param {Object} account - 테스트 계정 정보 (label, name, email)
+   * @param account - 테스트 계정 정보 (label, name, email)
    */
-  async function handleTestLogin(account) {
+  async function handleTestLogin(account: TestAccount): Promise<void> {
     if (isLoading) return;
 
     isLoading = true;
@@ -95,11 +112,11 @@
 
     try {
       // 먼저 로그인 시도
-      let userCredential;
+      let userCredential: UserCredential;
       try {
         userCredential = await signInWithEmailAndPassword(auth, account.email, TEST_PASSWORD);
         console.log(`${account.name} 계정으로 로그인 성공!`);
-      } catch (signInError) {
+      } catch (signInError: any) {
         // 로그인 실패 시 회원가입 시도
         if (signInError.code === 'auth/user-not-found' || signInError.code === 'auth/invalid-credential') {
           console.log(`${account.name} 계정이 없습니다. 회원가입을 진행합니다...`);
@@ -126,11 +143,11 @@
       // 페이지 새로고침하여 상태 업데이트
       window.location.href = '/';
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('로그인 오류:', error);
 
       // 오류 메시지 표시
-      let errorMessage = '로그인에 실패했습니다.';
+      let errorMessage: string = '로그인에 실패했습니다.';
       if (error.code === 'auth/invalid-email') {
         errorMessage = '잘못된 이메일 형식입니다.';
       } else if (error.code === 'auth/wrong-password') {
@@ -152,23 +169,25 @@
   /**
    * 메뉴 열기/닫기 토글
    */
-  function toggleMenu() {
+  function toggleMenu(): void {
     isMenuOpen = !isMenuOpen;
   }
 
   /**
    * 서버 정보 모달 열기/닫기 토글
    */
-  function toggleServerInfo() {
+  function toggleServerInfo(): void {
     isServerInfoOpen = !isServerInfoOpen;
     isMenuOpen = false; // 메뉴 닫기
   }
 
   /**
    * 메뉴 외부 클릭 시 메뉴 닫기
+   * @param event - 마우스 이벤트
    */
-  function handleClickOutside(event) {
-    if (!event.target.closest('.test-fab-menu') && !event.target.closest('.test-fab-button')) {
+  function handleClickOutside(event: MouseEvent): void {
+    const target = event.target as Element;
+    if (!target.closest('.test-fab-menu') && !target.closest('.test-fab-button')) {
       isMenuOpen = false;
     }
   }

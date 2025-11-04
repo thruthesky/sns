@@ -43,16 +43,80 @@
 
 ## 데이터베이스 구조
 
-게시판 데이터베이스 구조는 별도 문서에서 관리됩니다.
+게시판 데이터는 `/posts/` 경로 아래에 flat style로 저장됩니다.
 
-**📖 참고 문서**: [데이터베이스 구조 가이드](./sns-web-database.md#게시판-forum--posts)
+### 게시글 데이터 구조
 
-주요 내용:
-- `/posts/<post-id>` 경로 구조 (flat style)
-- `category` 필드로 카테고리 구분 (community, qna, news, market)
-- `order` 필드로 카테고리별 정렬 (`<category>-<timestamp>` 형식)
-- 실시간 동기화를 위한 RTDB 사용
-- 게시글 필드: uid, title, content, author, category, order, createdAt, updatedAt
+```
+/posts/
+  <post-id>/              # Firebase 자동 생성 ID
+    uid: "사용자 UID"
+    title: "게시글 제목"
+    content: "게시글 내용"
+    author: "작성자 displayName"
+    category: "community"  # 카테고리 (community, qna, news, market)
+    order: "community-1234567890"  # <category>-<timestamp> 형식
+    createdAt: 1234567890  # Unix timestamp (밀리초)
+    updatedAt: 1234567890  # Unix timestamp (밀리초)
+    likeCount: 0         # 좋아요 총 개수 (Cloud Functions로 관리)
+    commentCount: 0      # 댓글 총 개수 (Cloud Functions로 관리)
+```
+
+### 예시
+
+```json
+{
+  "posts": {
+    "abc123def456": {
+      "uid": "user-1",
+      "title": "안녕하세요",
+      "content": "첫 게시글입니다",
+      "author": "사용자1",
+      "category": "community",
+      "order": "community-1698473000000",
+      "createdAt": 1698473000000,
+      "updatedAt": 1698473000000,
+      "likeCount": 3,
+      "commentCount": 2
+    },
+    "xyz789uvw012": {
+      "uid": "user-2",
+      "title": "질문 있습니다",
+      "content": "누가 도와줄 수 있을까요?",
+      "author": "사용자2",
+      "category": "qna",
+      "order": "qna-1698473100000",
+      "createdAt": 1698473100000,
+      "updatedAt": 1698473100000,
+      "likeCount": 5,
+      "commentCount": 1
+    }
+  }
+}
+```
+
+### Flat Style 구조의 장점
+
+- **관계형 참조 단순화**: post-id만으로 게시글 접근 가능
+- **복잡한 노드 구조 제거**: 단순한 경로로 조회 효율성 향상
+- **카테고리별 정렬 효율**: `order` 필드를 통한 빠른 정렬 쿼리
+
+### 게시글 필드 설명
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `uid` | string | ✅ | 작성자 UID |
+| `title` | string | ✅ | 게시글 제목 |
+| `content` | string | ✅ | 게시글 내용 |
+| `author` | string | ✅ | 작성자 displayName |
+| `category` | string | ✅ | 카테고리 (community, qna, news, market) |
+| `order` | string | ✅ | 정렬용 문자열 (`<category>-<timestamp>`) |
+| `createdAt` | number | ✅ | 작성 시간 (Unix timestamp 밀리초) |
+| `updatedAt` | number | ✅ | 수정 시간 (Unix timestamp 밀리초) |
+| `likeCount` | number | ❌ | 좋아요 총 개수 (기본값: 0) |
+| `commentCount` | number | ❌ | 댓글 총 개수 (기본값: 0) |
+
+**📖 참고 문서**: [데이터베이스 구조 가이드](./sns-web-database.md)
 
 ---
 
@@ -1171,6 +1235,9 @@ function listenToComments(postId, callback) {
 ## 관련 문서
 
 - [데이터베이스 구조 가이드](./sns-web-database.md) - **게시판 DB 구조 필수 참고**
+- [게시글 좋아요 개발 가이드](./sns-web-likes.md) - **좋아요 기능 구현 필수 참고**
+- [댓글 개발 가이드](./sns-web-comments.md) - **댓글 기능 구현 필수 참고**
+- [사용자 관리 개발 가이드](./sns-web-user.md)
 - [Svelte Custom Elements 개발 가이드](./sns-custom-elements.md)
 - [웹 개발 지침](./sns-web.md)
 - [i18n 개발 가이드](./sns-web-i18n.md)

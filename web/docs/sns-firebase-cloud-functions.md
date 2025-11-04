@@ -27,11 +27,11 @@
 파이어베이스 클라우드 함수는 서버리스 환경에서 백엔드 코드를 실행할 수 있는 기능을 제공합니다. SNS 프로젝트에서는 게시글, 댓글, 좋아요 등의 이벤트 발생 시 자동으로 실행되는 백그라운드 함수를 구현하여 다음과 같은 작업을 자동화합니다:
 
 - **사용자 프로필 동기화**: `/users/{uid}` 변경 시 `/user-props/` 자동 업데이트
-- **좋아요/댓글 개수 동기화**: `/post-props/likes/` 변경 시 `/posts/{category}/{postId}/likeCount` 업데이트
+- **좋아요/댓글 개수 동기화**: `/post-likes/` 변경 시 `/posts/{postId}/likeCount` 업데이트
 - **게시글 삭제 시 연관 데이터 정리**: 게시글 삭제 시 좋아요, 댓글 등 연관 데이터 자동 삭제
 - **알림 트리거 및 전송**: 좋아요, 댓글, 친구 요청 등의 이벤트 발생 시 알림 전송
 
-**참고**: 이 문서에서 사용하는 모든 경로는 Firebase Realtime Database의 최상위 경로(`/`)에서 시작합니다. 예: `/users/{uid}`, `/posts/{category}/{postId}`
+**참고**: 이 문서에서 사용하는 모든 경로는 Firebase Realtime Database의 최상위 경로(`/`)에서 시작합니다. 예: `/users/{uid}`, `/posts/{postId}`
 
 이 문서에서는 파이어베이스 클라우드 함수를 개발할 때 따라야 할 지침들을 안내합니다.
 
@@ -73,9 +73,11 @@
 
 2. **SNS 데이터 구조 준수**:
    - Firebase Realtime Database 최상위 경로 사용
-   - 게시글: `/posts/{category}/{postId}`
+   - 게시글: `/posts/{postId}`
    - 사용자: `/users/{uid}`
-   - 게시글 속성: `/post-props/likes/{postId}/{uid}`, `/post-props/comments/{postId}/{commentId}`
+   - 게시글 좋아요: `/post-likes/{postId}-{uid}`
+   - 댓글: `/comments/{commentId}`
+   - 댓글 좋아요: `/comment-props/likes/{commentId}/{uid}`
    - 채팅: `/chat/messages/{roomId}/{messageId}`
    - 채팅 참여: `/chat/joins/{uid}/{roomId}`
 
@@ -383,41 +385,34 @@ await updateLikeCount(postId);
  */
 async function updateLikeCount(postId: string) {
   // 1. 해당 게시글의 모든 좋아요 개수 조회
+  // /post-likes/{postId}-{uid} 형태의 모든 좋아요 조회
   const likesSnapshot = await admin.database()
-    .ref(`/post-props/likes/${postId}`)
+    .ref("/post-likes")
+    .orderByKey()
     .once("value");
 
-  const likeCount = likesSnapshot.numChildren();
-
-  // 2. 게시글이 속한 카테고리 찾기
-  const categoriesSnapshot = await admin.database()
-    .ref("/posts")
-    .once("value");
-
-  let targetPath = null;
-  categoriesSnapshot.forEach((categorySnapshot) => {
-    const categoryKey = categorySnapshot.key;
-    if (categorySnapshot.child(postId).exists()) {
-      targetPath = `/posts/${categoryKey}/${postId}/likeCount`;
-    }
-  });
-
-  if (!targetPath) {
-    console.error(`게시글 경로를 찾을 수 없습니다: ${postId}`);
-    return;
+  let likeCount = 0;
+  if (likesSnapshot.exists()) {
+    likesSnapshot.forEach((childSnapshot) => {
+      const key = childSnapshot.key || "";
+      if (key.startsWith(`${postId}-`)) {
+        likeCount++;
+      }
+    });
   }
 
-  // 3. 좋아요 개수 업데이트
-  await admin.database().ref(targetPath).set(likeCount);
+  // 2. 좋아요 개수 업데이트
+  await admin.database()
+    .ref(`/posts/${postId}/likeCount`)
+    .set(likeCount);
 
-  console.log(`좋아요 개수 업데이트 완료: ${targetPath} = ${likeCount}`);
+  console.log(`좋아요 개수 업데이트 완료: /posts/${postId}/likeCount = ${likeCount}`);
 }
 ```
 
 **처리 내역**:
-- `/post-props/likes/{postId}` 경로의 모든 자식 개수 계산
-- 해당 게시글이 속한 카테고리 찾기
-- `/posts/{category}/{postId}/likeCount` 업데이트
+- `/post-likes/` 경로에서 `{postId}-{uid}` 패턴의 좋아요 개수 계산
+- `/posts/{postId}/likeCount` 업데이트
 
 ---
 
@@ -461,28 +456,25 @@ console.log(`게시글 ${postId}의 좋아요 개수: ${likeCount}`);
 ```typescript
 // 게시글의 likeCount 필드 업데이트
 await admin.database()
-  .ref(`/posts/${category}/${postId}/likeCount`)
+  .ref(`/posts/${postId}/likeCount`)
   .set(likeCount);
 ```
 
 **결과**:
 ```
 /posts/
-  community/
-    post-abc123/
-      title: "안녕하세요"
-      content: "게시글 내용"
-      userId: "user-A-uid"
-      likeCount: 5  ← Cloud Functions가 자동으로 업데이트
+  post-abc123/
+    title: "안녕하세요"
+    content: "게시글 내용"
+    uid: "user-A-uid"
+    likeCount: 5  ← Cloud Functions가 자동으로 업데이트
 
-/post-props/
-  likes/
-    post-abc123/
-      user-A-uid: 1698473000000
-      user-B-uid: 1698473100000
-      user-C-uid: 1698473200000
-      user-D-uid: 1698473300000
-      user-E-uid: 1698473400000
+/post-likes/
+  post-abc123-user-A-uid: 1
+  post-abc123-user-B-uid: 1
+  post-abc123-user-C-uid: 1
+  post-abc123-user-D-uid: 1
+  post-abc123-user-E-uid: 1
 ```
 
 **SNS 관련 추가 예제**:
@@ -506,18 +498,9 @@ export const onCommentCreated = onValueCreated(
     const commentCount = commentsSnapshot.numChildren();
 
     // 게시글의 commentCount 업데이트
-    const categoriesSnapshot = await admin.database()
-      .ref("/posts")
-      .once("value");
-
-    categoriesSnapshot.forEach((categorySnapshot) => {
-      if (categorySnapshot.child(postId).exists()) {
-        const categoryKey = categorySnapshot.key;
-        admin.database()
-          .ref(`/posts/${categoryKey}/${postId}/commentCount`)
-          .set(commentCount);
-      }
-    });
+    await admin.database()
+      .ref(`/posts/${postId}/commentCount`)
+      .set(commentCount);
   }
 );
 ```
@@ -647,10 +630,11 @@ Region이 일치하지 않으면 함수가 트리거되지 않습니다!
 
 SNS Cloud Functions 개발 시 반드시 최상위 경로 구조를 따라야 합니다:
 
-- **게시글**: `/posts/{category}/{postId}`
+- **게시글**: `/posts/{postId}`
 - **사용자**: `/users/{uid}`
-- **좋아요**: `/post-props/likes/{postId}/{userId}`
-- **댓글**: `/post-props/comments/{postId}/{commentId}`
+- **게시글 좋아요**: `/post-likes/{postId}-{uid}`
+- **댓글**: `/comments/{commentId}`
+- **댓글 좋아요**: `/comment-props/likes/{commentId}/{uid}`
 - **채팅 메시지**: `/chat/messages/{roomId}/{messageId}`
 - **채팅 참여**: `/chat/joins/{uid}/{roomId}`
 

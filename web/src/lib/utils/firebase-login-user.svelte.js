@@ -157,10 +157,35 @@ class FirebaseLoginUser {
 
                         this.#dbUnsubscribe = onValue(
                             userRef,
-                            (snapshot) => {
+                            async (snapshot) => {
                                 // 데이터 업데이트
                                 this.data = snapshot.val();
                                 // console.log(`FirebaseLoginUser: User data updated`, this.data);
+
+                                // 📝 사용자 데이터가 없으면 자동으로 생성
+                                // 이렇게 하면 Firebase Cloud Functions의 onUserRegister가 트리거되어
+                                // createdAt, updatedAt 등의 필수 필드가 자동으로 생성됩니다
+                                if (!this.data && firebaseUser) {
+                                    console.log('FirebaseLoginUser: 사용자 데이터가 없습니다. 기본 프로필 생성 중...');
+
+                                    const now = Date.now();
+                                    const defaultUserData = {
+                                        displayName: firebaseUser.displayName || firebaseUser.phoneNumber || 'User',
+                                        email: firebaseUser.email || null,
+                                        photoUrl: firebaseUser.photoURL || null,
+                                        phoneNumber: firebaseUser.phoneNumber || null,
+                                        createdAt: now,
+                                        updatedAt: now
+                                    };
+
+                                    try {
+                                        await dbUpdate(userRef, defaultUserData);
+                                        console.log('FirebaseLoginUser: 기본 프로필 생성 완료', defaultUserData);
+                                    } catch (createError) {
+                                        console.error('FirebaseLoginUser: 프로필 생성 실패', createError);
+                                        this.error = createError;
+                                    }
+                                }
                             },
                             (dbError) => {
                                 // DB 에러 발생

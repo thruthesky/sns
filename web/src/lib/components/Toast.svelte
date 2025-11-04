@@ -15,16 +15,19 @@
   Props: 없음 (store에서 데이터를 가져옴)
 -->
 
-<script>
+<script lang="ts">
   import { toasts, removeToast } from '../stores/toast.js';
+
+  /**
+   * Toast 타입
+   */
+  type ToastType = 'success' | 'error' | 'info' | 'warning';
 
   /**
    * Toast 아이콘 가져오기
    * 타입에 따라 다른 아이콘을 반환합니다.
-   * @param {string} type - toast 타입 (success, error, info, warning)
-   * @returns {string} 아이콘 문자
    */
-  function getIcon(type) {
+  function getIcon(type: ToastType): string {
     switch (type) {
       case 'success':
         return '✓';

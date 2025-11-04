@@ -1,0 +1,54 @@
+{
+  "extends": "@tsconfig/svelte/tsconfig.json",
+  "compilerOptions": {
+    // 모듈 설정
+    "moduleResolution": "bundler",
+    "module": "ESNext",
+    "target": "ESNext",
+
+    // Svelte 지원
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+
+    // 소스맵 및 디버깅
+    "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true,
+
+    // 타입 체크 설정
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+
+    // 호환성
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+
+    // 타입 정의
+    "types": ["vite/client"],
+
+    // 점진적 마이그레이션을 위한 설정
+    "allowJs": true,
+    "checkJs": true,
+
+    // 출력 디렉토리
+    "outDir": "./dist",
+    "rootDir": "./src"
+  },
+  "include": [
+    "src/**/*.d.ts",
+    "src/**/*.ts",
+    "src/**/*.js",
+    "src/**/*.svelte"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build"
+  ]
+}

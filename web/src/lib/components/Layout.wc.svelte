@@ -1,6 +1,6 @@
 <svelte:options customElement="sns-layout" />
 
-<script>
+<script lang="ts">
   /**
    * 레이아웃 컴포넌트 (Web Component)
    *

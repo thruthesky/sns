@@ -1,6 +1,6 @@
 <svelte:options customElement="post-list" />
 
-<script>
+<script lang="ts">
   /**
    * 게시물 목록 컴포넌트 (Web Component)
    *
@@ -19,16 +19,33 @@
 
   import { onMount, onDestroy } from 'svelte';
   import { database } from '../utils/firebase.js';
-  import { ref, onValue, off } from 'firebase/database';
+  import { ref, onValue, off, type DatabaseReference } from 'firebase/database';
 
-  // Props (HTML 속성은 항상 문자열로 전달됨)
-  let { path = 'posts', limit = '10' } = $props();
+  /**
+   * 게시물 타입 정의
+   */
+  type Post = {
+    id: string;
+    author?: string;
+    timestamp?: number;
+    title?: string;
+    content?: string;
+    likes?: number;
+    comments?: any[];
+  };
 
-  // 반응형 상태
-  let posts = $state([]);
-  let loading = $state(true);
-  let error = $state('');
-  let dbRef = null;
+  /**
+   * Props (HTML 속성은 항상 문자열로 전달됨)
+   */
+  let { path = 'posts', limit = '10' }: { path?: string; limit?: string } = $props();
+
+  /**
+   * 반응형 상태
+   */
+  let posts = $state<Post[]>([]);
+  let loading = $state<boolean>(true);
+  let error = $state<string>('');
+  let dbRef: DatabaseReference | null = null;
 
   /**
    * 컴포넌트 마운트 시 데이터 구독
@@ -47,7 +64,7 @@
   /**
    * 데이터베이스 실시간 구독
    */
-  function subscribeToData() {
+  function subscribeToData(): void {
     try {
       dbRef = ref(database, path);
 
@@ -57,9 +74,9 @@
         if (data) {
           // 객체를 배열로 변환하고 최신순으로 정렬
           posts = Object.entries(data)
-            .map(([key, value]) => ({
+            .map(([key, value]: [string, any]): Post => ({
               id: key,
-              ...value
+              ...(value as Omit<Post, 'id'>)
             }))
             .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
             .slice(0, parseInt(limit));
@@ -84,7 +101,7 @@
   /**
    * 데이터베이스 구독 해제
    */
-  function unsubscribeFromData() {
+  function unsubscribeFromData(): void {
     if (dbRef) {
       off(dbRef);
     }
@@ -92,9 +109,9 @@
 
   /**
    * 게시물 클릭 핸들러
-   * @param {Object} post - 클릭한 게시물 객체
+   * @param post - 클릭한 게시물 객체
    */
-  function handlePostClick(post) {
+  function handlePostClick(post: Post): void {
     const event = new CustomEvent('post-click', {
       detail: { post },
       bubbles: true,
@@ -105,10 +122,10 @@
 
   /**
    * 키보드 이벤트 핸들러 (접근성)
-   * @param {KeyboardEvent} event - 키보드 이벤트
-   * @param {Object} post - 게시물 객체
+   * @param event - 키보드 이벤트
+   * @param post - 게시물 객체
    */
-  function handleKeyPress(event, post) {
+  function handleKeyPress(event: KeyboardEvent, post: Post): void {
     // Enter 또는 Space 키로 게시물 클릭 가능
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
@@ -118,10 +135,10 @@
 
   /**
    * 타임스탬프를 읽기 쉬운 형식으로 변환
-   * @param {number|string} timestamp - Unix 타임스탬프 (밀리초)
-   * @returns {string} 포맷된 날짜 문자열
+   * @param timestamp - Unix 타임스탬프 (밀리초)
+   * @returns 포맷된 날짜 문자열
    */
-  function formatDate(timestamp) {
+  function formatDate(timestamp: number | string | undefined): string {
     if (!timestamp) return '';
 
     // HTML 속성은 문자열로 전달되므로 숫자로 변환

@@ -1,49 +1,70 @@
-<script>
+<script lang="ts">
   /**
    * 게시글 아이템 컴포넌트
    *
    * 각 게시글을 표시하고, 실시간 좋아요 상태를 관리합니다.
    */
-  import { createRealtimeStore } from "../lib/stores/database.js";
+  import { rtdb } from "../lib/stores/database.js";
   import { showToast } from "../lib/stores/toast.js";
   import { t } from "../lib/stores/i18n.js";
-  import { createTopLevelComment, listenToComments } from "../lib/services/comment.js";
+  import {
+    createTopLevelComment,
+    listenToComments,
+  } from "../lib/services/comment.js";
   import { toggleLike } from "../lib/services/like.js";
   import { onMount } from "svelte";
   import CommentItem from "./CommentItem.svelte";
+  import type { PostWithId, PostCategory } from "../lib/types/post";
+  import type { CommentWithId } from "../lib/types/comment";
+  import type { FirebaseKey } from "../lib/types/common";
+
+  // Props 타입 정의
+  interface Props {
+    itemData: PostWithId;
+    index: number;
+    category: PostCategory;
+    userId: string | null;
+    onLike?: (postId: FirebaseKey) => void;
+  }
 
   // Props
-  let { itemData, index, category, userId, onLike = () => {} } = $props();
+  let {
+    itemData,
+    index,
+    category,
+    userId,
+    onLike = () => {},
+  }: Props = $props();
 
   // 내 좋아요 상태를 실시간으로 구독
   // 새로운 구조: /post-likes/{postId}-{uid}
+  // 노드가 없으면 0(좋아요 안 누름)을 기본값으로 사용
   const myLikeStore = userId
-    ? createRealtimeStore(
-        `post-likes/${itemData.key}-${userId}`
-      )
+    ? rtdb<number>(`post-likes/${itemData.postId}-${userId}`, 0)
     : null;
 
-  // 게시글 정보를 실시간으로 구독 (likeCount 포함)
-  // Flat style: /posts/{postId}
-  const postStore = createRealtimeStore(`posts/${itemData.key}`);
-
   // 댓글 모달 상태 관리
-  let isCommentDialogOpen = $state(false);
-  let commentContent = $state('');
-  let isSubmitting = $state(false);
+  let isCommentDialogOpen = $state<boolean>(false);
+  let commentContent = $state<string>("");
+  let isSubmitting = $state<boolean>(false);
 
   // 댓글 목록 상태 관리
-  let comments = $state([]);
-  let showComments = $state(false); // 댓글 목록 표시/숨김 상태
+  // CommentWithId[] 타입을 명시하여 타입 안전성 확보
+  let comments = $state<CommentWithId[]>([]);
+  let showComments = $state<boolean>(false); // 댓글 목록 표시/숨김 상태
 
   /**
    * 컴포넌트 마운트 시 댓글 리스너 등록
    */
   onMount(() => {
     // 댓글 실시간 구독 (Flat style: postId만 필요)
-    const unsubscribeComments = listenToComments(itemData.key, (newComments) => {
-      comments = newComments;
-    });
+    // newComments의 타입을 명시하여 타입 안전성 확보
+    const unsubscribeComments = listenToComments(
+      itemData.postId,
+      (newComments: CommentWithId[]) => {
+        comments = newComments;
+      }
+    );
 
     // 언마운트 시 리스너 해제
     return () => {
@@ -64,7 +85,7 @@
 
     try {
       // 2. 좋아요 토글 (추가 또는 취소)
-      const result = await toggleLike(itemData.key, userId);
+      const result = await toggleLike(itemData.postId, userId);
 
       // 3. 결과 처리
       if (result.success) {
@@ -75,12 +96,12 @@
         }
 
         // 부모 컴포넌트에 알림
-        onLike(itemData.key);
+        onLike(itemData.postId);
       } else {
         // result.error는 i18n 키
         showToast($t(result.error), "error");
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("좋아요 오류:", error);
       showToast($t("error.unknown"), "error");
     }
@@ -105,29 +126,35 @@
    * 댓글 작성 제출 핸들러
    */
   async function handleCommentSubmit() {
-    // 1. 댓글 내용 검증
+    // 1. 로그인 확인
+    if (!userId) {
+      showToast($t("로그인필요"), "error");
+      return;
+    }
+
+    // 2. 댓글 내용 검증
     if (!commentContent.trim()) {
       showToast($t("댓글내용입력필요"), "error");
       return;
     }
 
-    // 2. 댓글 생성 시작
+    // 3. 댓글 생성 시작
     isSubmitting = true;
 
     try {
-      // 3. Firebase에 댓글 저장 (Flat style: postId만 필요)
+      // 4. Firebase에 댓글 저장 (Flat style: postId만 필요)
       // 참고: commentCount는 Firebase Cloud Functions에서 자동으로 증가됨
-      const result = await createTopLevelComment(
-        itemData.key,      // 게시글 ID
-        userId,            // 작성자 UID
-        commentContent     // 댓글 내용
-      );
+      const result = await createTopLevelComment({
+        postId: itemData.postId, // 게시글 ID
+        userId: userId, // 작성자 UID (이미 null 체크됨)
+        content: commentContent, // 댓글 내용
+      });
 
       // 4. 결과 처리
       if (result.success) {
         showToast($t("댓글이작성되었습니다"), "success");
         isCommentDialogOpen = false;
-        commentContent = '';
+        commentContent = "";
         // 댓글 목록 자동으로 펼치기
         showComments = true;
       } else {
@@ -135,9 +162,9 @@
         // i18n 키를 번역하여 사용자 친화적인 메시지 표시
         showToast($t(result.error), "error");
       }
-    } catch (error) {
+    } catch (error: unknown) {
       // 예상치 못한 에러 발생 시 기본 에러 메시지 표시
-      console.error('댓글 생성 오류:', error);
+      console.error("댓글 생성 오류:", error);
       showToast($t("error.unknown"), "error");
     } finally {
       isSubmitting = false;
@@ -149,7 +176,7 @@
    */
   function handleCommentCancel() {
     isCommentDialogOpen = false;
-    commentContent = '';
+    commentContent = "";
   }
 </script>
 
@@ -159,18 +186,18 @@
     <span class="post-number">#{String(index + 1).padStart(2, "0")}</span>
   </div>
 
-  <h3 class="post-title">{itemData.data.title}</h3>
-  <p class="post-content">{itemData.data.content}</p>
+  <h3 class="post-title">{itemData.title}</h3>
+  <p class="post-content">{itemData.content}</p>
 
   <div class="post-meta">
     <div class="author-chip">
       <span class="author-avatar">
-        {(itemData.data.author || $t("익명")).charAt(0).toUpperCase()}
+        {(itemData.author || $t("익명")).charAt(0).toUpperCase()}
       </span>
-      <span class="post-author">{itemData.data.author || $t("익명")}</span>
+      <span class="post-author">{itemData.author || $t("익명")}</span>
     </div>
     <span class="post-date">
-      {new Date(itemData.data.createdAt).toLocaleDateString("ko-KR", {
+      {new Date(itemData.createdAt).toLocaleDateString("ko-KR", {
         year: "numeric",
         month: "2-digit",
         day: "2-digit",
@@ -184,7 +211,11 @@
   <div class="post-actions">
     <!-- 왼쪽 버튼 그룹 -->
     <div class="post-actions-left">
-      <button class="action-btn" title={$t("댓글")} onclick={handleCommentClick}>
+      <button
+        class="action-btn"
+        title={$t("댓글")}
+        onclick={handleCommentClick}
+      >
         💬 {$t("댓글")}
         {#if comments.length > 0}
           <span class="count">{comments.length}</span>
@@ -192,16 +223,14 @@
       </button>
 
       <button
-        class="action-btn {myLikeStore && $myLikeStore.data >= 1
-          ? 'liked'
-          : ''}"
+        class="action-btn {($myLikeStore?.data ?? 0) >= 1 ? 'liked' : ''}"
         title={$t("좋아요")}
         onclick={handleLike}
       >
-        {myLikeStore && $myLikeStore.data >= 1 ? "❤️" : "🤍"}
+        {($myLikeStore?.data ?? 0) >= 1 ? "❤️" : "🤍"}
         {$t("좋아요")}
-        {#if itemData.data?.likeCount > 0}
-          <span class="count">{itemData.data.likeCount}</span>
+        {#if itemData.likeCount > 0}
+          <span class="count">{itemData.likeCount}</span>
         {/if}
       </button>
 
@@ -216,7 +245,7 @@
 
     <!-- 오른쪽 버튼 그룹: 수정, 삭제 (작성자만 표시) -->
     <div class="post-actions-right">
-      {#if userId === itemData.data.uid}
+      {#if userId === itemData.uid}
         <button class="action-btn edit icon-only" title={$t("수정")}>
           ✏️
         </button>
@@ -233,9 +262,10 @@
       <!-- 댓글 토글 버튼 -->
       <button
         class="comments-toggle"
-        onclick={() => showComments = !showComments}
+        onclick={() => (showComments = !showComments)}
       >
-        {showComments ? '▼' : '▶'} {$t("댓글")} ({comments.length})
+        {showComments ? "▼" : "▶"}
+        {$t("댓글")} ({comments.length})
       </button>
 
       <!-- 댓글 목록 -->
@@ -244,8 +274,6 @@
           {#each comments as comment (comment.commentId)}
             <CommentItem
               {comment}
-              postId={itemData.key}
-              postCategory={category}
               {userId}
             />
           {/each}

@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   /**
    * 게시판 목록 페이지
    * 게시글 목록을 표시하고, 새 게시글을 작성할 수 있는 페이지입니다.
@@ -8,30 +8,31 @@
   import { onMount } from "svelte";
   import { auth } from "../lib/utils/firebase.js";
   import { createPost } from "../lib/services/forum.js";
-  import { FORUM_CATEGORIES } from "../lib/constants/forum.js";
+  import { POST_CATEGORIES } from "../lib/types/category";
   import { setPageTitle } from "../lib/stores/pageTitle.js";
   import { showToast } from "../lib/stores/toast.js";
   import { t } from "../lib/stores/i18n.js";
   import DatabaseListView from "../lib/components/DatabaseListView.svelte";
   import PostItem from "./PostItem.svelte";
+  import type { PostCategory, PostWithId } from "../lib/types/post";
 
   // 인증 상태
-  let userId = $state(null);
-  let userName = $state("");
-  let isAuthLoading = $state(true);
+  let userId = $state<string | null>(null);
+  let userName = $state<string>("");
+  let isAuthLoading = $state<boolean>(true);
 
   // URL 쿼리 파라미터에서 카테고리 가져오기
   const urlParams = new URLSearchParams(
     typeof window !== "undefined" ? window.location.search : ""
   );
-  let currentCategory = $state(urlParams.get("category") || "community");
+  let currentCategory = $state<PostCategory>(urlParams.get("category") as PostCategory || "community");
 
   // 글쓰기 모달 상태
-  let isDialogOpen = $state(false);
-  let postCategory = $state("");
-  let postTitle = $state("");
-  let postContent = $state("");
-  let isSubmitting = $state(false);
+  let isDialogOpen = $state<boolean>(false);
+  let postCategory = $state<PostCategory | "">("");
+  let postTitle = $state<string>("");
+  let postContent = $state<string>("");
+  let isSubmitting = $state<boolean>(false);
 
   /**
    * Firebase 인증 상태 확인
@@ -122,26 +123,23 @@
       );
 
       if (result.success) {
-        // 4. 저장된 카테고리 임시 저장 (초기화 전)
-        const savedCategory = postCategory;
-
-        // 5. 모달 닫기 및 초기화
+        // 4. 모달 닫기 및 초기화
         isDialogOpen = false;
         postCategory = "";
         postTitle = "";
         postContent = "";
 
-        // 6. 성공 메시지 표시 (Toast)
+        // 5. 성공 메시지 표시 (Toast)
         showToast($t("게시글작성완료"), "success");
 
-        // 7. DatabaseListView가 실시간으로 데이터를 감시하므로 별도 갱신이 필요 없습니다.
+        // 6. DatabaseListView가 실시간으로 데이터를 감시하므로 별도 갱신이 필요 없습니다.
       } else {
         showToast(
           $t("게시글저장실패", { error: result.error || "Unknown error" }),
           "error"
         );
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("게시글 저장 오류:", error);
       showToast($t("게시글저장중오류"), "error");
     } finally {
@@ -154,7 +152,7 @@
    * 카테고리 탭 클릭 핸들러
    * 카테고리 변경 시 URL을 업데이트하고 currentCategory를 변경합니다.
    */
-  function handleCategoryChange(category) {
+  function handleCategoryChange(category: PostCategory): void {
     currentCategory = category;
     window.history.pushState({}, "", `/post/list?category=${category}`);
   }
@@ -173,12 +171,12 @@
       <div class="toolbar-left">
         <!-- 카테고리 탭 -->
         <div class="category-tabs">
-          {#each FORUM_CATEGORIES as category (category.value)}
+          {#each POST_CATEGORIES as category (category)}
             <button
-              class="tab {currentCategory === category.value ? 'active' : ''}"
-              onclick={() => handleCategoryChange(category.value)}
+              class="tab {currentCategory === category ? 'active' : ''}"
+              onclick={() => handleCategoryChange(category)}
             >
-              {category.label}
+              {$t(`label.category.${category}`)}
             </button>
           {/each}
         </div>
@@ -192,17 +190,23 @@
 
     <div class="post-list-surface">
       <!-- 게시글 목록 (무한 스크롤) -->
-      <DatabaseListView
-        path={`posts/${currentCategory}`}
-        orderBy="createdAt"
-        reverse={true}
-        pageSize={20}
-      >
-        {#snippet item(itemData, index)}
+      <!-- key를 사용하여 카테고리 변경 시 컴포넌트 재마운트 -->
+      {#key currentCategory}
+        <DatabaseListView
+          path="posts"
+          orderBy="order"
+          sortPrefix={`${currentCategory}-`}
+          reverse={true}
+          pageSize={20}
+        >
+        {#snippet item(rawItemData: { key: string; data: any }, index: number)}
           <PostItem
-            {itemData}
+            itemData={{
+              postId: rawItemData.key,
+              ...rawItemData.data
+            }}
             {index}
-            category={itemData.data?.category}
+            category={rawItemData.data.category}
             {userId}
           />
         {/snippet}
@@ -227,7 +231,7 @@
           </div>
         {/snippet}
 
-        {#snippet error(errorMessage)}
+        {#snippet error(errorMessage: string)}
           <div class="error-state">
             <div class="error-icon">⚠️</div>
             <div>
@@ -250,6 +254,7 @@
           </div>
         {/snippet}
       </DatabaseListView>
+      {/key}
     </div>
   </div>
 
@@ -289,8 +294,8 @@
               class="form-control"
             >
               <option value="">{$t("카테고리선택")}</option>
-              {#each FORUM_CATEGORIES as category (category.value)}
-                <option value={category.value}>{category.label}</option>
+              {#each POST_CATEGORIES as category (category)}
+                <option value={category}>{$t(`label.category.${category}`)}</option>
               {/each}
             </select>
           </div>
@@ -462,6 +467,170 @@
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
+  }
+
+  /* === Modal Dialog === */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    z-index: 2000;
+    backdrop-filter: blur(2px);
+  }
+
+  .modal {
+    width: min(90vw, 480px);
+    background: #ffffff;
+    border-radius: 1rem;
+    box-shadow: 0 25px 60px rgba(15, 23, 42, 0.22);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 1.25rem 1.5rem 1rem;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+  }
+
+  .modal-header h2 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #0f172a;
+  }
+
+  .btn-close {
+    border: none;
+    background: transparent;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    color: #475569;
+    transition: color 0.2s ease;
+  }
+
+  .btn-close:hover {
+    color: #1e293b;
+  }
+
+  .modal-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.25rem 1.5rem;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .form-group label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #1f2937;
+  }
+
+  .form-control {
+    width: 100%;
+    padding: 0.75rem 0.9rem;
+    font-size: 0.9rem;
+    border-radius: 0.75rem;
+    border: 1px solid #d1d5db;
+    background: #f9fafb;
+    transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .form-control:focus {
+    outline: none;
+    border-color: #2563eb;
+    background: #ffffff;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+  }
+
+  .form-control.textarea {
+    resize: vertical;
+    min-height: 160px;
+  }
+
+  .modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding: 1.25rem 1.5rem 1.5rem;
+    background: rgba(248, 250, 252, 0.85);
+    border-top: 1px solid rgba(148, 163, 184, 0.25);
+  }
+
+  .btn-cancel,
+  .btn-submit {
+    padding: 0.65rem 1.25rem;
+    border-radius: 0.75rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition:
+      transform 0.2s ease,
+      box-shadow 0.2s ease,
+      opacity 0.2s ease;
+  }
+
+  .btn-cancel {
+    background: #e2e8f0;
+    color: #1f2937;
+  }
+
+  .btn-cancel:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 18px rgba(15, 23, 42, 0.12);
+  }
+
+  .btn-submit {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: #ffffff;
+  }
+
+  .btn-submit:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 24px rgba(37, 99, 235, 0.25);
+  }
+
+  .btn-cancel:disabled,
+  .btn-submit:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+    transform: none;
+    box-shadow: none;
+  }
+
+  @media (max-width: 640px) {
+    .modal-backdrop {
+      padding: 1rem;
+    }
+
+    .modal {
+      width: 100%;
+    }
+
+    .modal-content {
+      padding: 1.1rem 1.25rem;
+    }
+
+    .modal-footer {
+      padding: 1rem 1.25rem 1.25rem;
+    }
   }
 
   /* 모바일 최적화: 화면 너비 640px 이하 */

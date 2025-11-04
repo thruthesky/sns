@@ -1,0 +1,22 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // 라이브러리 빌드용 설정
+    "declaration": true,
+    "declarationMap": true,
+    "emitDeclarationOnly": false,
+    "outDir": "./dist",
+    "rootDir": "./src/lib"
+  },
+  "include": [
+    "src/lib/**/*.d.ts",
+    "src/lib/**/*.ts",
+    "src/lib/**/*.js",
+    "src/lib/**/*.svelte"
+  ],
+  "exclude": [
+    "src/demo/**/*",
+    "node_modules",
+    "dist"
+  ]
+}

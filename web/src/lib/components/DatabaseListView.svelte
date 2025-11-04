@@ -31,7 +31,7 @@
   ```
 -->
 
-<script>
+<script lang="ts">
   import {
     ref as dbRef,
     get,
@@ -41,7 +41,9 @@
     orderByChild,
     limitToFirst,
     limitToLast,
+    startAt,
     startAfter,
+    endAt,
     endBefore
   } from 'firebase/database';
   import { database } from '../utils/firebase.js';
@@ -55,6 +57,7 @@
    * - path: RTDB 경로 (예: "posts" 또는 "users/uid/posts")
    * - pageSize: 한 번에 가져올 아이템 개수 (기본값: 10)
    * - orderBy: 정렬 기준 필드 (기본값: "createdAt")
+   * - sortPrefix: 정렬 필드의 prefix 값 (예: "community-")으로 필터링 (선택 사항)
    * - threshold: 스크롤 threshold (px) - 바닥에서 이 값만큼 떨어지면 다음 페이지 로드 (기본값: 300)
    * - reverse: 역순 정렬 여부 (기본값: false)
    * - item: 아이템 렌더링 snippet
@@ -68,6 +71,7 @@
     path = '',
     pageSize = 10,
     orderBy = 'createdAt',
+    sortPrefix = '',
     threshold = 300,
     reverse = false,
     item,
@@ -79,93 +83,92 @@
   } = $props();
 
   // ============================================================================
+  // Types (타입 정의)
+  // ============================================================================
+
+  /**
+   * 아이템 데이터 타입
+   */
+  type ItemData = {
+    key: string;
+    data: any;
+  };
+
+  // ============================================================================
   // State (반응형 상태)
   // ============================================================================
 
   /**
    * 현재 표시 중인 아이템 목록
-   * @type {Array<{key: string, data: any}>}
    */
-  let items = $state([]);
+  let items = $state<ItemData[]>([]);
 
   /**
    * 로딩 상태 (페이지 로드 중)
-   * @type {boolean}
    */
-  let loading = $state(false);
+  let loading = $state<boolean>(false);
 
   /**
    * 초기 로딩 상태 (첫 페이지 로드)
-   * @type {boolean}
    */
-  let initialLoading = $state(true);
+  let initialLoading = $state<boolean>(true);
 
   /**
    * 더 가져올 데이터가 있는지 여부
-   * @type {boolean}
    */
-  let hasMore = $state(true);
+  let hasMore = $state<boolean>(true);
 
   /**
    * 마지막으로 로드한 아이템의 orderBy 필드 값
    * Firebase 쿼리의 startAfter에 사용됨
-   * @type {any}
    */
-  let lastLoadedValue = $state(null);
+  let lastLoadedValue = $state<any>(null);
 
   /**
    * 마지막으로 로드한 아이템의 키
    * 같은 orderBy 값을 가진 여러 아이템을 구분하기 위해 사용
-   * @type {string | null}
    */
-  let lastLoadedKey = $state(null);
+  let lastLoadedKey = $state<string | null>(null);
 
   /**
    * 현재 로드된 페이지 번호 (0부터 시작)
    * 페이지별 로드 추적용
-   * @type {number}
    */
-  let currentPage = $state(0);
+  let currentPage = $state<number>(0);
 
   /**
    * 에러 메시지
-   * @type {string | null}
    */
-  let error = $state(null);
+  let error = $state<string | null>(null);
 
   /**
    * 스크롤 컨테이너 DOM 참조
-   * @type {HTMLDivElement | null}
    */
-  let scrollContainer = $state(null);
+  let scrollContainer = $state<HTMLDivElement | null>(null);
 
   /**
    * onValue 구독 해제 함수들을 관리하는 맵
    * 각 페이지의 데이터 변경을 실시간으로 리스닝
-   * @type {Map<string, () => void>}
    */
-  let unsubscribers = new Map();
+  let unsubscribers = new Map<string, () => void>();
 
   /**
    * 각 페이지에서 로드한 아이템들을 관리하는 맵
    * 페이지별로 실시간 업데이트를 추적하기 위해 사용
-   * @type {Map<number, Array<{key: string, data: any}>>}
    */
-  let pageItems = new Map();
+  let pageItems = new Map<number, ItemData[]>();
 
   /**
    * onChildAdded 리스너 해제 함수
    * 새로운 노드 생성을 감지하는 리스너
-   * @type {(() => void) | null}
    */
-  let childAddedUnsubscribe = null;
+  let childAddedUnsubscribe: (() => void) | null = null;
 
   /**
    * onChildAdded 리스너가 초기화되었는지 여부
    * 초기 로드 시 기존 아이템들에 대한 child_added 이벤트를 무시하기 위한 플래그
-   * @type {boolean}
    */
-  let childAddedListenerReady = $state(false);
+  let childAddedListenerReady = $state<boolean>(false);
 
   // ============================================================================
   // Lifecycle (생명주기)
@@ -226,16 +229,17 @@
    * 아이템 목록의 마지막 항목에서 orderBy 필드 값 추출
    *
    * 페이지 커서를 위해 마지막 항목의 orderBy 필드 값이 필요합니다.
-   * 필드가 없으면 다른 정렬 필드로 fallback합니다.
-   *
-   * @param {Array<{key: string, data: any}>} itemList - 아이템 목록
-   * @param {string} primaryField - 주 정렬 필드 이름
-   * @returns {{value: any, key: string} | null} orderBy 값과 키, 또는 null
+   * 필드가 없으면 에러를 발생시킵니다.
    */
-  function getLastItemCursor(itemList, primaryField) {
+  function getLastItemCursor(
+    itemList: ItemData[],
+    primaryField: string
+  ): {value: any, key: string} | null {
     if (itemList.length === 0) return null;
 
     const lastItem = itemList[itemList.length - 1];
+    if (!lastItem) return null; // 추가 안전성 체크
+
     const value = lastItem.data[primaryField];
 
     // 주 필드 값이 있으면 사용
@@ -250,23 +254,24 @@
       };
     }
 
-    // 주 필드가 없으면 Firebase 키를 사용 (fallback)
-    // 단, startAfter는 문자열 비교가 되므로 주의
-    console.warn(`DatabaseListView: Field '${primaryField}' not found in last item, using key as fallback:`, lastItem.key);
-    return {
-      value: lastItem.key,
-      key: lastItem.key
-    };
+    // 주 필드가 없으면 null 반환 (무한 스크롤 중단)
+    // Firebase orderByChild와 startAfter를 사용할 때는 반드시 해당 필드가 있어야 합니다
+    console.error(
+      `DatabaseListView: CRITICAL ERROR - Field '${primaryField}' not found in last item (key: ${lastItem.key}).`,
+      `This will prevent pagination from working correctly.`,
+      `Please ensure all items in '${path}' have the '${primaryField}' field.`,
+      `Item data:`, lastItem.data
+    );
+    error = `데이터 정렬 필드 '${primaryField}'가 누락되었습니다. 데이터베이스 구조를 확인해주세요.`;
+    return null;
   }
 
   /**
    * 각 아이템에 onValue 리스너 설정 (실시간 업데이트)
    *
    * Firebase의 onValue()를 사용하여 각 아이템의 변경사항을 실시간으로 감지합니다.
-   * @param {string} itemKey - 아이템의 Firebase 키
-   * @param {number} index - items 배열에서의 인덱스
    */
-  function setupItemListener(itemKey, index) {
+  function setupItemListener(itemKey: string, index: number): void {
     // 이미 리스닝 중이면 스킵
     const listenerKey = `${itemKey}`;
     if (unsubscribers.has(listenerKey)) {
@@ -318,7 +323,28 @@
     childAddedListenerReady = false;
 
     const baseRef = dbRef(database, path);
-    const dataQuery = query(baseRef, orderByChild(orderBy));
+
+    // sortPrefix가 있으면 범위 쿼리 추가
+    // sortPrefix가 없으면 startAt(false)로 null/undefined 값 제외
+    let dataQuery;
+    if (sortPrefix) {
+      dataQuery = query(
+        baseRef,
+        orderByChild(orderBy),
+        startAt(sortPrefix),
+        endAt(sortPrefix + '\uf8ff')
+      );
+      console.log('DatabaseListView: child_added listener with sortPrefix:', sortPrefix);
+    } else {
+      // sortPrefix가 없으면 startAt(false) 사용
+      // 이렇게 하면 orderBy 필드가 null 또는 undefined인 항목은 제외됩니다
+      dataQuery = query(
+        baseRef,
+        orderByChild(orderBy),
+        startAt(false)
+      );
+      console.log('DatabaseListView: child_added listener with startAt(false) to filter null/undefined');
+    }
 
     childAddedUnsubscribe = onChildAdded(dataQuery, (snapshot) => {
       // 초기 로드 완료 전에는 무시 (기존 아이템들은 loadInitialData에서 처리)
@@ -329,6 +355,12 @@
       const newItemKey = snapshot.key;
       const newItemData = snapshot.val();
 
+      // key가 null인 경우 무시 (Firebase에서는 일반적으로 null이 아니지만 타입상 체크 필요)
+      if (!newItemKey) {
+        console.warn('DatabaseListView: Snapshot key is null, skipping');
+        return;
+      }
+
       // 중복 체크: 이미 items에 있는 key는 추가하지 않음
       const exists = items.some(item => item.key === newItemKey);
       if (exists) {
@@ -338,7 +370,7 @@
 
       console.log('DatabaseListView: New child added:', newItemKey, newItemData);
 
-      const newItem = {
+      const newItem: ItemData = {
         key: newItemKey,
         data: newItemData
       };
@@ -415,29 +447,63 @@
       // Firebase 쿼리 생성
       // reverse가 true면 limitToLast를 사용하여 가장 최근 데이터부터 가져옵니다
       // pageSize + 1개를 가져와서 hasMore를 판단합니다
+      // sortPrefix가 있으면 startAt과 endAt으로 범위 필터링
+      // sortPrefix가 없으면 startAt(false)로 null/undefined 값 제외
       let dataQuery;
       if (reverse) {
         // 역순 정렬: limitToLast 사용
-        dataQuery = query(
-          baseRef,
-          orderByChild(orderBy),
-          limitToLast(pageSize + 1)
-        );
-        console.log('DatabaseListView: Using limitToLast for reverse order');
+        if (sortPrefix) {
+          // sortPrefix가 있으면 범위 쿼리 추가
+          dataQuery = query(
+            baseRef,
+            orderByChild(orderBy),
+            startAt(sortPrefix),
+            endAt(sortPrefix + '\uf8ff'),
+            limitToLast(pageSize + 1)
+          );
+          console.log('DatabaseListView: Using limitToLast with sortPrefix:', sortPrefix);
+        } else {
+          // sortPrefix가 없으면 startAt(false) 사용
+          // 이렇게 하면 orderBy 필드가 null 또는 undefined인 항목은 제외됩니다
+          // orderBy 필드가 숫자 타입인 경우 가장 작은 값부터 정렬됩니다
+          dataQuery = query(
+            baseRef,
+            orderByChild(orderBy),
+            startAt(false),
+            limitToLast(pageSize + 1)
+          );
+          console.log('DatabaseListView: Using limitToLast with startAt(false) to filter null/undefined');
+        }
       } else {
         // 정순 정렬: limitToFirst 사용
-        dataQuery = query(
-          baseRef,
-          orderByChild(orderBy),
-          limitToFirst(pageSize + 1)
-        );
-        console.log('DatabaseListView: Using limitToFirst for normal order');
+        if (sortPrefix) {
+          // sortPrefix가 있으면 범위 쿼리 추가
+          dataQuery = query(
+            baseRef,
+            orderByChild(orderBy),
+            startAt(sortPrefix),
+            endAt(sortPrefix + '\uf8ff'),
+            limitToFirst(pageSize + 1)
+          );
+          console.log('DatabaseListView: Using limitToFirst with sortPrefix:', sortPrefix);
+        } else {
+          // sortPrefix가 없으면 startAt(false) 사용
+          // 이렇게 하면 orderBy 필드가 null 또는 undefined인 항목은 제외됩니다
+          // orderBy 필드가 숫자 타입인 경우 가장 작은 값부터 정렬됩니다
+          dataQuery = query(
+            baseRef,
+            orderByChild(orderBy),
+            startAt(false),
+            limitToFirst(pageSize + 1)
+          );
+          console.log('DatabaseListView: Using limitToFirst with startAt(false) to filter null/undefined');
+        }
       }
 
       const snapshot = await get(dataQuery);
 
       if (snapshot.exists()) {
-        const loadedItems = [];
+        const loadedItems: ItemData[] = [];
         const data = snapshot.val();
 
         // 데이터를 {key, data} 형태로 변환
@@ -512,7 +578,7 @@
       }
     } catch (err) {
       console.error('DatabaseListView: Load error', err);
-      error = err.message;
+      error = err instanceof Error ? err.message : String(err);
     } finally {
       initialLoading = false;
 
@@ -556,33 +622,65 @@
 
       // Firebase 쿼리 생성
       // reverse 여부에 따라 다른 쿼리 사용
+      // sortPrefix가 있으면 범위 쿼리도 함께 적용
+      // sortPrefix가 없으면 startAt(false)로 null/undefined 값 제외
       let dataQuery;
       if (reverse) {
         // 역순 정렬: endBefore + limitToLast 사용
         // limitToLast를 사용하면 마지막 N개를 가져오는데,
         // endBefore로 현재 커서 이전 데이터를 가져옵니다
-        dataQuery = query(
-          baseRef,
-          orderByChild(orderBy),
-          endBefore(lastLoadedValue),
-          limitToLast(pageSize + 1)
-        );
-        console.log('DatabaseListView: Using endBefore + limitToLast for reverse pagination');
+        if (sortPrefix) {
+          dataQuery = query(
+            baseRef,
+            orderByChild(orderBy),
+            startAt(sortPrefix),
+            endAt(sortPrefix + '\uf8ff'),
+            endBefore(lastLoadedValue),
+            limitToLast(pageSize + 1)
+          );
+          console.log('DatabaseListView: Using endBefore + limitToLast with sortPrefix for reverse pagination');
+        } else {
+          // sortPrefix가 없으면 startAt(false) 사용
+          // 이렇게 하면 orderBy 필드가 null 또는 undefined인 항목은 제외됩니다
+          dataQuery = query(
+            baseRef,
+            orderByChild(orderBy),
+            startAt(false),
+            endBefore(lastLoadedValue),
+            limitToLast(pageSize + 1)
+          );
+          console.log('DatabaseListView: Using endBefore + limitToLast with startAt(false) for reverse pagination');
+        }
       } else {
         // 정순 정렬: startAfter + limitToFirst 사용
-        dataQuery = query(
-          baseRef,
-          orderByChild(orderBy),
-          startAfter(lastLoadedValue),
-          limitToFirst(pageSize + 1)
-        );
-        console.log('DatabaseListView: Using startAfter + limitToFirst for normal pagination');
+        if (sortPrefix) {
+          dataQuery = query(
+            baseRef,
+            orderByChild(orderBy),
+            startAt(sortPrefix),
+            endAt(sortPrefix + '\uf8ff'),
+            startAfter(lastLoadedValue),
+            limitToFirst(pageSize + 1)
+          );
+          console.log('DatabaseListView: Using startAfter + limitToFirst with sortPrefix for normal pagination');
+        } else {
+          // sortPrefix가 없으면 startAt(false) 사용
+          // 이렇게 하면 orderBy 필드가 null 또는 undefined인 항목은 제외됩니다
+          dataQuery = query(
+            baseRef,
+            orderByChild(orderBy),
+            startAt(false),
+            startAfter(lastLoadedValue),
+            limitToFirst(pageSize + 1)
+          );
+          console.log('DatabaseListView: Using startAfter + limitToFirst with startAt(false) for normal pagination');
+        }
       }
 
       const snapshot = await get(dataQuery);
 
       if (snapshot.exists()) {
-        const newItems = [];
+        const newItems: ItemData[] = [];
         const data = snapshot.val();
 
         // 데이터를 {key, data} 형태로 변환
@@ -676,13 +774,17 @@
         hasMore = false;
       }
     } catch (err) {
-      console.error('DatabaseListView: Load more error', {
-        name: err.name,
-        message: err.message,
-        code: err.code,
-        toString: err.toString()
-      });
-      error = err.message || err.code || 'Unknown error';
+      if (err instanceof Error) {
+        console.error('DatabaseListView: Load more error', {
+          name: err.name,
+          message: err.message,
+          toString: err.toString()
+        });
+        error = err.message || 'Unknown error';
+      } else {
+        console.error('DatabaseListView: Load more error', err);
+        error = String(err);
+      }
     } finally {
       loading = false;
     }
@@ -830,10 +932,9 @@
   /* 컨테이너 */
   .database-list-view {
     width: 100%;
-    height: 100%;
-    overflow-y: auto;
-    overflow-x: hidden;
-    flex: 1;
+    /* height와 overflow는 부모에서 제어하도록 제거 */
+    /* 이렇게 하면 body 스크롤(window scroll)이 제대로 동작합니다 */
+    /* 만약 컨테이너 스크롤이 필요하면 부모에서 height와 overflow-y: auto를 설정하세요 */
     display: flex;
     flex-direction: column;
   }

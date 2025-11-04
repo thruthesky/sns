@@ -1,6 +1,6 @@
 <svelte:options customElement="sns-topbar" />
 
-<script>
+<script lang="ts">
   /**
    * 탑바 컴포넌트 (Web Component)
    *
@@ -18,13 +18,16 @@
   import { pageTitle } from '../stores/pageTitle.js';
   import { onMount } from 'svelte';
 
-  // 반응형 상태
-  let dropdownOpen = $state(false);
+  /**
+   * 반응형 상태: 드롭다운 메뉴 열림/닫힘 상태
+   */
+  let dropdownOpen = $state<boolean>(false);
 
   /**
    * 로그아웃 핸들러
+   * Firebase 로그아웃을 수행하고 성공 시 커스텀 이벤트를 발생시킵니다.
    */
-  async function handleLogout() {
+  async function handleLogout(): Promise<void> {
     const result = await signOut();
     if (result.success) {
       // 로그아웃 성공 이벤트 발생
@@ -40,8 +43,9 @@
   /**
    * 사용자 이름의 첫 글자를 가져옴 (아바타 표시용)
    * login.data에서 displayName을 가져와 실시간 업데이트를 지원합니다.
+   * @returns 사용자 이름의 첫 글자 (대문자) 또는 기본값 'U'
    */
-  function getUserInitial() {
+  function getUserInitial(): string {
     // Firebase Realtime Database에서 실시간 동기화되는 displayName 사용
     if (login.data?.displayName) {
       return login.data.displayName.charAt(0).toUpperCase();
@@ -55,24 +59,31 @@
 
   /**
    * 드롭다운 토글
+   * 드롭다운 메뉴의 열림/닫힘 상태를 전환합니다.
    */
-  function toggleDropdown() {
+  function toggleDropdown(): void {
     dropdownOpen = !dropdownOpen;
   }
 
   /**
    * 드롭다운 외부 클릭 시 닫기
+   * 드롭다운 메뉴나 트리거 버튼 외부를 클릭하면 드롭다운을 닫습니다.
+   * @param event - 마우스 클릭 이벤트
    */
-  function handleClickOutside(event) {
+  function handleClickOutside(event: MouseEvent): void {
     const dropdown = document.querySelector('.dropdown-menu');
     const trigger = document.querySelector('.dropdown-trigger');
+    const target = event.target as Node;
 
-    if (dropdown && !dropdown.contains(event.target) && !trigger?.contains(event.target)) {
+    if (dropdown && !dropdown.contains(target) && !trigger?.contains(target)) {
       dropdownOpen = false;
     }
   }
 
-  // 드롭다운 외부 클릭 감지
+  /**
+   * 드롭다운 외부 클릭 감지
+   * 컴포넌트 마운트 시 이벤트 리스너를 등록하고, 언마운트 시 제거합니다.
+   */
   onMount(() => {
     document.addEventListener('click', handleClickOutside);
 

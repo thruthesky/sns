@@ -150,18 +150,27 @@
           const title = replaceVariables(randomChoice(categoryTemplates.titles));
           const content = replaceVariables(randomChoice(categoryTemplates.contents));
 
-          const now = Date.now();
+          // 📝 각 글마다 과거 30일 범위에서 무작위로 생성시간 설정
+          const createdAtTime = now - Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000);
+
+          // 📋 sns-web-database.md 참조: 게시판 데이터 구조
+          // /posts/{postId}에 저장되며, order 필드는 정렬용 (category-timestamp 형식)
           const postData = {
             uid: login.uid,
             title,
             content,
             author: login.data?.displayName || login.email || $t('익명'),
             category: category.value,
-            createdAt: now - Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000),
-            updatedAt: now
+            order: `${category.value}-${createdAtTime}`, // 정렬용 필드
+            createdAt: createdAtTime,
+            updatedAt: now,
+            likeCount: 0, // Cloud Functions가 관리
+            commentCount: 0 // Cloud Functions가 관리
           };
 
-          const postsRef = ref(database, `posts/${category.value}`);
+          // ✅ 올바른 경로: /posts (category 경로 제거)
+          // push()는 자동으로 postId를 생성합니다
+          const postsRef = ref(database, 'posts');
           await push(postsRef, postData);
 
           successCount++;

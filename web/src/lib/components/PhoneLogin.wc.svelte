@@ -1,6 +1,6 @@
 <svelte:options customElement="phone-login" />
 
-<script>
+<script lang="ts">
   /**
    * Phone Login Web Component
    *
@@ -17,48 +17,68 @@
    * - login-error: 로그인 실패 시 발생
    */
 
-  // Google reCAPTCHA 전역 객체 타입 선언
-  // reCAPTCHA는 외부 스크립트(https://www.google.com/recaptcha/api.js)에서 로드되며
-  // window.grecaptcha 객체를 전역으로 노출합니다.
-  /**
-   * @typedef {Object} GreCaptcha
-   * @property {function(number): void} reset - reCAPTCHA 위젯을 초기화하여 재사용 가능하게 만듦
-   * @property {function(string): number} render - reCAPTCHA 위젯을 렌더링하고 위젯 ID 반환
-   * @property {function(number): void} execute - reCAPTCHA 실행
-   * @property {function(number): string} getResponse - reCAPTCHA 응답 토큰 가져오기
-   */
-
-  import { auth } from '../utils/firebase.js';
+  import { auth } from "../utils/firebase.js";
   import {
     signInWithPhoneNumber,
-    RecaptchaVerifier
-  } from 'firebase/auth';
-  import { onMount } from 'svelte';
-  import { Phone, Send, Check } from 'lucide-svelte';
+    RecaptchaVerifier,
+    type ConfirmationResult,
+  } from "firebase/auth";
+  import { onMount } from "svelte";
+  import { Phone, Send, Check } from "lucide-svelte";
+
+  /**
+   * Google reCAPTCHA 전역 객체 타입 선언
+   * reCAPTCHA는 외부 스크립트에서 로드되며 window.grecaptcha 객체를 전역으로 노출합니다.
+   *
+   * 참고: Svelte 컴포넌트에서는 declare global을 사용할 수 없으므로
+   * window.grecaptcha 사용 시 타입 단언(@ts-expect-error)을 사용합니다.
+   */
+  interface GreCaptcha {
+    reset: (widgetId: number) => void;
+    render: (container: string | HTMLElement, parameters: any) => number;
+    execute: (widgetId: number) => void;
+    getResponse: (widgetId: number) => string;
+  }
+
+  /**
+   * 국가 코드 타입 정의
+   */
+  type CountryCode = {
+    code: string;
+    name: string;
+    flag: string;
+  };
+
+  /**
+   * 인증 단계 타입
+   */
+  type AuthStep = "phone" | "code";
 
   /**
    * 국가 코드 목록
    * 필리핀, 한국, 중국, 일본, 미국
    */
-  const COUNTRY_CODES = [
-    { code: '+63', name: '필리핀 (Philippines)', flag: '🇵🇭' },
-    { code: '+82', name: '한국 (Korea)', flag: '🇰🇷' },
-    { code: '+86', name: '중국 (China)', flag: '🇨🇳' },
-    { code: '+81', name: '일본 (Japan)', flag: '🇯🇵' },
-    { code: '+1', name: '미국 (USA)', flag: '🇺🇸' }
+  const COUNTRY_CODES: CountryCode[] = [
+    { code: "+63", name: "필리핀 (Philippines)", flag: "🇵🇭" },
+    { code: "+82", name: "한국 (Korea)", flag: "🇰🇷" },
+    { code: "+86", name: "중국 (China)", flag: "🇨🇳" },
+    { code: "+81", name: "일본 (Japan)", flag: "🇯🇵" },
+    { code: "+1", name: "미국 (USA)", flag: "🇺🇸" },
   ];
 
-  // 상태 관리
-  let selectedCountryCode = $state('+82'); // 기본값: 한국
-  let phoneNumber = $state(''); // 전화번호 (국가 코드 제외)
-  let verificationCode = $state(''); // SMS 인증 코드
-  let step = $state('phone'); // 'phone' | 'code'
-  let loading = $state(false);
-  let error = $state('');
-  let recaptchaVerifier = $state(null);
-  let confirmationResult = $state(null);
-  let recaptchaWidgetId = $state(undefined); // reCAPTCHA 위젯 ID 저장
-  let recaptchaContainer = $state(null); // reCAPTCHA 컨테이너 DOM 요소 참조
+  /**
+   * 상태 관리
+   */
+  let selectedCountryCode = $state<string>("+82"); // 기본값: 한국
+  let phoneNumber = $state<string>(""); // 전화번호 (국가 코드 제외)
+  let verificationCode = $state<string>(""); // SMS 인증 코드
+  let step = $state<AuthStep>("phone"); // 'phone' | 'code'
+  let loading = $state<boolean>(false);
+  let error = $state<string>("");
+  let recaptchaVerifier = $state<RecaptchaVerifier | null>(null);
+  let confirmationResult = $state<ConfirmationResult | null>(null);
+  let recaptchaWidgetId = $state<number | undefined>(undefined); // reCAPTCHA 위젯 ID 저장
+  let recaptchaContainer = $state<HTMLElement | null>(null); // reCAPTCHA 컨테이너 DOM 요소 참조
 
   /**
    * reCAPTCHA 초기화
@@ -66,15 +86,18 @@
    *
    * 중요: Web Component의 Shadow DOM에서는 ID로 요소를 찾을 수 없으므로
    * DOM 요소 참조를 직접 전달해야 합니다.
+   * @returns reCAPTCHA 위젯 ID를 반환하는 Promise
    */
-  function setupRecaptcha() {
-    return new Promise((resolve, reject) => {
+  function setupRecaptcha(): Promise<number> {
+    return new Promise<number>((resolve, reject) => {
       try {
         // reCAPTCHA 컨테이너가 없으면 초기화 불가
         if (!recaptchaContainer) {
-          const containerError = new Error('reCAPTCHA 컨테이너를 찾을 수 없습니다.');
+          const containerError = new Error(
+            "reCAPTCHA 컨테이너를 찾을 수 없습니다."
+          );
           console.error(containerError);
-          error = 'reCAPTCHA 초기화에 실패했습니다.';
+          error = "reCAPTCHA 초기화에 실패했습니다.";
           reject(containerError);
           return;
         }
@@ -83,15 +106,18 @@
         if (recaptchaVerifier) {
           // 이미 렌더링된 경우 reset만 수행
           // @ts-expect-error - grecaptcha는 Google reCAPTCHA 외부 스크립트에서 제공하는 전역 객체
-          if (recaptchaWidgetId !== undefined && typeof window.grecaptcha !== 'undefined') {
+          if (
+            recaptchaWidgetId !== undefined &&
+            typeof window.grecaptcha !== "undefined"
+          ) {
             try {
               // @ts-expect-error - grecaptcha.reset()은 Google reCAPTCHA API 메서드
               window.grecaptcha.reset(recaptchaWidgetId);
-              console.log('reCAPTCHA reset completed');
+              console.log("reCAPTCHA reset completed");
               resolve(recaptchaWidgetId);
               return;
             } catch (e) {
-              console.warn('Failed to reset reCAPTCHA:', e);
+              console.warn("Failed to reset reCAPTCHA:", e);
             }
           }
 
@@ -101,7 +127,7 @@
             recaptchaVerifier = null;
             recaptchaWidgetId = undefined;
           } catch (e) {
-            console.warn('Failed to clear reCAPTCHA:', e);
+            console.warn("Failed to clear reCAPTCHA:", e);
           }
         }
 
@@ -109,16 +135,19 @@
         // invisible reCAPTCHA 설정: 사용자에게 보이지 않으며, 자동으로 백그라운드에서 검증됨
         // Google reCAPTCHA는 document.getElementById()를 사용하므로 Light DOM의 컨테이너가 필요
         recaptchaVerifier = new RecaptchaVerifier(auth, recaptchaContainer.id, {
-          size: 'invisible', // invisible 모드 활성화 - 사용자 상호작용 없이 자동 검증
-          callback: (response) => {
+          size: "invisible", // invisible 모드 활성화 - 사용자 상호작용 없이 자동 검증
+          callback: () => {
             // reCAPTCHA 통과 시 자동 호출 (토큰 발급)
-            console.log('reCAPTCHA verified (invisible mode)');
+            console.log("reCAPTCHA verified (invisible mode)");
           },
-          'expired-callback': () => {
+          "expired-callback": () => {
             // 토큰 만료 시 호출: reset 또는 재생성
-            console.warn('reCAPTCHA expired. Resetting...');
+            console.warn("reCAPTCHA expired. Resetting...");
             // @ts-expect-error - grecaptcha는 Google reCAPTCHA 외부 스크립트에서 제공하는 전역 객체
-            if (typeof window.grecaptcha !== 'undefined' && recaptchaWidgetId !== undefined) {
+            if (
+              typeof window.grecaptcha !== "undefined" &&
+              recaptchaWidgetId !== undefined
+            ) {
               // 가장 빠른 방법: 위젯 리셋
               // @ts-expect-error - grecaptcha.reset()은 Google reCAPTCHA API 메서드
               window.grecaptcha.reset(recaptchaWidgetId);
@@ -126,7 +155,7 @@
               // 상황에 따라 상태가 꼬일 수 있으므로, 안전하게 재생성
               setupRecaptcha();
             }
-          }
+          },
         });
 
         // 사전 렌더링하여, 첫 클릭 지연 줄이기
@@ -134,17 +163,17 @@
           .render()
           .then((widgetId) => {
             recaptchaWidgetId = widgetId;
-            console.log('reCAPTCHA rendered with widgetId:', widgetId);
+            console.log("reCAPTCHA rendered with widgetId:", widgetId);
             resolve(widgetId);
           })
           .catch((renderError) => {
-            console.error('Failed to render reCAPTCHA:', renderError);
-            error = 'reCAPTCHA 초기화에 실패했습니다.';
+            console.error("Failed to render reCAPTCHA:", renderError);
+            error = "reCAPTCHA 초기화에 실패했습니다.";
             reject(renderError);
           });
       } catch (e) {
-        console.error('reCAPTCHA 초기화 실패:', e);
-        error = 'reCAPTCHA 초기화에 실패했습니다.';
+        console.error("reCAPTCHA 초기화 실패:", e);
+        error = "reCAPTCHA 초기화에 실패했습니다.";
         reject(e);
       }
     });
@@ -157,9 +186,10 @@
     // Light DOM(document.body)에 reCAPTCHA 컨테이너 생성
     // Web Component의 Shadow DOM 외부에 배치하여 Google reCAPTCHA가 접근 가능하도록 함
     // Google reCAPTCHA는 document.getElementById()를 사용하므로 Light DOM 필수
-    const lightDomContainer = document.createElement('div');
-    lightDomContainer.id = 'recaptcha-container-' + Math.random().toString(36).substr(2, 9);
-    lightDomContainer.className = 'recaptcha-container-light-dom';
+    const lightDomContainer = document.createElement("div");
+    lightDomContainer.id =
+      "recaptcha-container-" + Math.random().toString(36).substr(2, 9);
+    lightDomContainer.className = "recaptcha-container-light-dom";
     lightDomContainer.style.cssText = `
       position: absolute;
       top: -9999px;
@@ -186,10 +216,10 @@
 
   /**
    * 전화번호 형식 검증
-   * @param {string} number - 전화번호 (국가 코드 제외)
-   * @returns {boolean}
+   * @param number - 전화번호 (국가 코드 제외)
+   * @returns 유효하면 true, 아니면 false
    */
-  function isValidPhoneNumber(number) {
+  function isValidPhoneNumber(number: string): boolean {
     // 숫자만 포함되어야 하며, 6~15자리
     const phoneRegex = /^[0-9]{6,15}$/;
     return phoneRegex.test(number);
@@ -205,12 +235,12 @@
    * - 검증이 성공하면 SMS가 전송됨
    * - 의심스러운 활동이 감지되면 사용자에게 챌린지(이미지 선택 등)가 표시될 수 있음
    */
-  async function sendVerificationCode() {
-    error = '';
+  async function sendVerificationCode(): Promise<void> {
+    error = "";
 
     // 전화번호 검증
     if (!isValidPhoneNumber(phoneNumber)) {
-      error = '올바른 전화번호를 입력해주세요 (6-15자리 숫자)';
+      error = "올바른 전화번호를 입력해주세요 (6-15자리 숫자)";
       return;
     }
 
@@ -218,30 +248,32 @@
 
     try {
       // 완전한 전화번호 생성 (국가 코드 + 전화번호)
-      const fullPhoneNumber = `${selectedCountryCode}${phoneNumber}`;
+      const fullPhoneNumber: string = `${selectedCountryCode}${phoneNumber}`;
 
-      console.log('Sending verification code to:', fullPhoneNumber);
+      console.log("Sending verification code to:", fullPhoneNumber);
 
       // Firebase Phone Auth - SMS 전송
       // invisible reCAPTCHA는 이 함수 호출 시 자동으로 실행되어 백그라운드에서 검증됨
       confirmationResult = await signInWithPhoneNumber(
         auth,
         fullPhoneNumber,
-        recaptchaVerifier
+        recaptchaVerifier!
       );
 
-      console.log('Verification code sent successfully (invisible reCAPTCHA verified)');
+      console.log(
+        "Verification code sent successfully (invisible reCAPTCHA verified)"
+      );
 
       // SMS 코드 입력 단계로 이동
-      step = 'code';
-    } catch (e) {
-      console.error('SMS 전송 실패:', e);
+      step = "code";
+    } catch (e: any) {
+      console.error("SMS 전송 실패:", e);
 
       // 에러 메시지 처리
-      if (e.code === 'auth/invalid-phone-number') {
-        error = '잘못된 전화번호 형식입니다.';
-      } else if (e.code === 'auth/too-many-requests') {
-        error = '너무 많은 요청이 발생했습니다. 나중에 다시 시도해주세요.';
+      if (e.code === "auth/invalid-phone-number") {
+        error = "잘못된 전화번호 형식입니다.";
+      } else if (e.code === "auth/too-many-requests") {
+        error = "너무 많은 요청이 발생했습니다. 나중에 다시 시도해주세요.";
       } else {
         error = `SMS 전송 실패: ${e.message}`;
       }
@@ -253,12 +285,12 @@
   /**
    * SMS 인증 코드 확인 및 로그인
    */
-  async function verifyCode() {
-    error = '';
+  async function verifyCode(): Promise<void> {
+    error = "";
 
     // 인증 코드 검증
     if (verificationCode.length !== 6) {
-      error = '6자리 인증 코드를 입력해주세요.';
+      error = "6자리 인증 코드를 입력해주세요.";
       return;
     }
 
@@ -266,38 +298,38 @@
 
     try {
       // SMS 코드로 로그인
-      const result = await confirmationResult.confirm(verificationCode);
+      const result = await confirmationResult!.confirm(verificationCode);
 
-      console.log('Login successful:', result.user);
+      console.log("Login successful:", result.user);
 
       // 로그인 성공 이벤트 발생
-      const event = new CustomEvent('login-success', {
+      const event = new CustomEvent("login-success", {
         detail: {
           user: result.user,
-          phoneNumber: result.user.phoneNumber
-        }
+          phoneNumber: result.user.phoneNumber,
+        },
       });
       dispatchEvent(event);
 
       // 상태 초기화
-      phoneNumber = '';
-      verificationCode = '';
-      step = 'phone';
-    } catch (e) {
-      console.error('인증 코드 확인 실패:', e);
+      phoneNumber = "";
+      verificationCode = "";
+      step = "phone";
+    } catch (e: any) {
+      console.error("인증 코드 확인 실패:", e);
 
       // 에러 메시지 처리
-      if (e.code === 'auth/invalid-verification-code') {
-        error = '잘못된 인증 코드입니다.';
-      } else if (e.code === 'auth/code-expired') {
-        error = '인증 코드가 만료되었습니다. 다시 시도해주세요.';
+      if (e.code === "auth/invalid-verification-code") {
+        error = "잘못된 인증 코드입니다.";
+      } else if (e.code === "auth/code-expired") {
+        error = "인증 코드가 만료되었습니다. 다시 시도해주세요.";
       } else {
         error = `인증 실패: ${e.message}`;
       }
 
       // 로그인 실패 이벤트 발생
-      const errorEvent = new CustomEvent('login-error', {
-        detail: { error: e.message }
+      const errorEvent = new CustomEvent("login-error", {
+        detail: { error: e.message },
       });
       dispatchEvent(errorEvent);
     } finally {
@@ -308,17 +340,17 @@
   /**
    * 이전 단계로 돌아가기
    */
-  function goBack() {
-    step = 'phone';
-    verificationCode = '';
-    error = '';
+  function goBack(): void {
+    step = "phone";
+    verificationCode = "";
+    error = "";
   }
 </script>
 
 <!-- 전화번호 로그인 폼 -->
 <div class="phone-login">
   <div class="login-card">
-    {#if step === 'phone'}
+    {#if step === "phone"}
       <!-- 단계 1: 전화번호 입력 -->
       <div class="step-phone">
         <div class="step-header">
@@ -340,7 +372,8 @@
           >
             {#each COUNTRY_CODES as country}
               <option value={country.code}>
-                {country.flag} {country.name} ({country.code})
+                {country.flag}
+                {country.name} ({country.code})
               </option>
             {/each}
           </select>
@@ -360,16 +393,14 @@
               disabled={loading}
               onkeypress={(e) => {
                 // 엔터키로 전송
-                if (e.key === 'Enter') {
+                if (e.key === "Enter") {
                   e.preventDefault();
                   sendVerificationCode();
                 }
               }}
             />
           </div>
-          <p class="input-hint">
-            숫자만 입력해주세요 (국가 코드 제외)
-          </p>
+          <p class="input-hint">숫자만 입력해주세요 (국가 코드 제외)</p>
         </div>
 
         <!-- 에러 메시지 -->
@@ -394,8 +425,7 @@
           {/if}
         </button>
       </div>
-
-    {:else if step === 'code'}
+    {:else if step === "code"}
       <!-- 단계 2: SMS 코드 입력 -->
       <div class="step-code">
         <div class="step-header">
@@ -420,15 +450,13 @@
             disabled={loading}
             onkeypress={(e) => {
               // 엔터키로 확인
-              if (e.key === 'Enter') {
+              if (e.key === "Enter") {
                 e.preventDefault();
                 verifyCode();
               }
             }}
           />
-          <p class="input-hint">
-            6자리 숫자를 입력해주세요
-          </p>
+          <p class="input-hint">6자리 숫자를 입력해주세요</p>
         </div>
 
         <!-- 에러 메시지 -->
@@ -440,11 +468,7 @@
 
         <!-- 버튼 그룹 -->
         <div class="button-group">
-          <button
-            class="btn btn-secondary"
-            onclick={goBack}
-            disabled={loading}
-          >
+          <button class="btn btn-secondary" onclick={goBack} disabled={loading}>
             이전으로
           </button>
           <button
@@ -465,9 +489,7 @@
         <!-- 재전송 안내 -->
         <div class="resend-hint">
           인증 코드를 받지 못하셨나요?
-          <button class="link-button" onclick={goBack}>
-            다시 전송하기
-          </button>
+          <button class="link-button" onclick={goBack}> 다시 전송하기 </button>
         </div>
       </div>
     {/if}
@@ -485,7 +507,11 @@
       - 의심스러운 활동 감지 시에만 사용자에게 챌린지가 표시됨
       - reCAPTCHA 배지는 페이지 우측 하단에 자동으로 표시됨
     -->
-    <div id="recaptcha-container" bind:this={recaptchaContainer} class="recaptcha-container"></div>
+    <div
+      id="recaptcha-container"
+      bind:this={recaptchaContainer}
+      class="recaptcha-container"
+    ></div>
   </div>
 </div>
 
@@ -501,7 +527,9 @@
   .login-card {
     background-color: #ffffff; /* bg-white */
     border-radius: 0.5rem; /* rounded-lg */
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow-lg */
+    box-shadow:
+      0 4px 6px -1px rgba(0, 0, 0, 0.1),
+      0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow-lg */
     padding: 2rem; /* p-8 */
     border: 1px solid #e5e7eb; /* border-gray-200 */
   }
@@ -711,7 +739,9 @@
   }
 
   @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   /* 버튼 그룹 */

@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // 데모 앱용 설정 (타입 선언 생성 불필요)
+    "declaration": false,
+    "declarationMap": false,
+    "outDir": "./demo-dist",
+    "rootDir": "./src"
+  },
+  "include": [
+    "src/**/*.d.ts",
+    "src/**/*.ts",
+    "src/**/*.js",
+    "src/**/*.svelte"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "demo-dist"
+  ]
+}
