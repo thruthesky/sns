@@ -58,8 +58,8 @@ const posts = createRealtimeStore('posts');
 // 사용자 데이터 실시간 구독
 const user = createRealtimeStore('users/user123');
 
-// 게시글 좋아요 상태 실시간 구독
-const myLike = createRealtimeStore('post-props/community/post-abc/likes/user-xyz');
+// 게시글 좋아요 상태 실시간 구독 (Flat Style)
+const myLike = createRealtimeStore('post-likes/post-abc-user-xyz');
 ```
 
 ### ✅ 언마운트 시 구독 해제
@@ -177,53 +177,53 @@ await update(ref(database), updates);
 
 ### increment() 사용 예시
 
-#### 예시 1: 좋아요 추가
-
-```javascript
-import { database } from '$lib/firebase.js';
-import { ref, update } from 'firebase/database';
-import { increment, serverTimestamp } from 'firebase/database';
-
-async function addLike(postId, userId, category) {
-  const updates = {};
-
-  // 1. 게시글의 좋아요 개수 증가 (서버에서 원자적으로 +1)
-  updates[`posts/${category}/${postId}/likeCount`] = increment(1);
-
-  // 2. 좋아요 누른 사용자 기록 (서버 타임스탬프 사용)
-  updates[`post-props/likes/${postId}/${userId}`] = serverTimestamp();
-
-  // 한 번의 update 호출로 여러 경로 동시 업데이트
-  await update(ref(database), updates);
-}
-```
-
-#### 예시 2: 좋아요 취소
+#### 예시 1: 좋아요 추가 (Flat Style)
 
 ```javascript
 import { database } from '$lib/firebase.js';
 import { ref, update } from 'firebase/database';
 import { increment } from 'firebase/database';
 
-async function removeLike(postId, userId, category) {
+async function addLike(postId, userId) {
   const updates = {};
 
-  // 1. 게시글의 좋아요 개수 감소 (서버에서 원자적으로 -1)
-  updates[`posts/${category}/${postId}/likeCount`] = increment(-1);
+  // 1. 좋아요 상태 저장 (Flat Style: /post-likes/{postId}-{uid})
+  updates[`post-likes/${postId}-${userId}`] = 1;
 
-  // 2. 좋아요 기록 삭제 (null로 설정하면 삭제됨)
-  updates[`post-props/likes/${postId}/${userId}`] = null;
+  // 2. 게시글의 좋아요 개수 증가 (서버에서 원자적으로 +1)
+  updates[`posts/${postId}/likeCount`] = increment(1);
+
+  // 한 번의 update 호출로 여러 경로 동시 업데이트
+  await update(ref(database), updates);
+}
+```
+
+#### 예시 2: 좋아요 취소 (Flat Style)
+
+```javascript
+import { database } from '$lib/firebase.js';
+import { ref, update } from 'firebase/database';
+import { increment } from 'firebase/database';
+
+async function removeLike(postId, userId) {
+  const updates = {};
+
+  // 1. 좋아요 기록 삭제 (Flat Style: null로 설정하면 삭제됨)
+  updates[`post-likes/${postId}-${userId}`] = null;
+
+  // 2. 게시글의 좋아요 개수 감소 (서버에서 원자적으로 -1)
+  updates[`posts/${postId}/likeCount`] = increment(-1);
 
   await update(ref(database), updates);
 }
 ```
 
-#### 예시 3: 조회수 증가
+#### 예시 3: 조회수 증가 (Flat Style)
 
 ```javascript
-async function incrementViewCount(postId, category) {
+async function incrementViewCount(postId) {
   const updates = {};
-  updates[`posts/${category}/${postId}/viewCount`] = increment(1);
+  updates[`posts/${postId}/viewCount`] = increment(1);
   await update(ref(database), updates);
 }
 ```
@@ -236,8 +236,10 @@ async function incrementViewCount(postId, category) {
 import { serverTimestamp } from 'firebase/database';
 
 const updates = {};
-updates[`posts/community/abc123/createdAt`] = serverTimestamp();
-updates[`post-props/likes/${postId}/${userId}`] = serverTimestamp();
+// 게시글 생성 시간 기록 (Flat Style)
+updates[`posts/abc123/createdAt`] = serverTimestamp();
+// 사용자 마지막 활동 시간 기록
+updates[`users/${userId}/lastActiveAt`] = serverTimestamp();
 await update(ref(database), updates);
 ```
 

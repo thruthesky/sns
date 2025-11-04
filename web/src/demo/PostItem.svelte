@@ -4,34 +4,55 @@
    *
    * 각 게시글을 표시하고, 실시간 좋아요 상태를 관리합니다.
    */
-  import { database } from "../lib/utils/firebase.js";
-  import { ref, update, get, increment } from "firebase/database";
   import { createRealtimeStore } from "../lib/stores/database.js";
   import { showToast } from "../lib/stores/toast.js";
   import { t } from "../lib/stores/i18n.js";
-  import { createTopLevelComment } from "../lib/services/comment.js";
+  import { createTopLevelComment, listenToComments } from "../lib/services/comment.js";
+  import { toggleLike } from "../lib/services/like.js";
+  import { onMount } from "svelte";
+  import CommentItem from "./CommentItem.svelte";
 
   // Props
   let { itemData, index, category, userId, onLike = () => {} } = $props();
 
   // 내 좋아요 상태를 실시간으로 구독
+  // 새로운 구조: /post-likes/{postId}-{uid}
   const myLikeStore = userId
     ? createRealtimeStore(
-        `post-props/${category}/${itemData.key}/likes/${userId}`
+        `post-likes/${itemData.key}-${userId}`
       )
     : null;
 
-  // 게시글 좋아요 수를 실시간으로 구독
-  // posts 정보에서 likeCount 필드를 직접 구독하여 실시간 업데이트
-  const postStore = createRealtimeStore(`posts/${category}/${itemData.key}`);
+  // 게시글 정보를 실시간으로 구독 (likeCount 포함)
+  // Flat style: /posts/{postId}
+  const postStore = createRealtimeStore(`posts/${itemData.key}`);
 
   // 댓글 모달 상태 관리
   let isCommentDialogOpen = $state(false);
   let commentContent = $state('');
   let isSubmitting = $state(false);
 
+  // 댓글 목록 상태 관리
+  let comments = $state([]);
+  let showComments = $state(false); // 댓글 목록 표시/숨김 상태
+
   /**
-   * 좋아요 버튼 클릭 핸들러
+   * 컴포넌트 마운트 시 댓글 리스너 등록
+   */
+  onMount(() => {
+    // 댓글 실시간 구독 (Flat style: postId만 필요)
+    const unsubscribeComments = listenToComments(itemData.key, (newComments) => {
+      comments = newComments;
+    });
+
+    // 언마운트 시 리스너 해제
+    return () => {
+      unsubscribeComments();
+    };
+  });
+
+  /**
+   * 좋아요 버튼 클릭 핸들러 (토글 방식)
    */
   async function handleLike() {
     // 1. 로그인 확인
@@ -42,34 +63,26 @@
     }
 
     try {
-      // 2. 현재 좋아요 상태 확인
-      const likeRef = ref(
-        database,
-        `post-props/${category}/${itemData.key}/likes/${userId}`
-      );
+      // 2. 좋아요 토글 (추가 또는 취소)
+      const result = await toggleLike(itemData.key, userId);
 
-      const snapshot = await get(likeRef);
-      const currentLikeValue = snapshot.val();
+      // 3. 결과 처리
+      if (result.success) {
+        if (result.isLiked) {
+          showToast($t("좋아요를하였습니다"), "success");
+        } else {
+          showToast($t("좋아요를취소했습니다"), "info");
+        }
 
-      // 3. 이미 좋아요를 했는지 확인
-      if (currentLikeValue && currentLikeValue >= 1) {
-        showToast("이미 좋아요를 하였습니다.", "info");
-        return;
+        // 부모 컴포넌트에 알림
+        onLike(itemData.key);
+      } else {
+        // result.error는 i18n 키
+        showToast($t(result.error), "error");
       }
-
-      // 4. 좋아요 하지 않은 경우, Firebase에 좋아요 카운트를 1 증가
-      await update(likeRef.parent, {
-        [userId]: increment(1),
-      });
-
-      // 5. 성공 메시지 표시
-      showToast("좋아요를 하였습니다.", "success");
-
-      // 부모 컴포넌트에 알림
-      onLike(itemData.key);
     } catch (error) {
       console.error("좋아요 오류:", error);
-      showToast("좋아요 처리 중 오류가 발생했습니다.", "error");
+      showToast($t("error.unknown"), "error");
     }
   }
 
@@ -102,10 +115,10 @@
     isSubmitting = true;
 
     try {
-      // 3. Firebase에 댓글 저장
+      // 3. Firebase에 댓글 저장 (Flat style: postId만 필요)
+      // 참고: commentCount는 Firebase Cloud Functions에서 자동으로 증가됨
       const result = await createTopLevelComment(
         itemData.key,      // 게시글 ID
-        category,          // 게시글 카테고리
         userId,            // 작성자 UID
         commentContent     // 댓글 내용
       );
@@ -115,6 +128,8 @@
         showToast($t("댓글이작성되었습니다"), "success");
         isCommentDialogOpen = false;
         commentContent = '';
+        // 댓글 목록 자동으로 펼치기
+        showComments = true;
       } else {
         // result.error는 i18n 키 (예: 'error.db.permissionDenied')
         // i18n 키를 번역하여 사용자 친화적인 메시지 표시
@@ -171,6 +186,9 @@
     <div class="post-actions-left">
       <button class="action-btn" title={$t("댓글")} onclick={handleCommentClick}>
         💬 {$t("댓글")}
+        {#if comments.length > 0}
+          <span class="count">{comments.length}</span>
+        {/if}
       </button>
 
       <button
@@ -208,6 +226,33 @@
       {/if}
     </div>
   </div>
+
+  <!-- 댓글 목록 섹션 -->
+  {#if comments.length > 0}
+    <div class="comments-section">
+      <!-- 댓글 토글 버튼 -->
+      <button
+        class="comments-toggle"
+        onclick={() => showComments = !showComments}
+      >
+        {showComments ? '▼' : '▶'} {$t("댓글")} ({comments.length})
+      </button>
+
+      <!-- 댓글 목록 -->
+      {#if showComments}
+        <div class="comments-list">
+          {#each comments as comment (comment.commentId)}
+            <CommentItem
+              {comment}
+              postId={itemData.key}
+              postCategory={category}
+              {userId}
+            />
+          {/each}
+        </div>
+      {/if}
+    </div>
+  {/if}
 </div>
 
 <!-- 댓글 작성 모달 다이얼로그 -->
@@ -532,5 +577,44 @@
 
   .btn-submit:active:not(:disabled) {
     transform: scale(0.98);
+  }
+
+  /* === 댓글 목록 스타일 === */
+
+  /* 댓글 섹션 */
+  .comments-section {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  /* 댓글 토글 버튼 */
+  .comments-toggle {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    background: none;
+    border: none;
+    text-align: left;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #374151;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+  }
+
+  .comments-toggle:hover {
+    color: #111827;
+    background-color: #f9fafb;
+  }
+
+  /* 댓글 목록 */
+  .comments-list {
+    margin-top: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
   }
 </style>

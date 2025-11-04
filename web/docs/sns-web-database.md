@@ -112,28 +112,53 @@ await update(ref(database, `users/${uid}`), {
 
 ## 게시판 데이터 구조
 
-게시판 데이터는 `/posts/` 경로 아래에 저장됩니다.
+게시판 데이터는 `/posts/` 경로 아래에 flat style로 저장됩니다.
 
 ```
 /posts/
-  {category}/              # 카테고리 (community, qna, news, market)
-    {postId}/            # Firebase 자동 생성 ID
-      uid: "사용자 UID"
-      title: "게시글 제목"
-      content: "게시글 내용"
-      author: "작성자 displayName"
-      category: "카테고리"
-      createdAt: 1234567890  # Unix timestamp (밀리초)
-      updatedAt: 1234567890  # Unix timestamp (밀리초)
-      likeCount: 0         # 좋아요(추천) 총 개수 (기본값: 0)
-      commentCount: 0      # 댓글 총 개수 (기본값: 0)
+  <post-id>/              # Firebase 자동 생성 ID
+    uid: "사용자 UID"
+    title: "게시글 제목"
+    content: "게시글 내용"
+    author: "작성자 displayName"
+    category: "community"  # 카테고리 (community, qna, news, market)
+    order: "community-1234567890"  # <category>-<timestamp> 형식
+    createdAt: 1234567890  # Unix timestamp (밀리초)
+    updatedAt: 1234567890  # Unix timestamp (밀리초)
+    likeCount: 0         # 좋아요(추천) 총 개수 (기본값: 0)
+    commentCount: 0      # 댓글 총 개수 (기본값: 0)
 ```
 
 **예시 경로:**
 ```
-/posts/community/abc123def456/
-/posts/qna/xyz789uvw012/
-/posts/news/mno345pqr678/
+/posts/abc123def456/
+/posts/xyz789uvw012/
+/posts/mno345pqr678/
+```
+
+**Flat Style 구조의 장점:**
+- 관계형 참조가 단순해짐 (post-id만 알면 게시글에 접근 가능)
+- 복잡한 노드 구조 없이 간단한 참조
+- `order` 필드를 통한 효율적인 카테고리별 정렬
+
+### 카테고리별 정렬 방법
+
+`order` 필드는 `<category>-<timestamp>` 형식으로 저장됩니다:
+- `"community-1234567890"`
+- `"qna-1234567891"`
+- `"news-1234567892"`
+
+**카테고리별 쿼리 예시:**
+```javascript
+// community 카테고리 게시글만 조회
+const postsRef = ref(database, 'posts');
+const q = query(
+  postsRef,
+  orderByChild('order'),
+  startAt('community-'),
+  endAt('community-\uf8ff'),
+  limitToLast(10)
+);
 ```
 
 ### 게시글 필드 설명
@@ -145,6 +170,7 @@ await update(ref(database, `users/${uid}`), {
 | `content` | string | ✅ | 게시글 내용 |
 | `author` | string | ✅ | 작성자 displayName |
 | `category` | string | ✅ | 카테고리 (community, qna, news, market) |
+| `order` | string | ✅ | 정렬용 문자열 (`<category>-<timestamp>`) |
 | `createdAt` | number | ✅ | 작성 시간 (Unix timestamp 밀리초) |
 | `updatedAt` | number | ✅ | 수정 시간 (Unix timestamp 밀리초) |
 | `likeCount` | number | ❌ | 좋아요(추천) 총 개수 (기본값: 0) |
@@ -167,172 +193,202 @@ export const FORUM_CATEGORIES = [
 ];
 ```
 
-## 게시글 속성 관리 (post-props)
+## 게시글 좋아요 (post-likes)
 
-게시글과 관련된 다양한 속성(좋아요, 신고, 북마크 등)은 **성능 최적화 및 확장성**을 위해 별도의 `/post-props/` 노드에서 관리합니다.
+게시글 좋아요는 **단순하고 효율적인 단일 레벨 노드 구조**로 관리합니다.
 
-### 게시글 속성 분리의 필요성
+### 데이터 구조
 
-**❌ 비효율적인 구조** (게시글 노드에 모든 속성 정보 저장):
+**✅ 단일 레벨 노드 구조** (Flat Style):
 ```
-/posts/<category>/<post-id>/
-  likes/
-    <uid1>: timestamp
-    <uid2>: timestamp
-    ... (수천 명의 좋아요 시 데이터 과다)
-  reports/
-    <uid1>: "스팸"
-    <uid2>: "부적절한 내용"
-    ... (신고 데이터까지 포함)
-```
-- **문제점**: 게시글 목록 로드 시 모든 속성 정보까지 다운로드되어 비효율적
-- **문제점**: 데이터가 많을수록 전송량 급증 및 성능 저하
-- **문제점**: 확장 시 게시글 노드가 비대해짐
-
-**✅ 효율적인 구조** (속성 개수와 상세 정보 분리):
-```
-# 1. 게시글 노드: 집계된 개수만 저장 (빠른 조회)
-/posts/<category>/<post-id>/
-  likeCount: 42        # 좋아요 총 개수
-  commentCount: 15     # 댓글 총 개수
-
-# 2. 속성 상세 정보: 별도 노드에 저장
-/post-props/
-  likes/
-    <post-id>/
-      <uid1>: timestamp
-      <uid2>: timestamp
-  reports/
-    <post-id>/
-      <uid1>: "스팸"
-      <uid2>: "부적절한 내용"
-  bookmarks/
-    <post-id>/
-      <uid1>: timestamp
+/post-likes/
+  <post-id>-<uid>: 1   # 좋아요 상태 (값: 1)
 ```
 
-### 데이터 구조 상세
-
-#### 좋아요 (Likes)
-```
-/post-props/
-  likes/
-    {postId}/            # 게시글 ID (카테고리 없이 post-id만 사용)
-      {uid}: timestamp   # 좋아요를 누른 사용자 UID와 시간
-```
+- **장점**: 복잡한 다단계 경로 없이 단일 레벨로 구성
+- **장점**: postId와 uid를 조합한 키로 중복 자동 방지
+- **장점**: 간단한 경로로 빠른 조회 및 업데이트
+- **장점**: Firebase 쿼리 및 보안 규칙 작성이 간단함
 
 **예시:**
 ```json
 {
-  "post-props": {
-    "likes": {
-      "abc123def456": {
-        "user-uid-1": 1698473000000,
-        "user-uid-2": 1698474000000,
-        "user-uid-3": 1698475000000
-      },
-      "xyz789uvw012": {
-        "user-uid-4": 1698476000000
-      }
-    }
+  "post-likes": {
+    "abc123def456-user-uid-1": 1,
+    "abc123def456-user-uid-2": 1,
+    "abc123def456-user-uid-3": 1,
+    "xyz789uvw012-user-uid-4": 1
   }
 }
 ```
 
-#### 신고 (Reports)
-```
-/post-props/
-  reports/
-    {postId}/
-      {uid}: "신고 사유"   # 신고한 사용자 UID와 사유
-```
+### 게시글 좋아요 개수 관리
 
-**예시:**
-```json
-{
-  "post-props": {
-    "reports": {
-      "abc123def456": {
-        "user-uid-5": "스팸",
-        "user-uid-6": "부적절한 내용"
-      }
-    }
-  }
-}
+게시글의 총 좋아요 개수는 Firebase Cloud Functions 에 의해 `/posts/<post-id>/likeCount` 필드에 저장됩니다:
+
+```
+/posts/
+  <post-id>/
+    uid: "사용자 UID"
+    title: "게시글 제목"
+    content: "게시글 내용"
+    likeCount: 3         # 총 좋아요 개수 (집계됨)
+    commentCount: 5
+    ...
 ```
 
 ### 좋아요 기능 구현 로직
 
 #### 1. 좋아요 추가
 ```javascript
-// 1. /post-props/likes/<postId>/<uid> 에 timestamp 저장
-// 2. /posts/<category>/<postId>/likeCount 를 +1 증가 (트랜잭션 사용)
+import { ref, set, increment, update } from 'firebase/database';
+
+async function addLike(postId, userId) {
+  const updates = {};
+
+  // 1. /post-likes/{postId}-{uid} 에 값 1 저장
+  updates[`post-likes/${postId}-${userId}`] = 1;
+
+  // 2. /posts/{postId}/likeCount 를 +1 증가
+  updates[`posts/${postId}/likeCount`] = increment(1);
+
+  // 한 번의 update로 두 경로 동시 업데이트
+  await update(ref(database), updates);
+}
 ```
 
 #### 2. 좋아요 취소
 ```javascript
-// 1. /post-props/likes/<postId>/<uid> 삭제
-// 2. /posts/<category>/<postId>/likeCount 를 -1 감소 (트랜잭션 사용)
+async function removeLike(postId, userId) {
+  const updates = {};
+
+  // 1. /post-likes/{postId}-{uid} 삭제 (null로 설정)
+  updates[`post-likes/${postId}-${userId}`] = null;
+
+  // 2. /posts/{postId}/likeCount 를 -1 감소
+  updates[`posts/${postId}/likeCount`] = increment(-1);
+
+  await update(ref(database), updates);
+}
 ```
 
 #### 3. 사용자의 좋아요 여부 확인
 ```javascript
-// /post-props/likes/<postId>/<current-uid> 경로 존재 여부 확인
+import { ref, get } from 'firebase/database';
+
+async function checkLikeStatus(postId, userId) {
+  const likeRef = ref(database, `post-likes/${postId}-${userId}`);
+  const snapshot = await get(likeRef);
+
+  return snapshot.exists(); // true: 좋아요 누름, false: 안 누름
+}
 ```
 
-#### 4. 게시글 목록 표시
+#### 4. 실시간 좋아요 상태 구독
 ```javascript
-// /posts/<category>/<postId>/likeCount 만 조회 (빠름)
+import { ref, onValue } from 'firebase/database';
+
+function listenToLikeStatus(postId, userId, callback) {
+  const likeRef = ref(database, `post-likes/${postId}-${userId}`);
+
+  const unsubscribe = onValue(likeRef, (snapshot) => {
+    callback(snapshot.exists());
+  });
+
+  return unsubscribe; // 언마운트 시 호출
+}
 ```
 
-### 확장성 (Extensibility)
+#### 5. 특정 게시글의 모든 좋아요 조회
+```javascript
+import { ref, query, orderByKey, startAt, endAt, get } from 'firebase/database';
 
-`/post-props/` 구조를 사용하면 다양한 게시글 관련 속성을 쉽게 추가할 수 있습니다:
+async function getPostLikes(postId) {
+  const likesRef = ref(database, 'post-likes');
 
+  // postId로 시작하는 모든 키 조회
+  const likesQuery = query(
+    likesRef,
+    orderByKey(),
+    startAt(`${postId}-`),
+    endAt(`${postId}-\uf8ff`)
+  );
+
+  const snapshot = await get(likesQuery);
+  const likes = [];
+
+  snapshot.forEach((childSnapshot) => {
+    // 키에서 uid 추출: "postId-uid" -> uid
+    const key = childSnapshot.key;
+    const uid = key.substring(postId.length + 1);
+    likes.push({ uid, value: childSnapshot.val() });
+  });
+
+  return likes;
+}
 ```
-/post-props/
-  likes/           # 좋아요
-    <post-id>/
-      <uid>: timestamp
 
-  reports/         # 신고
-    <post-id>/
-      <uid>: "신고 사유"
+### Cloud Functions 연동
 
-  bookmarks/       # 북마크
-    <post-id>/
-      <uid>: timestamp
+**좋아요 추가/삭제 시 likeCount 자동 동기화**는 Cloud Functions에서 처리할 수 있습니다:
 
-  shares/          # 공유
-    <post-id>/
-      <uid>: timestamp
+```typescript
+// firebase/functions/src/index.ts
+import * as functions from 'firebase-functions/v2';
+import * as admin from 'firebase-admin';
 
-  views/           # 조회수 (필요시)
-    <post-id>/
-      <uid>: timestamp
+/**
+ * 좋아요 추가 시 likeCount 자동 증가
+ */
+export const onLikeCreated = functions.database.onValueCreated(
+  '/post-likes/{likeId}',
+  async (event) => {
+    const likeId = event.params.likeId as string;
+
+    // likeId 형식: "postId-uid"
+    const postId = likeId.split('-')[0];
+
+    // likeCount 증가
+    const postRef = admin.database().ref(`posts/${postId}/likeCount`);
+    await postRef.transaction((current) => (current || 0) + 1);
+
+    console.log(`좋아요 추가: ${likeId}, postId: ${postId}`);
+  }
+);
+
+/**
+ * 좋아요 삭제 시 likeCount 자동 감소
+ */
+export const onLikeDeleted = functions.database.onValueDeleted(
+  '/post-likes/{likeId}',
+  async (event) => {
+    const likeId = event.params.likeId as string;
+    const postId = likeId.split('-')[0];
+
+    // likeCount 감소
+    const postRef = admin.database().ref(`posts/${postId}/likeCount`);
+    await postRef.transaction((current) => Math.max((current || 0) - 1, 0));
+
+    console.log(`좋아요 삭제: ${likeId}, postId: ${postId}`);
+  }
+);
 ```
-
-**확장성 장점:**
-- 새로운 속성 추가 시 기존 구조 변경 없이 `/post-props/` 아래에 추가만 하면 됨
-- 각 속성별로 독립적인 보안 규칙 적용 가능
-- 특정 속성만 선택적으로 조회하여 성능 최적화
-- 속성별로 다른 데이터 타입 사용 가능 (timestamp, string, number 등)
 
 ### 장점
 
-1. **성능 최적화**: 게시글 목록 로드 시 집계된 개수(`likeCount` 등)만 가져오므로 빠름
-2. **중복 방지**: 사용자 UID를 키로 사용하여 자동으로 중복 방지
-3. **빠른 확인**: 특정 사용자의 속성 여부를 단일 경로로 확인 가능
-4. **확장성**: 새로운 속성을 쉽게 추가할 수 있는 유연한 구조
-5. **데이터 관리**: 카테고리 없이 post-id만 사용하여 구조 단순화
-6. **보안 규칙**: 속성별로 독립적인 접근 제어 가능
+1. **단순한 구조**: 복잡한 다단계 노드 없이 1단계 경로로 구성
+2. **빠른 조회**: `{postId}-{uid}` 키로 O(1) 시간 복잡도로 조회
+3. **중복 방지**: 키 자체가 `postId-uid` 조합이므로 자동으로 중복 방지
+4. **확장 가능**: 필요 시 값에 timestamp 등 추가 정보 저장 가능
+5. **쿼리 효율**: `startAt/endAt`으로 특정 게시글의 모든 좋아요 쉽게 조회
+6. **보안 규칙 간단**: 단일 레벨 구조로 보안 규칙 작성이 직관적
 
 ### 주의사항
 
-- **동기화 필수**: `likeCount`와 `/post-props/likes/` 의 데이터는 항상 동기화되어야 함
-- **트랜잭션 사용**: 속성 추가/삭제 시 Firebase 트랜잭션 사용 권장
-- **Cloud Functions**: 서버 측에서 데이터 일관성을 보장하는 것이 더 안전함
-- **post-id 고유성**: 카테고리를 제거했으므로 post-id는 전역적으로 고유해야 함 (Firebase의 `push()` 사용 시 자동 보장)
+- **동기화**: `likeCount`와 `/post-likes/` 데이터는 항상 동기화되어야 함 (Cloud Functions 권장)
+- **키 형식**: 반드시 `{postId}-{uid}` 형식을 준수해야 함
+- **postId 파싱**: Cloud Functions에서 `likeId.split('-')[0]`로 postId 추출 시 postId에 `-`가 포함되지 않도록 주의
+- **트랜잭션**: likeCount 업데이트 시 트랜잭션 사용 권장 (동시성 문제 방지)
 
 ---
 
@@ -361,36 +417,42 @@ export const FORUM_CATEGORIES = [
 
 ## 댓글 데이터 구조
 
-댓글 데이터는 `/comments/` 경로 아래에 게시글 ID로 분류되어 저장됩니다.
+댓글 데이터는 `/comments/` 경로 아래에 flat style로 저장됩니다.
 
 ```
 /comments/
-  {postId}/              # 게시글 ID
-    {commentId}/         # Firebase 자동 생성 ID
-      uid: "사용자 UID"
-      content: "댓글 내용"
-      depth: 1           # 댓글 깊이 (1부터 시작, 최대 12)
-      order: "00001,0000,000,000,000,000,000,000,000,000,000,000"
-      parentId: null     # 부모 댓글 ID (첫 번째 레벨은 null)
-      createdAt: 1234567890  # Unix timestamp (밀리초)
-      updatedAt: 1234567890  # Unix timestamp (밀리초)
+  <comment-id>/       # Firebase 자동 생성 ID
+    postId: "abc123"  # 소속 게시글 ID
+    uid: "사용자 UID"
+    content: "댓글 내용"
+    depth: 1         # 댓글 깊이 (1부터 시작, 최대 12)
+    order: "00001,0000,000,000,000,000,000,000,000,000,000,000"
+    parentId: null   # 부모 댓글 ID (첫 번째 레벨은 null)
+    createdAt: 1234567890  # Unix timestamp (밀리초)
+    updatedAt: 1234567890  # Unix timestamp (밀리초)
 ```
 
 **예시 경로:**
 ```
-/comments/abc123def456/comment001/
-/comments/abc123def456/comment002/
-/comments/xyz789uvw012/comment003/
+/comments/comment001/
+/comments/comment002/
+/comments/comment003/
 ```
+
+**Flat Style 구조의 장점:**
+- 관계형 참조가 단순해짐 (comment-id만 알면 댓글에 접근 가능)
+- 복잡한 노드 구조 없이 간단한 참조
+- `postId` 필드로 해당 댓글이 어느 게시글에 속하는지 추적 가능
 
 **참고:**
 - 댓글 작성자 정보(`displayName`, `photoUrl`)는 `author` 필드로 저장하지 않고, 실시간으로 `/users/{uid}/` 경로에서 가져와서 화면에 표시합니다.
-- 카테고리 정보는 게시글 ID만으로 댓글을 조회할 수 있으므로 경로에 포함하지 않습니다.
+- `postId` 필드를 통해 어느 게시글의 댓글인지 알 수 있습니다.
 
 ### 댓글 필드 설명
 
 | 필드 | 타입 | 필수 | 설명 |
 |------|------|------|------|
+| `postId` | string | ✅ | 소속 게시글 ID |
 | `uid` | string | ✅ | 작성자 UID |
 | `content` | string | ✅ | 댓글 내용 |
 | `depth` | number | ✅ | 댓글 깊이 (1~12, 1부터 시작) |
@@ -417,95 +479,9 @@ export const FORUM_CATEGORIES = [
 - **구분자**: 콤마(,)로 각 레벨 구분
 - **최대 길이**: 52자 (5 + 4 + 10×3 + 11개의 콤마 = 50)
 
-### order 생성 로직
-
-#### 1. 첫 번째 레벨 댓글 (부모가 없는 댓글)
-
-```javascript
-/**
- * 첫 번째 레벨 댓글의 order 생성
- * @param {number} noOfComments - 현재 게시글의 총 댓글 수
- * @returns {string} order 문자열
- */
-function createFirstLevelOrder(noOfComments) {
-  // 기본 order 문자열 생성 (모두 0으로 초기화)
-  // L0: 5자리, L1: 4자리, L2~L11: 3자리
-  const parts = ['00000', '0000', '000', '000', '000', '000', '000', '000', '000', '000', '000', '000'];
-
-  // depth 0 (첫 번째 레벨)에 noOfComments 값 추가
-  const computed = 0 + noOfComments;
-  parts[0] = String(computed).padStart(5, '0');  // 5자리로 패딩
-
-  return parts.join(',');
-}
-
-// 예시
-const order1 = createFirstLevelOrder(1);
-// 결과: "00001,0000,000,000,000,000,000,000,000,000,000,000"
-
-const order2 = createFirstLevelOrder(2);
-// 결과: "00002,0000,000,000,000,000,000,000,000,000,000,000"
-```
-
-#### 2. 자식 댓글 (부모가 있는 댓글)
-
-```javascript
-/**
- * 자식 댓글의 order 생성
- * @param {string} parentOrder - 부모 댓글의 order 문자열
- * @param {number} parentDepth - 부모 댓글의 depth (1부터 시작)
- * @param {number} noOfComments - 현재 게시글의 총 댓글 수
- * @returns {string} order 문자열
- */
-function createChildOrder(parentOrder, parentDepth, noOfComments) {
-  // depth가 12 이상이면 부모 order를 그대로 반환
-  if (parentDepth >= 12) {
-    return parentOrder;
-  }
-
-  // order 문자열을 배열로 분리
-  const parts = parentOrder.split(',');
-
-  // 자식의 depth는 부모 depth와 동일한 인덱스 사용
-  // (depth는 1부터 시작하지만, 배열 인덱스는 0부터 시작하므로)
-  const childDepth = parentDepth;  // 배열 인덱스로 사용
-
-  // 현재 depth의 값에 noOfComments 추가
-  const currentValue = parseInt(parts[childDepth]);
-  const computed = currentValue + noOfComments;
-
-  // depth에 따라 패딩 자릿수 결정
-  // L1 (두 번째 레벨): 4자리, L2 이후: 3자리
-  let padding = 3;  // 기본값: 3자리
-  if (childDepth === 1) {
-    padding = 4;  // 두 번째 레벨은 4자리
-  }
-
-  parts[childDepth] = String(computed).padStart(padding, '0');
-
-  return parts.join(',');
-}
-
-// 예시
-const parentOrder = "00001,0000,000,000,000,000,000,000,000,000,000,000";
-const childOrder1 = createChildOrder(parentOrder, 1, 6);
-// 결과: "00001,0006,000,000,000,000,000,000,000,000,000,000"
-
-const childOrder2 = createChildOrder(childOrder1, 2, 10);
-// 결과: "00001,0006,010,000,000,000,000,000,000,000,000,000"
-```
-
 ### order 기반 정렬
 
 Firebase에서 댓글을 조회할 때 `order` 필드로 정렬하면 트리 구조가 유지된 채로 평탄화된 목록을 얻을 수 있습니다.
-
-```javascript
-import { ref, query, orderByChild } from 'firebase/database';
-
-// 댓글 조회 (order 순으로 정렬)
-const commentsRef = ref(database, `comments/${postId}`);
-const commentsQuery = query(commentsRef, orderByChild('order'));
-```
 
 **정렬 결과 예시:**
 ```
@@ -517,241 +493,7 @@ const commentsQuery = query(commentsRef, orderByChild('order'));
 00002,0001,000,... → 두 번째 댓글의 첫 번째 자식
 ```
 
-## 댓글 작성 플로우
-
-### 1. 첫 번째 레벨 댓글 작성
-
-```javascript
-/**
- * 첫 번째 레벨 댓글 작성
- * @param {string} postId - 게시글 ID
- * @param {string} postCategory - 게시글 카테고리 (commentCount 업데이트용)
- * @param {string} userId - 작성자 UID
- * @param {string} content - 댓글 내용
- */
-async function createTopLevelComment(postId, postCategory, userId, content) {
-  // 1. 현재 게시글의 commentCount 가져오기
-  const postRef = ref(database, `posts/${postCategory}/${postId}`);
-  const postSnapshot = await get(postRef);
-  const currentCommentCount = postSnapshot.val()?.commentCount || 0;
-
-  // 2. 새 댓글 ID 생성 (카테고리 없이 postId만 사용)
-  const commentsRef = ref(database, `comments/${postId}`);
-  const newCommentRef = push(commentsRef);
-
-  // 3. order 생성 (첫 번째 레벨)
-  const noOfComments = currentCommentCount + 1;
-  const order = createFirstLevelOrder(noOfComments);
-
-  // 4. 댓글 데이터 생성
-  // 참고: author 필드는 저장하지 않고, UI에서 /users/{uid}/ 경로에서 실시간으로 가져옴
-  const commentData = {
-    uid: userId,
-    content: content,
-    depth: 1,  // 첫 번째 레벨은 depth 1
-    order: order,
-    parentId: null,
-    createdAt: Date.now(),
-    updatedAt: Date.now()
-  };
-
-  // 5. 댓글 저장 및 게시글의 commentCount 증가 (트랜잭션 사용 권장)
-  await runTransaction(postRef, (post) => {
-    if (post) {
-      post.commentCount = (post.commentCount || 0) + 1;
-    }
-    return post;
-  });
-
-  await set(newCommentRef, commentData);
-
-  return { success: true, commentId: newCommentRef.key };
-}
-```
-
-### 2. 자식 댓글 (대댓글) 작성
-
-```javascript
-/**
- * 자식 댓글 작성
- * @param {string} postId - 게시글 ID
- * @param {string} postCategory - 게시글 카테고리 (commentCount 업데이트용)
- * @param {string} parentCommentId - 부모 댓글 ID
- * @param {string} userId - 작성자 UID
- * @param {string} content - 댓글 내용
- */
-async function createChildComment(postId, postCategory, parentCommentId, userId, content) {
-  // 1. 부모 댓글 정보 가져오기 (카테고리 없이 postId만 사용)
-  const parentRef = ref(database, `comments/${postId}/${parentCommentId}`);
-  const parentSnapshot = await get(parentRef);
-  const parentComment = parentSnapshot.val();
-
-  if (!parentComment) {
-    throw new Error('부모 댓글을 찾을 수 없습니다.');
-  }
-
-  // 2. 현재 게시글의 commentCount 가져오기
-  const postRef = ref(database, `posts/${postCategory}/${postId}`);
-  const postSnapshot = await get(postRef);
-  const currentCommentCount = postSnapshot.val()?.commentCount || 0;
-
-  // 3. 새 댓글 ID 생성 (카테고리 없이 postId만 사용)
-  const commentsRef = ref(database, `comments/${postId}`);
-  const newCommentRef = push(commentsRef);
-
-  // 4. order 생성 (자식 댓글)
-  const noOfComments = currentCommentCount + 1;
-  const order = createChildOrder(parentComment.order, parentComment.depth, noOfComments);
-
-  // 5. 댓글 데이터 생성
-  // 참고: author 필드는 저장하지 않고, UI에서 /users/{uid}/ 경로에서 실시간으로 가져옴
-  const commentData = {
-    uid: userId,
-    content: content,
-    depth: parentComment.depth + 1,  // 부모 depth + 1
-    order: order,
-    parentId: parentCommentId,
-    createdAt: Date.now(),
-    updatedAt: Date.now()
-  };
-
-  // 6. depth가 12를 초과하는지 확인
-  if (commentData.depth > 12) {
-    throw new Error('댓글 깊이는 최대 12단계까지만 지원됩니다.');
-  }
-
-  // 7. 댓글 저장 및 게시글의 commentCount 증가
-  await runTransaction(postRef, (post) => {
-    if (post) {
-      post.commentCount = (post.commentCount || 0) + 1;
-    }
-    return post;
-  });
-
-  await set(newCommentRef, commentData);
-
-  return { success: true, commentId: newCommentRef.key };
-}
-```
-
-## 댓글 조회 및 표시
-
-### 1. 댓글 목록 조회
-
-```javascript
-/**
- * 게시글의 모든 댓글 조회 (order 순으로 정렬)
- * @param {string} postId - 게시글 ID
- */
-async function getComments(postId) {
-  const commentsRef = ref(database, `comments/${postId}`);
-  const commentsQuery = query(commentsRef, orderByChild('order'));
-
-  const snapshot = await get(commentsQuery);
-  const comments = [];
-
-  snapshot.forEach((childSnapshot) => {
-    comments.push({
-      id: childSnapshot.key,
-      ...childSnapshot.val()
-    });
-  });
-
-  return comments;
-}
-```
-
-### 2. 실시간 댓글 리스너
-
-```javascript
-/**
- * 실시간 댓글 업데이트 구독
- * @param {string} postId - 게시글 ID
- * @param {function} callback - 댓글 목록을 받는 콜백 함수
- */
-function listenToComments(postId, callback) {
-  const commentsRef = ref(database, `comments/${postId}`);
-  const commentsQuery = query(commentsRef, orderByChild('order'));
-
-  return onValue(commentsQuery, (snapshot) => {
-    const comments = [];
-    snapshot.forEach((childSnapshot) => {
-      comments.push({
-        id: childSnapshot.key,
-        ...childSnapshot.val()
-      });
-    });
-    callback(comments);
-  });
-}
-```
-
-## 댓글 UI 표시 예시
-
-댓글을 트리 구조로 표시할 때 `depth` 필드를 사용하여 들여쓰기를 적용합니다.
-
-**중요**: 댓글에는 `author` 필드가 저장되지 않으므로, 작성자 정보(displayName, photoUrl)는 `/users/{uid}/` 경로에서 실시간으로 가져와야 합니다.
-
-```svelte
-<script>
-  import { createRealtimeStore } from '../lib/stores/database.js';
-
-  let comments = $state([]);
-
-  // depth에 따라 들여쓰기 계산 (20px씩)
-  function getIndent(depth) {
-    return (depth - 1) * 20;
-  }
-</script>
-
-<div class="comments-list">
-  {#each comments as comment (comment.id)}
-    {#snippet CommentItem()}
-      <!-- 작성자 정보를 /users/{uid}/ 에서 실시간으로 가져오기 -->
-      {@const userStore = createRealtimeStore(`users/${comment.uid}`)}
-      {@const userData = $userStore.data}
-
-      <div
-        class="comment-item"
-        style="margin-left: {getIndent(comment.depth)}px"
-      >
-        <div class="comment-header">
-          {#if userData?.photoUrl}
-            <img src={userData.photoUrl} alt="프로필" class="author-avatar" />
-          {/if}
-          <span class="comment-author">{userData?.displayName || '익명'}</span>
-        </div>
-        <div class="comment-content">{comment.content}</div>
-        <div class="comment-meta">
-          <span>Depth: {comment.depth}</span>
-          <button onclick={() => replyToComment(comment.id)}>답글</button>
-        </div>
-      </div>
-    {/snippet}
-
-    {@render CommentItem()}
-  {/each}
-</div>
-
-<style>
-  .comment-header {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 0.5rem;
-  }
-
-  .author-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-  }
-
-  .comment-author {
-    font-weight: 600;
-  }
-</style>
-```
+**참고**: 댓글 생성 로직, order 생성 알고리즘, API 함수, UI 구현 예시는 [게시판 개발 가이드 - 댓글 섹션](./sns-web-forum.md#댓글-개발-가이드)을 참고하세요.
 
 ## 데이터 예시
 
@@ -775,60 +517,62 @@ function listenToComments(postId, callback) {
     }
   },
   "comments": {
-    "post-abc123": {
-      "comment-001": {
-        "uid": "user-2",
-        "content": "첫 번째 댓글",
-        "depth": 1,
-        "order": "00001,0000,000,000,000,000,000,000,000,000,000,000",
-        "parentId": null,
-        "createdAt": 1698474000000,
-        "updatedAt": 1698474000000
-      },
-      "comment-002": {
-        "uid": "user-3",
-        "content": "첫 번째 댓글의 답글",
-        "depth": 2,
-        "order": "00001,0002,000,000,000,000,000,000,000,000,000,000",
-        "parentId": "comment-001",
-        "createdAt": 1698475000000,
-        "updatedAt": 1698475000000
-      },
-      "comment-003": {
-        "uid": "user-4",
-        "content": "첫 번째 댓글의 답글의 답글",
-        "depth": 3,
-        "order": "00001,0002,003,000,000,000,000,000,000,000,000,000",
-        "parentId": "comment-002",
-        "createdAt": 1698476000000,
-        "updatedAt": 1698476000000
-      },
-      "comment-004": {
-        "uid": "user-5",
-        "content": "첫 번째 댓글의 두 번째 답글",
-        "depth": 2,
-        "order": "00001,0004,000,000,000,000,000,000,000,000,000,000",
-        "parentId": "comment-001",
-        "createdAt": 1698477000000,
-        "updatedAt": 1698477000000
-      },
-      "comment-005": {
-        "uid": "user-6",
-        "content": "두 번째 댓글",
-        "depth": 1,
-        "order": "00005,0000,000,000,000,000,000,000,000,000,000,000",
-        "parentId": null,
-        "createdAt": 1698478000000,
-        "updatedAt": 1698478000000
-      },
-      "comment-006": {
-        "uid": "user-7",
-        "content": "두 번째 댓글의 답글",
-        "depth": 2,
-        "order": "00005,0006,000,000,000,000,000,000,000,000,000,000",
-        "parentId": "comment-005",
-        "createdAt": 1698479000000,
-        "updatedAt": 1698479000000
+    "community": {
+      "post-abc123": {
+        "comment-001": {
+          "uid": "user-2",
+          "content": "첫 번째 댓글",
+          "depth": 1,
+          "order": "00001,0000,000,000,000,000,000,000,000,000,000,000",
+          "parentId": null,
+          "createdAt": 1698474000000,
+          "updatedAt": 1698474000000
+        },
+        "comment-002": {
+          "uid": "user-3",
+          "content": "첫 번째 댓글의 답글",
+          "depth": 2,
+          "order": "00001,0002,000,000,000,000,000,000,000,000,000,000",
+          "parentId": "comment-001",
+          "createdAt": 1698475000000,
+          "updatedAt": 1698475000000
+        },
+        "comment-003": {
+          "uid": "user-4",
+          "content": "첫 번째 댓글의 답글의 답글",
+          "depth": 3,
+          "order": "00001,0002,003,000,000,000,000,000,000,000,000,000",
+          "parentId": "comment-002",
+          "createdAt": 1698476000000,
+          "updatedAt": 1698476000000
+        },
+        "comment-004": {
+          "uid": "user-5",
+          "content": "첫 번째 댓글의 두 번째 답글",
+          "depth": 2,
+          "order": "00001,0004,000,000,000,000,000,000,000,000,000,000",
+          "parentId": "comment-001",
+          "createdAt": 1698477000000,
+          "updatedAt": 1698477000000
+        },
+        "comment-005": {
+          "uid": "user-6",
+          "content": "두 번째 댓글",
+          "depth": 1,
+          "order": "00005,0000,000,000,000,000,000,000,000,000,000,000",
+          "parentId": null,
+          "createdAt": 1698478000000,
+          "updatedAt": 1698478000000
+        },
+        "comment-006": {
+          "uid": "user-7",
+          "content": "두 번째 댓글의 답글",
+          "depth": 2,
+          "order": "00005,0006,000,000,000,000,000,000,000,000,000,000",
+          "parentId": "comment-005",
+          "createdAt": 1698479000000,
+          "updatedAt": 1698479000000
+        }
       }
     }
   }
@@ -846,31 +590,24 @@ function listenToComments(postId, callback) {
 6. comment-006 (00005,0006,000,...) - └─ 두 번째 댓글의 답글
 ```
 
-**참고**: 각 댓글의 작성자 정보(displayName, photoUrl)는 `/users/{uid}/` 경로에서 실시간으로 가져와서 UI에 표시합니다.
+**참고**:
+- 각 댓글의 작성자 정보(displayName, photoUrl)는 `/users/{uid}/` 경로에서 실시간으로 가져와서 UI에 표시합니다.
+- 댓글의 최대 깊이는 12단계입니다. 13단계 이상은 order 정렬이 제대로 작동하지 않을 수 있습니다.
 
-## 주의사항
 
-### 1. 동기화 필수
-- 게시글의 `commentCount`와 실제 댓글 개수는 항상 동기화되어야 함
-- 댓글 추가/삭제 시 Firebase 트랜잭션 사용 권장
 
-### 2. order 생성 주의
-- `noOfComments`는 항상 **게시글의 총 댓글 수**를 전달해야 함
-- 댓글 작성 시마다 `commentCount`를 1씩 증가시켜 order에 반영
+## 코멘트 속성 관리 (comment-props)
 
-### 3. depth 제한
-- 최대 깊이는 12단계
-- 13단계 이상은 order 정렬이 제대로 작동하지 않을 수 있음
-- UI에서 depth 제한을 명시하는 것을 권장 (예: "더 이상 답글을 작성할 수 없습니다")
+댓글과 관련된 다양한 속성(좋아요, 신고 등)은 **성능 최적화 및 확장성**을 위해 별도의 `/comment-props/` 노드에서 관리합니다.
 
-### 4. 삭제 처리
-- 댓글 삭제 시 자식 댓글도 함께 삭제하거나
-- 또는 "삭제된 댓글입니다" 메시지로 대체 (자식 댓글 유지)
-- 삭제 시 `commentCount` 감소 필수
 
-### 5. Cloud Functions 사용 권장
-- 서버 측에서 `order` 생성 및 `commentCount` 동기화를 처리하는 것이 더 안전함
-- 클라이언트에서 직접 처리 시 동시성 문제 발생 가능
+### 댓글 좋아요
+```
+/comment-props/
+  likes/
+    {commentId}/            # 댓글 ID
+      {uid}: timestamp     # 좋아요를 누른 사용자 UID와 시간
+```
 
 ---
 

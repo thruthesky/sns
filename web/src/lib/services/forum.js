@@ -4,17 +4,19 @@
  * Firebase Realtime Database와 상호작용하는 게시판 관련 함수들을 제공합니다.
  * 게시글 생성, 조회, 수정, 삭제 기능을 구현합니다.
  *
- * 데이터 구조:
+ * 데이터 구조 (Flat Style):
  * /posts/
- *   {category}/
- *     {postId}/
- *       uid: "사용자 UID"
- *       title: "게시글 제목"
- *       content: "게시글 내용"
- *       author: "작성자 displayName"
- *       category: "카테고리"
- *       createdAt: 1234567890 (Unix timestamp 밀리초)
- *       updatedAt: 1234567890 (Unix timestamp 밀리초)
+ *   <post-id>/
+ *     uid: "사용자 UID"
+ *     title: "게시글 제목"
+ *     content: "게시글 내용"
+ *     author: "작성자 displayName"
+ *     category: "카테고리" (community, qna, news, market)
+ *     order: "community-1234567890" (<category>-<timestamp> 형식)
+ *     createdAt: 1234567890 (Unix timestamp 밀리초)
+ *     updatedAt: 1234567890 (Unix timestamp 밀리초)
+ *     likeCount: 0
+ *     commentCount: 0
  *
  * 사용 예시:
  * import { createPost, listenToPosts } from '$lib/services/forum.js';
@@ -22,7 +24,7 @@
  * // 게시글 생성
  * const result = await createPost('community', 'uid-123', '홍길동', '제목', '내용');
  *
- * // 게시글 조회 (실시간)
+ * // 게시글 조회 (실시간, 카테고리별)
  * const unsubscribe = listenToPosts('community', 10, (posts) => {
  *   console.log(posts);
  * });
@@ -32,7 +34,7 @@
  */
 
 import { database } from '../utils/firebase.js';
-import { ref, push, set, update, remove, query, orderByChild, limitToLast, onValue, off } from 'firebase/database';
+import { ref, push, set, update, remove, query, orderByChild, limitToLast, startAt, endAt, onValue, off } from 'firebase/database';
 import { handleFirebaseError } from '../utils/error-handler.js';
 
 /**
@@ -46,9 +48,11 @@ import { handleFirebaseError } from '../utils/error-handler.js';
  * @returns {Promise<{success: boolean, postId?: string, error?: string}>}
  *
  * 기능:
- * - 새 게시글을 `/posts/{category}/` 경로에 저장
+ * - 새 게시글을 `/posts/` 경로에 저장 (flat style)
  * - 자동으로 postId 생성 (Firebase push key)
+ * - order 필드 자동 생성 (<category>-<timestamp> 형식)
  * - createdAt, updatedAt 자동 설정 (현재 시간)
+ * - likeCount, commentCount 초기화
  *
  * 사용 예시:
  * const result = await createPost(
@@ -68,6 +72,9 @@ export async function createPost(category, uid, author, title, content) {
     // 현재 시간 (Unix timestamp 밀리초)
     const now = Date.now();
 
+    // order 생성: <category>-<timestamp> 형식
+    const order = `${category}-${now}`;
+
     // 게시글 객체 생성
     const postData = {
       uid: uid,
@@ -75,12 +82,15 @@ export async function createPost(category, uid, author, title, content) {
       content: content,
       author: author,
       category: category,
+      order: order,  // 카테고리별 정렬을 위한 필드
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
+      likeCount: 0,
+      commentCount: 0
     };
 
-    // Firebase 경로: /posts/{category}/
-    const postsRef = ref(database, `posts/${category}`);
+    // Firebase 경로: /posts/ (flat style)
+    const postsRef = ref(database, 'posts');
 
     // push() - Firebase가 자동으로 고유한 key 생성
     const newPostRef = await push(postsRef, postData);
@@ -111,7 +121,8 @@ export async function createPost(category, uid, author, title, content) {
  * @returns {() => void} 리스너 해제 함수 (언마운트 시 호출 필수)
  *
  * 기능:
- * - 특정 카테고리의 게시글을 실시간으로 감시
+ * - 특정 카테고리의 게시글을 실시간으로 감시 (flat style)
+ * - orderByChild('order') + startAt/endAt 쿼리로 카테고리별 필터링
  * - 최신 N개의 게시글을 가져옴 (기본값: 10개)
  * - 데이터 변경 시 자동으로 callback 호출
  * - Unsubscribe 함수 반환 (메모리 누수 방지)
@@ -123,7 +134,7 @@ export async function createPost(category, uid, author, title, content) {
  * let posts = $state([]);
  *
  * onMount(() => {
- *   // 게시글 리스너 설정
+ *   // community 카테고리 게시글 리스너 설정
  *   const unsubscribe = listenToPosts('community', 10, (newPosts) => {
  *     console.log('게시글 목록:', newPosts);
  *     posts = newPosts;
@@ -135,13 +146,18 @@ export async function createPost(category, uid, author, title, content) {
  */
 export function listenToPosts(category, limit = 10, callback) {
   try {
-    // Firebase 경로: /posts/{category}
-    const postsRef = ref(database, `posts/${category}`);
+    // Firebase 경로: /posts/ (flat style)
+    const postsRef = ref(database, 'posts');
 
-    // 쿼리 생성: createdAt 기준 내림차순, 최신 N개만
+    // 쿼리 생성: order 필드로 카테고리별 필터링
+    // order 형식: <category>-<timestamp>
+    // startAt('community-'): community로 시작하는 order
+    // endAt('community-\uf8ff'): community로 시작하는 모든 값의 마지막
     const postsQuery = query(
       postsRef,
-      orderByChild('createdAt'),
+      orderByChild('order'),
+      startAt(`${category}-`),
+      endAt(`${category}-\uf8ff`),
       limitToLast(limit)
     );
 
@@ -189,23 +205,22 @@ export function listenToPosts(category, limit = 10, callback) {
  * 기존 게시글을 수정합니다.
  * 본인이 작성한 글만 수정 가능합니다.
  *
- * @param {string} category - 게시판 카테고리
  * @param {string} postId - 게시글 ID
  * @param {Object} updates - 수정할 내용 { title?: string, content?: string }
  * @returns {Promise<{success: boolean, error?: string}>}
  *
  * 기능:
- * - 기존 게시글의 제목, 내용 수정
+ * - 기존 게시글의 제목, 내용 수정 (flat style)
  * - updatedAt 자동 갱신
  * - 본인 작성 글만 수정 가능 (보안 규칙에서 확인)
  *
  * 사용 예시:
- * const result = await updatePost('community', 'post-id-123', {
+ * const result = await updatePost('post-id-123', {
  *   title: '수정된 제목',
  *   content: '수정된 내용'
  * });
  */
-export async function updatePost(category, postId, updates) {
+export async function updatePost(postId, updates) {
   try {
     // 수정 데이터에 updatedAt 추가
     const updateData = {
@@ -213,8 +228,8 @@ export async function updatePost(category, postId, updates) {
       updatedAt: Date.now()
     };
 
-    // Firebase 경로: /posts/{category}/{postId}
-    const postRef = ref(database, `posts/${category}/${postId}`);
+    // Firebase 경로: /posts/{postId} (flat style)
+    const postRef = ref(database, `posts/${postId}`);
 
     // update() - 특정 필드만 수정
     await update(postRef, updateData);
@@ -238,25 +253,24 @@ export async function updatePost(category, postId, updates) {
  * 게시글을 삭제합니다.
  * 본인이 작성한 글만 삭제 가능합니다.
  *
- * @param {string} category - 게시판 카테고리
  * @param {string} postId - 게시글 ID
  * @returns {Promise<{success: boolean, error?: string}>}
  *
  * 기능:
- * - 게시글 완전 삭제
+ * - 게시글 완전 삭제 (flat style)
  * - 본인 작성 글만 삭제 가능 (보안 규칙에서 확인)
  *
  * 사용 예시:
- * const result = await deletePost('community', 'post-id-123');
+ * const result = await deletePost('post-id-123');
  *
  * if (result.success) {
  *   console.log('게시글이 삭제되었습니다.');
  * }
  */
-export async function deletePost(category, postId) {
+export async function deletePost(postId) {
   try {
-    // Firebase 경로: /posts/{category}/{postId}
-    const postRef = ref(database, `posts/${category}/${postId}`);
+    // Firebase 경로: /posts/{postId} (flat style)
+    const postRef = ref(database, `posts/${postId}`);
 
     // remove() - 데이터 삭제
     await remove(postRef);
