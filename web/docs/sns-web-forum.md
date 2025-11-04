@@ -1138,7 +1138,10 @@ function listenToComments(postId, callback) {
 ### 4. 좋아요 기능
 - 게시글과 댓글에 좋아요 추가
 - 중복 방지 (한 사용자당 한 번만)
-- 데이터 구조: `/post-props/likes/`, `/comment-props/likes/`
+- 데이터 구조 (Flat Style):
+  - 게시글 좋아요: `/post-likes/{postId}-{uid}` (값: 1)
+  - 댓글 좋아요: `/comment-likes/{commentId}-{uid}` (값: 1)
+- 서비스 함수: `src/lib/services/like.js` 참조
 
 ### 5. 검색 및 필터링
 - 제목, 내용, 작성자로 검색
