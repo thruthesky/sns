@@ -11,18 +11,18 @@
   import { t } from "../lib/stores/i18n.js";
 
   // Props
-  let {
-    itemData,
-    index,
-    category,
-    userId,
-    onLike = () => {}
-  } = $props();
+  let { itemData, index, category, userId, onLike = () => {} } = $props();
 
   // 내 좋아요 상태를 실시간으로 구독
   const myLikeStore = userId
-    ? createRealtimeStore(`post-props/${category}/${itemData.key}/likes/${userId}`)
+    ? createRealtimeStore(
+        `post-props/${category}/${itemData.key}/likes/${userId}`
+      )
     : null;
+
+  // 게시글 좋아요 수를 실시간으로 구독
+  // posts 정보에서 likeCount 필드를 직접 구독하여 실시간 업데이트
+  const postStore = createRealtimeStore(`posts/${category}/${itemData.key}`);
 
   /**
    * 좋아요 버튼 클릭 핸들러
@@ -104,12 +104,15 @@
       </button>
 
       <button
-        class="action-btn {myLikeStore && $myLikeStore >= 1 ? 'liked' : ''}"
+        class="action-btn {myLikeStore && $myLikeStore.data >= 1
+          ? 'liked'
+          : ''}"
         title={$t("좋아요")}
         onclick={handleLike}
       >
-        {myLikeStore && $myLikeStore >= 1 ? '❤️' : '🤍'} {$t("좋아요")}
-        {#if itemData.data.likeCount > 0}
+        {myLikeStore && $myLikeStore.data >= 1 ? "❤️" : "🤍"}
+        {$t("좋아요")}
+        {#if itemData.data?.likeCount > 0}
           <span class="count">{itemData.data.likeCount}</span>
         {/if}
       </button>

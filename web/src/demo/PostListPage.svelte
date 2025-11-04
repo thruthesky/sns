@@ -159,12 +159,6 @@
     window.history.pushState({}, "", `/post/list?category=${category}`);
   }
 
-  // 현재 선택된 카테고리 정보
-  // Svelte 5 runes 모드: $: 대신 $derived 사용
-  let currentCategoryInfo = $derived(
-    FORUM_CATEGORIES.find((cat) => cat.value === currentCategory) ??
-      FORUM_CATEGORIES[0]
-  );
 </script>
 
 <!-- 인증 로딩 중일 때 로딩 화면 표시 -->
@@ -174,18 +168,6 @@
   </div>
 {:else}
   <div class="post-list-container">
-    <div class="page-header">
-      <div>
-        <h1 class="page-title">{$t("게시판")}</h1>
-        <p class="page-subtitle">
-          {currentCategoryInfo.label}{$t("게시판설명")}
-        </p>
-      </div>
-      <div class="page-header-action">
-        <span class="category-chip">{currentCategoryInfo.label}</span>
-      </div>
-    </div>
-
     <!-- 카테고리 + 글쓰기 -->
     <div class="toolbar">
       <div class="toolbar-left">
@@ -217,14 +199,10 @@
         pageSize={20}
       >
         {#snippet item(itemData, index)}
-          {@const itemCategory =
-            FORUM_CATEGORIES.find(
-              (cat) => cat.value === itemData.data?.category
-            ) ?? currentCategoryInfo}
           <PostItem
             {itemData}
             {index}
-            category={itemCategory.label}
+            category={itemData.data?.category}
             {userId}
           />
         {/snippet}
@@ -378,46 +356,6 @@
     gap: 1.25rem;
   }
 
-  .page-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 1.5rem;
-  }
-
-  .page-header-action {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-  }
-
-  .page-title {
-    margin: 0;
-    font-size: 2rem;
-    font-weight: 700;
-    color: #111827;
-  }
-
-  .page-subtitle {
-    margin: 0.5rem 0 0 0;
-    color: #6b7280;
-    font-size: 0.95rem;
-    max-width: 36rem;
-  }
-
-  .category-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0.875rem;
-    border-radius: 9999px;
-    background: linear-gradient(135deg, #dbeafe, #c7d2fe);
-    color: #1d4ed8;
-    font-weight: 600;
-    font-size: 0.875rem;
-    white-space: nowrap;
-  }
-
   /* 상단 도구 모음 */
   .toolbar {
     display: flex;
@@ -436,6 +374,7 @@
     align-items: center;
     gap: 0.75rem;
     flex: 1;
+    min-width: 0;
   }
 
   .category-tabs {
@@ -523,6 +462,84 @@
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
+  }
+
+  /* 모바일 최적화: 화면 너비 640px 이하 */
+  @media (max-width: 640px) {
+    /* 컨테이너 패딩 최소화 */
+    .post-list-container {
+      padding: 1rem 0.75rem 1.5rem;
+      gap: 0.875rem;
+    }
+
+    /* 도구 모음 압축: 카테고리 탭과 글쓰기 버튼이 같은 줄에 표시 */
+    .toolbar {
+      padding: 0.75rem 0.75rem;
+      gap: 0.5rem;
+      align-items: stretch;
+    }
+
+    /* 왼쪽 도구 모음 영역: 남은 공간을 모두 차지하여 카테고리 탭 확장 */
+    .toolbar-left {
+      gap: 0.5rem;
+      flex: 1;
+      min-width: 0;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* 카테고리 탭 최소화 */
+    .tab {
+      padding: 0.45rem 0.7rem;
+      font-size: 0.75rem;
+    }
+
+    /* 글쓰기 버튼 모바일 최적화: 이모지만 표시하는 아이콘 모드 */
+    .btn-create-post {
+      padding: 0.55rem 0.75rem;
+      font-size: 0.8rem;
+      gap: 0.25rem;
+      flex-shrink: 0;
+      min-width: fit-content;
+    }
+  }
+
+  /* 매우 작은 화면: 480px 이하 */
+  @media (max-width: 480px) {
+    .post-list-container {
+      padding: 0.875rem 0.5rem 1.25rem;
+      gap: 0.75rem;
+    }
+
+    /* 도구 모음: 최소 패딩 유지 */
+    .toolbar {
+      padding: 0.625rem 0.5rem;
+      gap: 0.4rem;
+      align-items: stretch;
+    }
+
+    /* 왼쪽 도구 모음: flex 1로 확장하여 글쓰기 버튼 우측 배치 */
+    .toolbar-left {
+      gap: 0.25rem;
+      flex: 1;
+      min-width: 0;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .tab {
+      padding: 0.4rem 0.6rem;
+      font-size: 0.7rem;
+    }
+
+    /* 글쓰기 버튼: 최소 크기로 축소 */
+    .btn-create-post {
+      padding: 0.5rem 0.65rem;
+      font-size: 0.75rem;
+      gap: 0.2rem;
+      flex-shrink: 0;
+      min-width: fit-content;
+    }
   }
 
   /* 게시글 아이템 스타일은 PostItem.svelte로 이동했습니다 */
