@@ -49,6 +49,7 @@ export {
   pushData,
   readData,
   createRealtimeStore,
+  rtdb,  // createRealtimeStore의 alias (짧은 이름)
   setupPresence
 } from './stores/database.js';
 

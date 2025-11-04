@@ -6,88 +6,135 @@
 
 
 # Firebase Realtime Database 코딩 가이드라인
-- Firebase Realtime Database와 상호작용하는 코드를 작성할 때에는 반드시 아래의 규칙과 예제를 따라야 합니다.
 
-## ⚠️ 중요: Svelte 5 반응성 주의사항
+Firebase Realtime Database와 상호작용하는 코드를 작성할 때에는 반드시 아래의 규칙과 예제를 따라야 합니다.
 
-### Destructuring은 반응성을 끊습니다!
+## 📚 createRealtimeStore() - 함수형 API
 
-**Svelte 5에서 `$state` 객체를 destructuring하면 반응성이 손실됩니다.**
+직관적이고 이해하기 쉬운 함수형 API로 Firebase Realtime Database 실시간 구독을 처리합니다.
 
-```javascript
-// ❌ 잘못된 방법 - 반응성 손실
-const { data, loading, error } = rtdb("/users/apple");
-
-// 화면이 업데이트되지 않습니다!
-// data, loading, error는 그 순간의 값만 가지고 있습니다.
-```
+### ✅ 기본 사용법
 
 ```javascript
-// ✅ 올바른 방법 - 반응성 유지
-const userRtdb = rtdb("/users/apple");
+import { createRealtimeStore } from '$lib/stores/database.js';
 
-// 객체 자체를 저장하고, 속성으로 접근합니다.
-// userRtdb.data, userRtdb.loading, userRtdb.error
+// 실시간 구독 (자동으로 loading, error 상태 추적)
+const posts = createRealtimeStore('posts');
+
+// $posts는 { data, loading, error } 객체
+// - data: Firebase에서 가져온 데이터
+// - loading: 데이터 로드 중 여부 (boolean)
+// - error: 로드 중 발생한 에러 객체 (또는 null)
 ```
 
-### 템플릿에서 사용하기
+### ✅ 템플릿에서 사용하기
 
 ```svelte
 <script>
-  // ✅ 올바른 방법
-  const userRtdb = rtdb("/users/apple");
+  import { createRealtimeStore } from '$lib/stores/database.js';
+
+  // 실시간 구독 생성
+  const posts = createRealtimeStore('posts');
 </script>
 
-<!-- 템플릿에서 객체 속성으로 직접 접근 -->
-{#if userRtdb.loading}
+<!-- 상태에 따라 UI 렌더링 -->
+{#if $posts.loading}
   <p>로딩 중...</p>
-{:else if userRtdb.error}
-  <p>에러: {userRtdb.error.message}</p>
-{:else if userRtdb.data}
-  <p>이름: {userRtdb.data.displayName}</p>
+{:else if $posts.error}
+  <p>에러: {$posts.error.message}</p>
+{:else if $posts.data}
+  {#each Object.entries($posts.data) as [key, post]}
+    <div>
+      <h3>{post.title}</h3>
+      <p>{post.content}</p>
+    </div>
+  {/each}
 {/if}
 ```
 
-### Svelte 5 반응성 원리
+### ✅ 특정 경로 구독하기
 
-Svelte 5의 `$state`는 **Proxy 객체**를 사용하여 속성 접근을 추적합니다:
+```javascript
+// 사용자 데이터 실시간 구독
+const user = createRealtimeStore('users/user123');
 
-- ✅ `userRtdb.data` - 속성 접근이 추적되어 변경 감지
-- ❌ `const { data } = userRtdb` - 순간의 값만 복사, 반응성 끊김
+// 게시글 좋아요 상태 실시간 구독
+const myLike = createRealtimeStore('post-props/community/post-abc/likes/user-xyz');
+```
 
-**왜 이런 일이 발생할까요?**
-- Proxy는 **속성 접근(get)**을 가로채서 반응성을 추적합니다
-- Destructuring은 즉시 값을 복사하므로, 이후 변경사항을 추적할 수 없습니다
-- 객체 자체를 유지해야 Svelte가 속성 접근을 계속 추적할 수 있습니다
+### ✅ 언마운트 시 구독 해제
+
+```svelte
+<script>
+  import { onDestroy } from 'svelte';
+  import { createRealtimeStore } from '$lib/stores/database.js';
+
+  const posts = createRealtimeStore('posts');
+
+  // 컴포넌트 언마운트 시 구독 해제 (메모리 누수 방지)
+  onDestroy(() => {
+    posts.unsubscribe();
+  });
+</script>
+```
 
 ---
 
-## Svelte 5 반응형 패턴
+## 📝 다른 CRUD 작업
 
-### ✅ 올바른 사용 패턴
-
-- Reactivity 유지를 위해 객체 자체를 변수에 저장
-
+### 데이터 쓰기
 ```javascript
-// 객체를 변수에 저장
-const user = rtdb('users/123');
+import { writeData } from '$lib/stores/database.js';
 
-// 템플릿에서 속성으로 접근
-{#if user.loading}
-  <p>로딩 중...</p>
-{:else if user.data}
-  <p>{user.data.name}</p>
-{/if}
+await writeData('users/123', { name: 'John', age: 30 });
 ```
 
-### ✅ 사용 가능한 메서드
+### 데이터 업데이트
+```javascript
+import { updateData } from '$lib/stores/database.js';
 
-- `push(data)` - 새 항목 추가 (자동 key 생성)
-- `set(data)` - 데이터 완전 덮어쓰기
-- `update(data)` - 일부 필드만 업데이트
-- `remove()` - 데이터 삭제
-- `ref` - Firebase DB 참조 가져오기
-- `dispose()` - 리스너 해제 (cleanup)
+// 특정 필드만 업데이트
+await updateData('users/123', { age: 31 });
+```
+
+### 새 항목 추가 (자동 key 생성)
+```javascript
+import { pushData } from '$lib/stores/database.js';
+
+const result = await pushData('posts', { title: '새 글', content: '내용' });
+console.log('생성된 key:', result.key);
+```
+
+### 데이터 삭제
+```javascript
+import { deleteData } from '$lib/stores/database.js';
+
+await deleteData('users/123');
+```
+
+### 한 번만 데이터 읽기
+```javascript
+import { readData } from '$lib/stores/database.js';
+
+const result = await readData('users/123');
+if (result.success) {
+  console.log('사용자 데이터:', result.data);
+}
+```
+
+### 온라인 상태 관리
+```javascript
+import { setupPresence } from '$lib/stores/database.js';
+import { onDestroy } from 'svelte';
+
+const userId = 'user123';
+
+// 온라인/오프라인 상태 추적 시작
+const unsubscribe = setupPresence(userId);
+
+// 언마운트 시 정리
+onDestroy(unsubscribe);
+```
 
 ---
 
@@ -426,23 +473,25 @@ import { login } from '$lib/utils/firebase-login-user.svelte.js';
 
 ---
 
-## 9. login과 rtdb() 함께 사용하기
+## 9. login과 createRealtimeStore() 함께 사용하기
 
-`login` 인스턴스는 현재 로그인한 사용자를 관리하지만, 필요에 따라 다른 사용자나 데이터를 조회하기 위해 별도의 `rtdb()` 인스턴스를 함께 사용할 수 있습니다.
+`login` 인스턴스는 현재 로그인한 사용자를 관리하지만, 필요에 따라 다른 사용자나 데이터를 조회하기 위해 별도의 `createRealtimeStore()` 인스턴스를 함께 사용할 수 있습니다.
 
 ### 사용 예시: 현재 사용자 + 특정 사용자 데이터 조회
 
 ```svelte
 <script>
-  import { login } from '../lib/utils/firebase-login-user.svelte.js';
-  import { rtdb } from '../lib/utils/firebase-realtime-database.svelte.js';
+  import { login } from '$lib/utils/firebase-login-user.svelte.js';
+  import { createRealtimeStore } from '$lib/stores/database.js';
+  // 또는 alias 사용: import { rtdb } from '$lib/stores/database.js';
 
   // 현재 로그인 사용자 (login 사용)
   // - login.uid, email, phoneNumber: Firebase Auth 정보 (static)
   // - login.data: RTDB의 users/<uid> 데이터 (reactive)
 
-  // 특정 사용자 데이터 조회 (별도 rtdb 인스턴스 사용)
-  const userRtdb = rtdb('/users/apple');
+  // 특정 사용자 데이터 조회 (별도 createRealtimeStore 인스턴스 사용)
+  const userProfile = createRealtimeStore('users/apple');
+  // 또는 더 짧게: const userProfile = rtdb('users/apple');
 </script>
 
 <!-- 현재 로그인 사용자 정보 표시 -->
@@ -458,8 +507,14 @@ import { login } from '$lib/utils/firebase-login-user.svelte.js';
     <p>Email: {login.email}</p>
     <p>전화번호: {login.phoneNumber}</p>
 
-    <!-- 별도 rtdb 인스턴스의 데이터 사용 -->
-    <p>RTDB 가입일: {userRtdb.data?.createdAt}</p>
+    <!-- 별도 createRealtimeStore 인스턴스의 데이터 사용 -->
+    {#if $userProfile.loading}
+      <p>다른 사용자 정보 로딩 중...</p>
+    {:else if $userProfile.error}
+      <p>에러: {$userProfile.error.message}</p>
+    {:else if $userProfile.data}
+      <p>사용자 가입일: {$userProfile.data.createdAt}</p>
+    {/if}
   </div>
 {:else}
   <p>로그인이 필요합니다.</p>
@@ -476,8 +531,9 @@ import { login } from '$lib/utils/firebase-login-user.svelte.js';
 ### 주의사항
 
 - `login` 인스턴스는 항상 현재 로그인한 사용자의 `users/<uid>` 경로만 관리합니다
-- 다른 경로나 다른 사용자 데이터가 필요하면 별도의 `rtdb()` 인스턴스를 생성하세요
-- 각 `rtdb()` 인스턴스는 독립적으로 반응형 상태를 관리합니다
+- 다른 경로나 다른 사용자 데이터가 필요하면 별도의 `createRealtimeStore()` 인스턴스를 생성하세요
+- 각 `createRealtimeStore()` 인스턴스는 독립적으로 상태(`data`, `loading`, `error`)를 관리합니다
+- `rtdb()`는 `createRealtimeStore()`의 alias이므로 둘 다 사용 가능합니다
 
 ---
 

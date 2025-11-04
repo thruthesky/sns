@@ -25,26 +25,86 @@ import { ref, push, set, onValue, off, update, remove, get } from 'firebase/data
 /**
  * 실시간 데이터 구독을 위한 스토어 생성
  *
+ * 직관적이고 이해하기 쉬운 함수형 API 유지
+ * loading, error 상태를 자동으로 추적합니다
+ *
  * @param {string} path - 데이터베이스 경로 (예: 'posts', 'users/user123')
- * @returns {Object} Svelte 스토어와 구독 해제 함수
+ * @returns {Object} Svelte 스토어 (구독 가능) - { data, loading, error }
+ *
+ * @example
+ * // 기본 사용법
+ * const posts = createRealtimeStore('posts');
+ * // $posts는 { data, loading, error } 객체
+ *
+ * {#if $posts.loading}
+ *   <p>로딩 중...</p>
+ * {:else if $posts.error}
+ *   <p>에러: {$posts.error.message}</p>
+ * {:else if $posts.data}
+ *   <p>{$posts.data.title}</p>
+ * {/if}
  */
 export function createRealtimeStore(path) {
-  const { subscribe, set: setStore } = writable(null);
+  // 초기 상태: data는 null, loading은 true, error는 null
+  const { subscribe, set: setStore } = writable({
+    data: null,
+    loading: true,
+    error: null
+  });
 
   const dbRef = ref(database, path);
 
-  // 데이터 변경 실시간 감지
-  onValue(dbRef, (snapshot) => {
-    const data = snapshot.val();
-    setStore(data);
-  });
+  // 데이터 변경 실시간 감지 (성공 및 실패 콜백 포함)
+  onValue(
+    dbRef,
+    (snapshot) => {
+      // 데이터 로드 성공
+      const data = snapshot.val();
+      setStore({
+        data: data,
+        loading: false,
+        error: null
+      });
+      console.log(`✅ 실시간 데이터 로드 성공: ${path}`, data);
+    },
+    (error) => {
+      // 데이터 로드 실패 (권한 오류, 네트워크 오류 등)
+      console.error(`❌ 실시간 데이터 로드 실패: ${path}`, error);
+      setStore({
+        data: null,
+        loading: false,
+        error: error
+      });
+    }
+  );
 
   return {
     subscribe,
-    // 컴포넌트 언마운트 시 구독 해제
+    // 컴포넌트 언마운트 시 구독 해제 (메모리 누수 방지)
     unsubscribe: () => off(dbRef)
   };
 }
+
+/**
+ * createRealtimeStore() 함수의 alias (별칭)
+ *
+ * 더 짧은 이름으로 실시간 데이터 구독을 할 수 있습니다.
+ * createRealtimeStore()와 동일하게 작동합니다.
+ *
+ * @param {string} path - 데이터베이스 경로 (예: 'posts', 'users/user123')
+ * @returns {Object} Svelte 스토어 (구독 가능) - { data, loading, error }
+ *
+ * @example
+ * // rtdb() 사용 (짧은 이름)
+ * const posts = rtdb('posts');
+ *
+ * // createRealtimeStore() 사용 (명시적 이름)
+ * const posts = createRealtimeStore('posts');
+ *
+ * // 두 방식 모두 동일합니다
+ */
+export const rtdb = createRealtimeStore;
+
 
 /**
  * 데이터 쓰기 (기존 데이터 덮어쓰기)
