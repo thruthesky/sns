@@ -12,12 +12,12 @@
    * Firebase Auth와 Realtime Database를 사용하여 데이터를 저장합니다.
    */
 
-  import { t } from '../lib/stores/i18n.js';
-  import { login } from '../lib/utils/firebase-login-user.svelte.js';
+  import { t } from '../lib/stores/i18n.ts';
+  import { login } from '../lib/utils/firebase-login-user.svelte.ts';
   import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
   import { storage } from '../lib/utils/firebase.js';
   import { onDestroy, onMount } from 'svelte';
-  import { setPageTitle } from '../lib/stores/pageTitle.js';
+  import { setPageTitle } from '../lib/stores/pageTitle.ts';
   import { Camera, X } from 'lucide-svelte';
 
   // ============================================================================

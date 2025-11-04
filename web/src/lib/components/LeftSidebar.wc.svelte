@@ -21,7 +21,7 @@
     LogIn
   } from 'lucide-svelte';
   import { user } from '../stores/auth.js';
-  import { t, locale, setLocale, SUPPORTED_LOCALES } from '../stores/i18n.js';
+  import { t, locale, setLocale, SUPPORTED_LOCALES } from '../stores/i18n.ts';
 
   /**
    * 언어 옵션 목록

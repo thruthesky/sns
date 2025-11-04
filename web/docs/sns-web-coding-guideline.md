@@ -8,6 +8,13 @@
 
 Firebase Realtime Database와 상호작용하는 코드를 작성할 때에는 반드시 아래의 규칙과 예제를 따라야 합니다.
 
+## 타입 네이밍 규칙
+
+- Realtime Database 사용자 데이터는 `src/lib/types/user.ts`의 `User` 타입을 사용합니다.
+- Firebase Auth의 `User` 타입과 함께 사용하는 경우에는 반드시 `import type { User as AuthType } from 'firebase/auth';` 형태로 `AuthType` 별칭을 지정해 충돌을 방지합니다.
+
+---
+
 ## 📚 createRealtimeStore() - 함수형 API
 
 직관적이고 이해하기 쉬운 함수형 API로 Firebase Realtime Database 실시간 구독을 처리합니다.
@@ -291,6 +298,54 @@ import { login } from '$lib/utils/firebase-login-user.svelte.js';
 | `uid` | `string \| null` | 사용자 UID (Firebase Auth) |
 | `email` | `string \| null` | 사용자 이메일 (Firebase Auth) |
 | `phoneNumber` | `string \| null` | 사용자 전화번호 (Firebase Auth) |
+
+### ⚠️ Firebase Auth vs RTDB 필드
+
+**/users/<uid> 노드에는 Firebase Auth 정보를 저장하지 않습니다:**
+
+Firebase Authentication의 다음 필드들은 `/users/<uid>` 노드에 **저장하지 않습니다**:
+- ❌ `phoneNumber` - Firebase Auth에서만 관리 (`login.phoneNumber`로 접근)
+- ❌ `email` - Firebase Auth에서만 관리 (`login.email`로 접근)
+- ❌ `photoURL` (대문자 URL) - Firebase Auth에서만 관리
+
+이들은 위 표의 **Static 속성**으로 `login` 인스턴스를 통해 직접 접근할 수 있습니다:
+
+```javascript
+import { login } from '$lib/utils/firebase-login-user.svelte.js';
+
+// ✅ Firebase Auth 정보 접근 (Static 속성)
+console.log(login.phoneNumber);  // Firebase Auth의 phoneNumber
+console.log(login.email);        // Firebase Auth의 email
+console.log(login.uid);          // Firebase Auth의 uid
+
+// ✅ RTDB 정보 접근 (Reactive 속성)
+console.log(login.data?.displayName);  // RTDB의 displayName
+console.log(login.data?.photoUrl);     // RTDB의 photoUrl (사용자 업로드)
+```
+
+**단, `photoUrl`(camelCase)은 예외입니다:**
+
+- ✅ **`photoUrl`** (camelCase) - 사용자가 직접 업로드한 프로필 사진 URL을 RTDB에 저장
+- 이는 Firebase Auth의 `photoURL`(대문자)과 **다른 필드**입니다
+- 사용자가 Firebase Storage에 사진을 업로드하면, 다운로드 URL을 `/users/<uid>/photoUrl`에 저장합니다
+
+**필드명 차이 요약:**
+
+| 필드 | 위치 | 접근 방법 | 설명 |
+|------|------|-----------|------|
+| `phoneNumber` | Firebase Auth | `login.phoneNumber` | 전화번호 (Static) |
+| `email` | Firebase Auth | `login.email` | 이메일 (Static) |
+| `photoURL` (대문자) | Firebase Auth | 직접 사용 안 함 | Firebase Auth 프로필 사진 |
+| `photoUrl` (camelCase) | RTDB | `login.data?.photoUrl` | 사용자 업로드 프로필 사진 (Reactive) |
+
+**왜 이렇게 분리했나요?**
+
+1. **데이터 중복 방지**: Firebase Auth에 이미 있는 정보를 RTDB에 다시 저장하지 않음
+2. **비용 절감**: RTDB 읽기/쓰기 비용 절감
+3. **일관성 보장**: 단일 진실 공급원(Single Source of Truth) 유지
+4. **보안**: 민감한 Auth 정보는 Firebase Auth에서만 관리
+
+자세한 내용은 [데이터베이스 구조 가이드](./sns-web-database.md#사용자-정보-users)를 참고하세요.
 
 ## 3. onValue() 함수 활용
 
@@ -688,6 +743,53 @@ Firebase Realtime Database의 `orderByChild()` 쿼리는 기본적으로 **null 
 - ✅ 네트워크 비용 절감 (불필요한 데이터 전송 방지)
 - ✅ 정확한 페이지네이션 동작 보장
 - ✅ 타입 안전성 확보 (커서 값이 항상 유효함)
+
+### 📌 중요한 제약사항: startAt()과 커서의 충돌
+
+⚠️ **Firebase 쿼리에서는 `startAt()`, `startAfter()`, `endBefore()`, `equalTo()` 중 하나만 사용할 수 있습니다.**
+
+DatabaseListView는 이 제약을 자동으로 처리합니다:
+
+1. **초기 로드 (`loadInitialData`)**:
+   - `startAt(false)` 사용 ✅
+   - null/undefined 값을 필터링합니다
+
+2. **페이지네이션 (`loadMore`)**:
+   - `startAfter(lastLoadedValue)` 또는 `endBefore(lastLoadedValue)` 사용 ✅
+   - ❌ `startAt(false)`는 **사용하지 않음** (충돌 방지)
+   - 초기 로드에서 이미 null/undefined 값을 제외했으므로, 커서 이후/이전의 값들도 유효함
+
+**잘못된 쿼리 예시 (에러 발생)**:
+```javascript
+// ❌ 이렇게 하면 에러 발생!
+query(
+  baseRef,
+  orderByChild('createdAt'),
+  startAt(false),        // ← 시작점 설정
+  startAfter(1234567890) // ← 또 다른 시작점 설정! (충돌)
+)
+// Error: startAfter: Starting point was already set
+// (by another call to startAt, startAfter, or equalTo).
+```
+
+**올바른 쿼리 예시**:
+```javascript
+// ✅ 초기 로드: startAt(false)만 사용
+query(
+  baseRef,
+  orderByChild('createdAt'),
+  startAt(false),
+  limitToFirst(10)
+)
+
+// ✅ 페이지네이션: startAfter()만 사용
+query(
+  baseRef,
+  orderByChild('createdAt'),
+  startAfter(1234567890),
+  limitToFirst(10)
+)
+```
 
 ### 📌 사용 예시
 

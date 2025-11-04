@@ -25,7 +25,7 @@ import {
   createUserWithEmailAndPassword,
   signOut as firebaseSignOut,
   updateProfile,
-  type User
+  type User as AuthType
 } from 'firebase/auth';
 
 /**
@@ -40,7 +40,7 @@ export interface AuthResult {
  * 사용자 정보 스토어
  * 로그인한 사용자의 정보를 저장합니다.
  */
-export const user: Writable<User | null> = writable(null);
+export const user: Writable<AuthType | null> = writable(null);
 
 /**
  * 로딩 상태 스토어
@@ -52,7 +52,7 @@ export const loading: Writable<boolean> = writable(true);
  * 인증 상태 변경 감지
  * Firebase Auth의 상태 변화를 실시간으로 감지하여 스토어를 업데이트합니다.
  */
-onAuthStateChanged(auth, (currentUser: User | null) => {
+onAuthStateChanged(auth, (currentUser: AuthType | null) => {
   user.set(currentUser);
   loading.set(false);
 });

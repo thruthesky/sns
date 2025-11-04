@@ -6,7 +6,7 @@
    * 프로젝트 소개, AI 진실, 개발 로드맵, 프로젝트 개요 등을 표시합니다.
    */
 
-  import { t } from "../lib/stores/i18n.js";
+  import { t } from "../lib/stores/i18n.ts";
   import { ChevronDown, CheckCircle2, Circle } from "lucide-svelte";
 
   // 현재 열려있는 아코디언 아이템

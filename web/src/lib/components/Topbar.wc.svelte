@@ -13,9 +13,9 @@
 
   import { Menu, MessageCircle, Users, User, LogOut, LayoutGrid } from 'lucide-svelte';
   import { user, signOut } from '../stores/auth.js';
-  import { login } from '../utils/firebase-login-user.svelte.js';
-  import { t } from '../stores/i18n.js';
-  import { pageTitle } from '../stores/pageTitle.js';
+  import { login } from '../utils/firebase-login-user.svelte.ts';
+  import { t } from '../stores/i18n.ts';
+  import { pageTitle } from '../stores/pageTitle.ts';
   import { onMount } from 'svelte';
 
   /**

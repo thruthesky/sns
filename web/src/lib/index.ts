@@ -34,7 +34,7 @@ export { auth, database, storage } from './utils/firebase.js';
 
 // Firebase 타입 내보내기
 export type { FirebaseApp } from 'firebase/app';
-export type { Auth, User } from 'firebase/auth';
+export type { Auth, User as AuthType } from 'firebase/auth';
 export type { Database } from 'firebase/database';
 export type { FirebaseStorage } from 'firebase/storage';
 
@@ -159,5 +159,9 @@ export type {
   UserId,
   FirebaseKey
 } from './types/common';
+
+// 사용자 타입 내보내기
+export type { User, UserWithId, UserGender } from './types/user';
+export { USER_GENDERS } from './types/user';
 
 console.log('SNS Web Components 로드됨 ✅');

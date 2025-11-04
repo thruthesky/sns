@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   /**
    * 사용자 목록 페이지
    *
@@ -9,16 +9,27 @@
    */
   import DatabaseListView from "../lib/components/DatabaseListView.svelte";
   import { t } from "../lib/stores/i18n.js";
-  import { login } from "../lib/utils/firebase-login-user.svelte.js";
+  import { login } from "../lib/utils/firebase-login-user.svelte.ts";
   import { onMount } from "svelte";
   import { setPageTitle } from "../lib/stores/pageTitle.js";
+  import type { User } from "../lib/types/user";
+
+  /**
+   * DatabaseListView에서 반환하는 아이템 데이터 타입
+   * key: Firebase 노드 키 (사용자 UID)
+   * data: 사용자 데이터 객체
+   */
+  type UserItemData = {
+    key: string;
+    data: User;
+  };
 
   /**
    * 날짜 포맷팅 함수
-   * @param {number} timestamp - Unix 타임스탬프
-   * @returns {string} 포맷된 날짜 문자열
+   * @param timestamp - Unix 타임스탬프
+   * @returns 포맷된 날짜 문자열
    */
-  function formatDate(timestamp) {
+  function formatDate(timestamp?: number): string {
     if (!timestamp) return $t("정보없음");
     const date = new Date(timestamp);
     return date.toLocaleDateString("ko-KR", {
@@ -38,9 +49,9 @@
 
   /**
    * 사용자 프로필로 이동
-   * @param {string} uid - 사용자 UID
+   * @param uid - 사용자 UID
    */
-  function goToProfile(uid) {
+  function goToProfile(uid: string): void {
     if (uid === login.uid) {
       // 자신의 프로필로 이동
       window.history.pushState({}, "", "/user/profile");
@@ -66,7 +77,7 @@
   reverse={false}
 >
   <!-- 개별 사용자 카드 -->
-  {#snippet item(itemData)}
+  {#snippet item(itemData: UserItemData)}
     <div
       class="user-card"
       role="button"
@@ -149,7 +160,7 @@
   {/snippet}
 
   <!-- 에러 상태 -->
-  {#snippet error(errorMessage)}
+  {#snippet error(errorMessage: string)}
     <div class="error-state">
       <p class="error-icon">⚠️</p>
       <p class="error-text">{$t("사용자목록로드실패")}</p>

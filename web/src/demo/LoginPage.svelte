@@ -5,7 +5,7 @@
    * 전화번호 로그인 기능을 제공하는 페이지입니다.
    */
 
-  import { t } from '../lib/stores/i18n.js';
+  import { t } from '../lib/stores/i18n.ts';
   import { user } from '../lib/stores/auth.js';
 
   /**

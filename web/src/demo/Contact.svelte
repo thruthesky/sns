@@ -4,8 +4,8 @@
    * 사용자의 문의를 받습니다.
    */
   import { onMount } from 'svelte';
-  import { t } from '../lib/stores/i18n.js';
-  import { setPageTitle } from '../lib/stores/pageTitle.js';
+  import { t } from '../lib/stores/i18n.ts';
+  import { setPageTitle } from '../lib/stores/pageTitle.ts';
 
   /**
    * 컴포넌트 마운트 시 페이지 제목 설정

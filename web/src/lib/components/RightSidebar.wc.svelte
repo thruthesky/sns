@@ -11,7 +11,7 @@
    */
 
   import { User, TrendingUp, FileText, MessageCircle } from 'lucide-svelte';
-  import { t } from '../stores/i18n.js';
+  import { t } from '../stores/i18n.ts';
 
   /**
    * 통계 데이터 타입

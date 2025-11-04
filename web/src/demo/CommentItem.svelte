@@ -6,9 +6,9 @@
    * 답글 작성 기능을 제공합니다.
    */
   import { createRealtimeStore } from "../lib/stores/database.js";
-  import { t } from "../lib/stores/i18n.js";
+  import { t } from "../lib/stores/i18n.ts";
   import { createChildComment } from "../lib/services/comment.js";
-  import { showToast } from "../lib/stores/toast.js";
+  import { showToast } from "../lib/stores/toast.ts";
 
   // Props
   let {

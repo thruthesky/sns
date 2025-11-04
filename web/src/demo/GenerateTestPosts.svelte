@@ -2,21 +2,21 @@
   /**
    * 테스트 게시글 생성 페이지
    *
-   * 각 카테고리별로 재미있는 랜덤 게시글을 생성합니다.
-   * - community: 커뮤니티 100개
-   * - qna: 질문과답변 100개
-   * - news: 뉴스 100개
-   * - market: 회원장터 100개
+   * 여러 카테고리에 랜덤 게시글을 생성합니다.
+   * - community 카테고리: 100개 (30일 범위 랜덤 시간)
+   * - news 카테고리: 200개 (1초씩 차이나게 생성)
+   * 각 게시글 제목에는 순차 번호(1., 2., 3., ...)가 자동으로 추가됩니다.
    */
 
   import { onMount } from 'svelte';
   import { database } from '../lib/utils/firebase.js';
   import { ref, push } from 'firebase/database';
-  import { login } from '../lib/utils/firebase-login-user.svelte.js';
-  import { setPageTitle } from '../lib/stores/pageTitle.js';
-  import { t } from '../lib/stores/i18n.js';
+  import { login } from '../lib/utils/firebase-login-user.svelte.ts';
+  import { setPageTitle } from '../lib/stores/pageTitle.ts';
+  import { t } from '../lib/stores/i18n.ts';
 
   let isGenerating = $state(false);
+  let isGeneratingNews = $state(false);
   let progress = $state({ current: 0, total: 0, category: '' });
   let logs = $state([]);
   let completed = $state(false);
@@ -131,68 +131,150 @@
     addLog($t('테스트데이터생성시작'), 'success');
     addLog($t('사용자정보', { user: login.data?.displayName || login.email }), 'info');
 
-    const categories = [
-      { value: 'community', label: $t('커뮤니티') },
-      { value: 'qna', label: $t('질문과답변') },
-      { value: 'news', label: $t('뉴스') },
-      { value: 'market', label: $t('회원장터') }
-    ];
+    // 📌 community 카테고리만 생성
+    const category = 'community';
+    const categoryLabel = $t('커뮤니티');
 
-    for (const category of categories) {
-      progress = { current: 0, total: 100, category: category.label };
-      addLog($t('카테고리생성중', { category: category.label }), 'info');
+    progress = { current: 0, total: 100, category: categoryLabel };
+    addLog($t('카테고리생성중', { category: categoryLabel }), 'info');
 
-      const categoryTemplates = templates[category.value];
-      let successCount = 0;
+    const categoryTemplates = templates.community;
+    let successCount = 0;
+    const now = Date.now(); // 현재 시간
 
-      for (let i = 0; i < 100; i++) {
-        try {
-          const title = replaceVariables(randomChoice(categoryTemplates.titles));
-          const content = replaceVariables(randomChoice(categoryTemplates.contents));
+    for (let i = 0; i < 100; i++) {
+      try {
+        // 📌 제목에 순차 번호 추가 (1., 2., 3., ...)
+        const baseTitle = replaceVariables(randomChoice(categoryTemplates.titles));
+        const title = `${i + 1}. ${baseTitle}`;
+        const content = replaceVariables(randomChoice(categoryTemplates.contents));
 
-          // 📝 각 글마다 과거 30일 범위에서 무작위로 생성시간 설정
-          const createdAtTime = now - Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000);
+        // 📝 각 글마다 과거 30일 범위에서 무작위로 생성시간 설정
+        const createdAtTime = now - Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000);
 
-          // 📋 sns-web-database.md 참조: 게시판 데이터 구조
-          // /posts/{postId}에 저장되며, order 필드는 정렬용 (category-timestamp 형식)
-          const postData = {
-            uid: login.uid,
-            title,
-            content,
-            author: login.data?.displayName || login.email || $t('익명'),
-            category: category.value,
-            order: `${category.value}-${createdAtTime}`, // 정렬용 필드
-            createdAt: createdAtTime,
-            updatedAt: now,
-            likeCount: 0, // Cloud Functions가 관리
-            commentCount: 0 // Cloud Functions가 관리
-          };
+        // 📋 sns-web-database.md 참조: 게시판 데이터 구조
+        // /posts/{postId}에 저장되며, order 필드는 정렬용 (category-timestamp 형식)
+        const postData = {
+          uid: login.uid,
+          title,
+          content,
+          author: login.data?.displayName || login.email || $t('익명'),
+          category: category,
+          order: `${category}-${createdAtTime}`, // 정렬용 필드
+          createdAt: createdAtTime,
+          updatedAt: now,
+          likeCount: 0, // Cloud Functions가 관리
+          commentCount: 0 // Cloud Functions가 관리
+        };
 
-          // ✅ 올바른 경로: /posts (category 경로 제거)
-          // push()는 자동으로 postId를 생성합니다
-          const postsRef = ref(database, 'posts');
-          await push(postsRef, postData);
+        // ✅ 올바른 경로: /posts (category 경로 제거)
+        // push()는 자동으로 postId를 생성합니다
+        const postsRef = ref(database, 'posts');
+        await push(postsRef, postData);
 
-          successCount++;
-          progress = { ...progress, current: i + 1 };
+        successCount++;
+        progress = { ...progress, current: i + 1 };
 
-          if ((i + 1) % 20 === 0) {
-            addLog($t('생성진행', { current: i + 1, total: 100 }), 'success');
-          }
-
-          // API 제한 방지 딜레이
-          await new Promise(resolve => setTimeout(resolve, 50));
-        } catch (error) {
-          addLog($t('생성실패', { error: error.message }), 'error');
+        if ((i + 1) % 20 === 0) {
+          addLog($t('생성진행', { current: i + 1, total: 100 }), 'success');
         }
-      }
 
-      addLog($t('카테고리생성완료', { category: category.label, count: successCount }), 'success');
+        // API 제한 방지 딜레이
+        await new Promise(resolve => setTimeout(resolve, 50));
+      } catch (error) {
+        addLog($t('생성실패', { error: error.message }), 'error');
+      }
     }
 
+    addLog($t('카테고리생성완료', { category: categoryLabel, count: successCount }), 'success');
     addLog($t('모든데이터생성완료'), 'success');
-    addLog($t('총400개생성'), 'success');
+    addLog($t('총100개생성'), 'success');
     isGenerating = false;
+    completed = true;
+  }
+
+  /**
+   * 뉴스 게시판 글 200개 생성 함수
+   *
+   * - news 카테고리에 200개의 뉴스 게시글 생성
+   * - 각 글의 제목에 순차 번호 추가 (1. 제목, 2. 제목, ...)
+   * - createdAt을 1초씩 차이나게 설정 (과거 → 현재 순서)
+   *   예: 200번째 글이 가장 오래된 글, 1번째 글이 가장 최신 글
+   */
+  async function generateNewsPosts() {
+    if (!login.isAuthenticated || !login.uid) {
+      addLog($t('로그인필요'), 'error');
+      return;
+    }
+
+    isGeneratingNews = true;
+    completed = false;
+    logs = [];
+    addLog('뉴스 게시판 글 생성 시작', 'success');
+    addLog($t('사용자정보', { user: login.data?.displayName || login.email }), 'info');
+
+    // 📌 news 카테고리에 200개 생성
+    const category = 'news';
+    const categoryLabel = '뉴스';
+    const totalPosts = 200;
+
+    progress = { current: 0, total: totalPosts, category: categoryLabel };
+    addLog(`${categoryLabel} 카테고리에 ${totalPosts}개 글 생성 중...`, 'info');
+
+    const categoryTemplates = templates.news;
+    let successCount = 0;
+    const now = Date.now(); // 현재 시간
+
+    for (let i = 0; i < totalPosts; i++) {
+      try {
+        // 📌 제목에 순차 번호 추가 (1., 2., 3., ...)
+        const baseTitle = replaceVariables(randomChoice(categoryTemplates.titles));
+        const title = `${i + 1}. ${baseTitle}`;
+        const content = replaceVariables(randomChoice(categoryTemplates.contents));
+
+        // 📝 각 글마다 1초씩 차이나게 생성시간 설정
+        // 200번째 글(i=199)이 가장 오래된 글 (now - 199초)
+        // 1번째 글(i=0)이 가장 최신 글 (now - 0초)
+        const createdAtTime = now - ((totalPosts - 1 - i) * 1000);
+
+        // 📋 sns-web-database.md 참조: 게시판 데이터 구조
+        // /posts/{postId}에 저장되며, order 필드는 정렬용 (category-timestamp 형식)
+        const postData = {
+          uid: login.uid,
+          title,
+          content,
+          author: login.data?.displayName || login.email || $t('익명'),
+          category: category,
+          order: `${category}-${createdAtTime}`, // 정렬용 필드
+          createdAt: createdAtTime,
+          updatedAt: now,
+          likeCount: 0, // Cloud Functions가 관리
+          commentCount: 0 // Cloud Functions가 관리
+        };
+
+        // ✅ 올바른 경로: /posts (category 경로 제거)
+        // push()는 자동으로 postId를 생성합니다
+        const postsRef = ref(database, 'posts');
+        await push(postsRef, postData);
+
+        successCount++;
+        progress = { ...progress, current: i + 1 };
+
+        if ((i + 1) % 50 === 0) {
+          addLog(`${i + 1}/${totalPosts} 글 생성 완료`, 'success');
+        }
+
+        // API 제한 방지 딜레이 (50ms)
+        await new Promise(resolve => setTimeout(resolve, 50));
+      } catch (error) {
+        addLog(`글 생성 실패: ${error.message}`, 'error');
+      }
+    }
+
+    addLog(`${categoryLabel} 카테고리 생성 완료: ${successCount}개`, 'success');
+    addLog('모든 뉴스 게시글 생성 완료!', 'success');
+    addLog(`총 ${successCount}/${totalPosts}개 생성됨`, 'success');
+    isGeneratingNews = false;
     completed = true;
   }
 </script>
@@ -201,7 +283,8 @@
   <div class="generator-container">
     <div class="header">
       <h1>{$t('테스트게시글생성타이틀')}</h1>
-      <p>{$t('테스트게시글생성설명')}</p>
+      <p>커뮤니티 게시판에 100개, 뉴스 게시판에 200개의 테스트 글을 생성합니다.</p>
+      <p class="header-detail">뉴스 게시판은 각 글의 생성 시간이 1초씩 차이나도록 설정됩니다.</p>
     </div>
 
     {#if !login.isAuthenticated}
@@ -211,15 +294,25 @@
       </div>
     {:else}
       <div class="action-box">
+        <!-- 커뮤니티 게시판 생성 버튼 (100개) -->
         <button
           class="btn-generate"
           onclick={generatePosts}
-          disabled={isGenerating}
+          disabled={isGenerating || isGeneratingNews}
         >
-          {isGenerating ? $t('생성중') : $t('게시글생성시작')}
+          {isGenerating ? $t('생성중') : '커뮤니티 글 100개 생성'}
         </button>
 
-        {#if isGenerating}
+        <!-- 뉴스 게시판 생성 버튼 (200개) -->
+        <button
+          class="btn-generate btn-news"
+          onclick={generateNewsPosts}
+          disabled={isGenerating || isGeneratingNews}
+        >
+          {isGeneratingNews ? '생성 중...' : '뉴스 글 200개 생성 (1초 간격)'}
+        </button>
+
+        {#if isGenerating || isGeneratingNews}
           <div class="progress-info">
             <p class="progress-category">{progress.category}</p>
             <div class="progress-bar">
@@ -284,8 +377,14 @@
   }
 
   .header p {
-    margin: 0;
+    margin: 0 0 0.25rem 0;
     color: #6b7280;
+  }
+
+  .header-detail {
+    font-size: 0.875rem;
+    color: #9ca3af;
+    margin-top: 0.5rem;
   }
 
   .warning-box {
@@ -313,6 +412,9 @@
 
   .action-box {
     margin-bottom: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
   }
 
   .btn-generate {
@@ -335,6 +437,15 @@
   .btn-generate:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  /* 뉴스 버튼 스타일 (초록색) */
+  .btn-news {
+    background-color: #10b981;
+  }
+
+  .btn-news:hover:not(:disabled) {
+    background-color: #059669;
   }
 
   .progress-info {

@@ -9,12 +9,12 @@
   import { auth } from "../lib/utils/firebase.js";
   import { createPost } from "../lib/services/forum.js";
   import { POST_CATEGORIES } from "../lib/types/category";
-  import { setPageTitle } from "../lib/stores/pageTitle.js";
-  import { showToast } from "../lib/stores/toast.js";
-  import { t } from "../lib/stores/i18n.js";
+  import { setPageTitle } from "../lib/stores/pageTitle.ts";
+  import { showToast } from "../lib/stores/toast.ts";
+  import { t } from "../lib/stores/i18n.ts";
   import DatabaseListView from "../lib/components/DatabaseListView.svelte";
   import PostItem from "./PostItem.svelte";
-  import type { PostCategory, PostWithId } from "../lib/types/post";
+  import type { PostCategory } from "../lib/types/post";
 
   // 인증 상태
   let userId = $state<string | null>(null);
@@ -25,7 +25,9 @@
   const urlParams = new URLSearchParams(
     typeof window !== "undefined" ? window.location.search : ""
   );
-  let currentCategory = $state<PostCategory>(urlParams.get("category") as PostCategory || "community");
+  let currentCategory = $state<PostCategory>(
+    (urlParams.get("category") as PostCategory) || "community"
+  );
 
   // 글쓰기 모달 상태
   let isDialogOpen = $state<boolean>(false);
@@ -156,7 +158,6 @@
     currentCategory = category;
     window.history.pushState({}, "", `/post/list?category=${category}`);
   }
-
 </script>
 
 <!-- 인증 로딩 중일 때 로딩 화면 표시 -->
@@ -199,61 +200,64 @@
           reverse={true}
           pageSize={20}
         >
-        {#snippet item(rawItemData: { key: string; data: any }, index: number)}
-          <PostItem
-            itemData={{
-              postId: rawItemData.key,
-              ...rawItemData.data
-            }}
-            {index}
-            category={rawItemData.data.category}
-            {userId}
-          />
-        {/snippet}
+          {#snippet item(
+            rawItemData: { key: string; data: any },
+            index: number
+          )}
+            <PostItem
+              itemData={{
+                postId: rawItemData.key,
+                ...rawItemData.data,
+              }}
+              {index}
+              category={rawItemData.data.category}
+              {userId}
+            />
+          {/snippet}
 
-        {#snippet empty()}
-          <div class="empty-state">
-            <div class="empty-illustration">🗂️</div>
-            <h3 class="empty-title">{$t("게시글없음")}</h3>
-            <p class="empty-message">
-              {$t("첫게시글공유")}
-            </p>
-            <button class="btn-create-post ghost" onclick={handleCreatePost}>
-              ✏️ {$t("새글작성")}
-            </button>
-          </div>
-        {/snippet}
-
-        {#snippet loading()}
-          <div class="loading-state">
-            <div class="spinner"></div>
-            <p>{$t("게시글로딩중")}</p>
-          </div>
-        {/snippet}
-
-        {#snippet error(errorMessage: string)}
-          <div class="error-state">
-            <div class="error-icon">⚠️</div>
-            <div>
-              <p class="error-message">{$t("게시글로드실패")}</p>
-              <p class="error-detail">{errorMessage}</p>
+          {#snippet empty()}
+            <div class="empty-state">
+              <div class="empty-illustration">🗂️</div>
+              <h3 class="empty-title">{$t("게시글없음")}</h3>
+              <p class="empty-message">
+                {$t("첫게시글공유")}
+              </p>
+              <button class="btn-create-post ghost" onclick={handleCreatePost}>
+                ✏️ {$t("새글작성")}
+              </button>
             </div>
-          </div>
-        {/snippet}
+          {/snippet}
 
-        {#snippet loadingMore()}
-          <div class="loading-more">
-            <div class="spinner small"></div>
-            <p>{$t("더많은게시글로딩")}</p>
-          </div>
-        {/snippet}
+          {#snippet loading()}
+            <div class="loading-state">
+              <div class="spinner"></div>
+              <p>{$t("게시글로딩중")}</p>
+            </div>
+          {/snippet}
 
-        {#snippet noMore()}
-          <div class="no-more">
-            <p>{$t("모든게시글확인")}</p>
-          </div>
-        {/snippet}
-      </DatabaseListView>
+          {#snippet error(errorMessage: string)}
+            <div class="error-state">
+              <div class="error-icon">⚠️</div>
+              <div>
+                <p class="error-message">{$t("게시글로드실패")}</p>
+                <p class="error-detail">{errorMessage}</p>
+              </div>
+            </div>
+          {/snippet}
+
+          {#snippet loadingMore()}
+            <div class="loading-more">
+              <div class="spinner small"></div>
+              <p>{$t("더많은게시글로딩")}</p>
+            </div>
+          {/snippet}
+
+          {#snippet noMore()}
+            <div class="no-more">
+              <p>{$t("모든게시글확인")}</p>
+            </div>
+          {/snippet}
+        </DatabaseListView>
       {/key}
     </div>
   </div>
@@ -295,7 +299,9 @@
             >
               <option value="">{$t("카테고리선택")}</option>
               {#each POST_CATEGORIES as category (category)}
-                <option value={category}>{$t(`label.category.${category}`)}</option>
+                <option value={category}
+                  >{$t(`label.category.${category}`)}</option
+                >
               {/each}
             </select>
           </div>
@@ -548,7 +554,10 @@
     border-radius: 0.75rem;
     border: 1px solid #d1d5db;
     background: #f9fafb;
-    transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+    transition:
+      border-color 0.2s ease,
+      background-color 0.2s ease,
+      box-shadow 0.2s ease;
   }
 
   .form-control:focus {

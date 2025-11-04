@@ -629,51 +629,59 @@
         // 역순 정렬: endBefore + limitToLast 사용
         // limitToLast를 사용하면 마지막 N개를 가져오는데,
         // endBefore로 현재 커서 이전 데이터를 가져옵니다
+        //
+        // ⚠️ sortPrefix가 있어도 endBefore()만 사용합니다
+        // Firebase는 startAt()과 endBefore()를 동시에 사용할 수 없으므로
+        // sortPrefix 필터링은 클라이언트에서 처리합니다
         if (sortPrefix) {
           dataQuery = query(
             baseRef,
             orderByChild(orderBy),
-            startAt(sortPrefix),
-            endAt(sortPrefix + '\uf8ff'),
             endBefore(lastLoadedValue),
             limitToLast(pageSize + 1)
           );
-          console.log('DatabaseListView: Using endBefore + limitToLast with sortPrefix for reverse pagination');
+          console.log('DatabaseListView: Using endBefore + limitToLast for reverse pagination with sortPrefix (client-side filtering)');
         } else {
-          // sortPrefix가 없으면 startAt(false) 사용
-          // 이렇게 하면 orderBy 필드가 null 또는 undefined인 항목은 제외됩니다
+          // sortPrefix가 없으면 endBefore()만 사용
+          // ⚠️ startAt(false)를 여기서 사용하면 안 됩니다!
+          // Firebase는 startAt()과 endBefore()를 동시에 사용할 수 없습니다.
+          // 초기 로드에서 이미 null/undefined 값을 제외했으므로,
+          // 커서 이전의 값들도 유효한 값만 있을 것입니다.
           dataQuery = query(
             baseRef,
             orderByChild(orderBy),
-            startAt(false),
             endBefore(lastLoadedValue),
             limitToLast(pageSize + 1)
           );
-          console.log('DatabaseListView: Using endBefore + limitToLast with startAt(false) for reverse pagination');
+          console.log('DatabaseListView: Using endBefore + limitToLast for reverse pagination (no startAt needed)');
         }
       } else {
         // 정순 정렬: startAfter + limitToFirst 사용
+        //
+        // ⚠️ sortPrefix가 있어도 startAfter()만 사용합니다
+        // Firebase는 startAt()과 startAfter()를 동시에 사용할 수 없으므로
+        // sortPrefix 필터링은 클라이언트에서 처리합니다
         if (sortPrefix) {
           dataQuery = query(
             baseRef,
             orderByChild(orderBy),
-            startAt(sortPrefix),
-            endAt(sortPrefix + '\uf8ff'),
             startAfter(lastLoadedValue),
             limitToFirst(pageSize + 1)
           );
-          console.log('DatabaseListView: Using startAfter + limitToFirst with sortPrefix for normal pagination');
+          console.log('DatabaseListView: Using startAfter + limitToFirst for normal pagination with sortPrefix (client-side filtering)');
         } else {
-          // sortPrefix가 없으면 startAt(false) 사용
-          // 이렇게 하면 orderBy 필드가 null 또는 undefined인 항목은 제외됩니다
+          // sortPrefix가 없으면 startAfter()만 사용
+          // ⚠️ startAt(false)를 여기서 사용하면 안 됩니다!
+          // Firebase는 startAt()과 startAfter()를 동시에 사용할 수 없습니다.
+          // 초기 로드에서 이미 null/undefined 값을 제외했으므로,
+          // 커서 이후의 값들도 유효한 값만 있을 것입니다.
           dataQuery = query(
             baseRef,
             orderByChild(orderBy),
-            startAt(false),
             startAfter(lastLoadedValue),
             limitToFirst(pageSize + 1)
           );
-          console.log('DatabaseListView: Using startAfter + limitToFirst with startAt(false) for normal pagination');
+          console.log('DatabaseListView: Using startAfter + limitToFirst for normal pagination (no startAt needed)');
         }
       }
 
@@ -703,36 +711,60 @@
           }))
         );
 
+        // 📌 sortPrefix가 있는 경우 클라이언트 측 필터링
+        // Firebase 쿼리에서 startAt()과 startAfter()를 동시에 사용할 수 없으므로
+        // 페이지네이션 시 sortPrefix 필터링은 클라이언트에서 처리합니다
+        let prefixFilteredItems = newItems;
+        if (sortPrefix) {
+          prefixFilteredItems = newItems.filter((item) => {
+            const value = item.data[orderBy];
+            if (typeof value === 'string') {
+              return value.startsWith(sortPrefix);
+            }
+            return false;
+          });
+
+          console.log(
+            `DatabaseListView: Filtered ${newItems.length} items to ${prefixFilteredItems.length} items with sortPrefix "${sortPrefix}"`
+          );
+
+          // sortPrefix 범위를 벗어난 항목이 있으면 더 이상 데이터가 없음
+          if (prefixFilteredItems.length < newItems.length) {
+            console.log('DatabaseListView: Reached end of sortPrefix range, no more items');
+            hasMore = false;
+          }
+        }
+
         // reverse가 true이고 limitToLast를 사용했으면 배열을 뒤집어야 합니다
         // (Firebase는 오름차순으로 반환하므로, 최신 글이 먼저 오도록 뒤집기)
         if (reverse) {
-          newItems.reverse();
+          prefixFilteredItems.reverse();
           console.log('DatabaseListView: Reversed items for display (newest first)');
         }
 
         // 중복 제거: 이미 로드된 아이템들을 제외
         // 새로 로드된 아이템 중 이미 화면에 있는 key는 제외합니다
         const existingKeys = new Set(items.map(item => item.key));
-        const filteredItems = newItems.filter((item) => !existingKeys.has(item.key));
+        const uniqueItems = prefixFilteredItems.filter((item) => !existingKeys.has(item.key));
 
         // 🔍 디버깅: 필터링 후 결과
         console.log(
-          `DatabaseListView: Page ${currentPage} - After filtering duplicates: ${filteredItems.length} items`
+          `DatabaseListView: Page ${currentPage} - After filtering duplicates: ${uniqueItems.length} items`
         );
 
-        if (filteredItems.length === 0) {
+        if (uniqueItems.length === 0) {
           console.log('DatabaseListView: No more unique items after filtering');
           hasMore = false;
           loading = false;
           return;
         }
 
-        // hasMore 판단은 중복 제거 전 newItems 길이로 결정
+        // hasMore 판단은 중복 제거 전 prefixFilteredItems 길이로 결정
         // Firebase에서 pageSize + 1개를 가져왔다면 더 많은 데이터가 있다는 의미
-        if (newItems.length > pageSize) {
+        if (prefixFilteredItems.length > pageSize) {
           hasMore = true;
           // 중복 제거 후 실제로 표시할 아이템은 pageSize만큼만 추가
-          const itemsToAdd = filteredItems.slice(0, pageSize);
+          const itemsToAdd = uniqueItems.slice(0, pageSize);
           items = [...items, ...itemsToAdd];
           // 마지막 항목에서 페이지 커서 값 추출
           const cursor = getLastItemCursor(itemsToAdd, orderBy);
@@ -747,10 +779,10 @@
         } else {
           // Firebase에서 pageSize 이하로 가져왔다면 마지막 페이지
           hasMore = false;
-          items = [...items, ...filteredItems];
-          if (filteredItems.length > 0) {
+          items = [...items, ...uniqueItems];
+          if (uniqueItems.length > 0) {
             // 마지막 항목에서 페이지 커서 값 추출
-            const cursor = getLastItemCursor(filteredItems, orderBy);
+            const cursor = getLastItemCursor(uniqueItems, orderBy);
             if (cursor) {
               lastLoadedValue = cursor.value;
               lastLoadedKey = cursor.key;
@@ -761,13 +793,13 @@
         }
 
         // 새로 추가된 아이템들에 onValue 리스너 설정
-        const startIndex = items.length - (filteredItems.length > pageSize ? pageSize : filteredItems.length);
+        const startIndex = items.length - (uniqueItems.length > pageSize ? pageSize : uniqueItems.length);
         items.slice(startIndex).forEach((item, relativeIndex) => {
           setupItemListener(item.key, startIndex + relativeIndex);
         });
 
         console.log(
-          `DatabaseListView: Page ${currentPage} - Loaded ${filteredItems.length} more items, total: ${items.length}, hasMore: ${hasMore}`
+          `DatabaseListView: Page ${currentPage} - Loaded ${uniqueItems.length} more items, total: ${items.length}, hasMore: ${hasMore}`
         );
       } else {
         console.log('DatabaseListView: Query returned no data, hasMore set to false');

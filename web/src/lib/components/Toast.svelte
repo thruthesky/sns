@@ -9,14 +9,14 @@
      <Toast />
 
   2. 원하는 곳에서 toast 표시:
-     import { showToast } from '$lib/stores/toast.js';
+     import { showToast } from '$lib/stores/toast.ts';
      showToast('메시지 내용', 'success');
 
   Props: 없음 (store에서 데이터를 가져옴)
 -->
 
 <script lang="ts">
-  import { toasts, removeToast } from '../stores/toast.js';
+  import { toasts, removeToast } from '../stores/toast.ts';
 
   /**
    * Toast 타입
@@ -27,7 +27,7 @@
    * Toast 아이콘 가져오기
    * 타입에 따라 다른 아이콘을 반환합니다.
    */
-  function getIcon(type: ToastType): string {
+  function getIcon(type: string): string {
     switch (type) {
       case 'success':
         return '✓';

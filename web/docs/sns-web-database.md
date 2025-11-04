@@ -14,27 +14,48 @@
     - [관련 가이드](#관련-가이드)
   - [사용자 속성 분리 (user-props)](#사용자-속성-분리-user-props)
     - [데이터 구조](#데이터-구조-1)
+    - [관련 가이드](#관련-가이드-1)
   - [게시판 (Posts)](#게시판-posts)
     - [데이터 구조](#데이터-구조-2)
     - [카테고리](#카테고리)
+    - [관련 가이드](#관련-가이드-2)
   - [좋아요 (likes)](#좋아요-likes)
     - [데이터 구조](#데이터-구조-3)
     - [특징](#특징)
+    - [관련 가이드](#관련-가이드-3)
   - [댓글 (Comments)](#댓글-comments)
     - [데이터 구조](#데이터-구조-4)
     - [order 필드 형식](#order-필드-형식)
+    - [관련 가이드](#관련-가이드-4)
+  - [통계 (stats)](#통계-stats)
+    - [데이터 구조](#데이터-구조-5)
+    - [동작 방식](#동작-방식)
+      - [1. 게시글 생성 시 post 카운터 증가](#1-게시글-생성-시-post-카운터-증가)
+      - [2. 게시글 삭제 시 post 카운터 감소](#2-게시글-삭제-시-post-카운터-감소)
+      - [3. 댓글 생성 시 comment 카운터 증가](#3-댓글-생성-시-comment-카운터-증가)
+      - [4. 댓글 삭제 시 comment 카운터 감소](#4-댓글-삭제-시-comment-카운터-감소)
+    - [주의사항](#주의사항)
+    - [관련 가이드](#관련-가이드-5)
   - [카테고리 통계 (categories)](#카테고리-통계-categories)
     - [데이터 구조](#데이터-구조-6)
+    - [데이터 예시](#데이터-예시)
     - [Cloud Functions 동기화](#cloud-functions-동기화)
+      - [1. 게시글 작성 시 postCount 증가](#1-게시글-작성-시-postcount-증가)
+      - [2. 댓글 작성 시 commentCount 증가](#2-댓글-작성-시-commentcount-증가)
+      - [3. 게시글 삭제 시 postCount 감소](#3-게시글-삭제-시-postcount-감소)
+      - [4. 댓글 삭제 시 commentCount 감소](#4-댓글-삭제-시-commentcount-감소)
+    - [주의사항](#주의사항-1)
+    - [관련 가이드](#관련-가이드-6)
   - [친구 관계 (friends, followers, following)](#친구-관계-friends-followers-following)
     - [데이터 구조](#데이터-구조-7)
     - [설명](#설명)
+    - [관련 가이드](#관련-가이드-7)
   - [주요 설계 원칙](#주요-설계-원칙)
     - [1. Flat Style 구조](#1-flat-style-구조)
     - [2. 속성 분리](#2-속성-분리)
     - [3. Cloud Functions 활용](#3-cloud-functions-활용)
     - [4. 보안 규칙](#4-보안-규칙)
-  - [주의사항](#주의사항)
+  - [주의사항](#주의사항-2)
     - [Firebase Auth vs RTDB 필드명 차이](#firebase-auth-vs-rtdb-필드명-차이)
   - [관련 가이드 문서](#관련-가이드-문서)
   - [참고 자료](#참고-자료)
@@ -77,9 +98,8 @@ Firebase Realtime Database (루트)
 /users/
 ├── <uid1>/
 │   ├── displayName: "사용자1"
-│   ├── email: "user@example.com"
 │   ├── photoUrl: "https://firebasestorage.googleapis.com/..."
-│   ├── gender: "male"
+│   ├── gender: "M"
 │   ├── birthYear: 1990
 │   ├── birthMonth: 1
 │   ├── birthDay: 15
@@ -88,9 +108,8 @@ Firebase Realtime Database (루트)
 │   └── updatedAt: 1698474000000
 └── <uid2>/
     ├── displayName: "사용자2"
-    ├── email: "user2@example.com"
     ├── photoUrl: null
-    ├── gender: "female"
+    ├── gender: "F"
     ├── createdAt: 1698473100000
     └── updatedAt: 1698474100000
 ```
@@ -100,15 +119,51 @@ Firebase Realtime Database (루트)
 | 필드 | 타입 | 필수 | 설명 |
 |------|------|------|------|
 | `displayName` | string | ✅ | 사용자 닉네임 |
-| `email` | string | ✅ | 사용자 이메일 |
 | `photoUrl` | string | ❌ | 프로필 사진 URL |
-| `gender` | string | ❌ | 성별 |
+| `gender` | (M|F) | ❌ | 성별 |
 | `birthYear` | number | ❌ | 생년 |
 | `birthMonth` | number | ❌ | 생월 |
 | `birthDay` | number | ❌ | 생일 |
 | `bio` | string | ❌ | 자기소개 |
 | `createdAt` | number | ✅ | 계정 생성 시간 |
 | `updatedAt` | number | ✅ | 프로필 수정 시간 |
+
+### ⚠️ 중요: Firebase Auth vs RTDB 필드
+
+**/users/<uid> 노드에는 Firebase Auth 정보를 저장하지 않습니다:**
+
+Firebase Authentication의 다음 필드들은 `/users/<uid>` 노드에 **저장하지 않습니다**:
+- ❌ `phoneNumber` - Firebase Auth에서만 관리
+- ❌ `email` - Firebase Auth에서만 관리
+- ❌ `photoURL` (대문자 URL) - Firebase Auth에서만 관리
+
+이들 정보는 `login` 인스턴스를 통해 접근할 수 있습니다:
+
+```javascript
+import { login } from '$lib/utils/firebase-login-user.svelte.js';
+
+// Firebase Auth 정보 접근 (Static 속성)
+console.log(login.phoneNumber);  // Firebase Auth의 phoneNumber
+console.log(login.email);        // Firebase Auth의 email
+console.log(login.uid);          // Firebase Auth의 uid
+```
+
+**단, `photoUrl`(camelCase)은 예외입니다:**
+
+- ✅ **`photoUrl`** (camelCase) - 사용자가 직접 업로드한 프로필 사진 URL을 RTDB에 저장
+- 이는 Firebase Auth의 `photoURL`(대문자)과 **다른 필드**입니다
+- 사용자가 Firebase Storage에 사진을 업로드하면, 다운로드 URL을 `/users/<uid>/photoUrl`에 저장합니다
+
+**필드명 차이 요약:**
+
+| 필드 | 위치 | 설명 |
+|------|------|------|
+| `phoneNumber` | Firebase Auth | 전화번호 (login.phoneNumber로 접근) |
+| `email` | Firebase Auth | 이메일 (login.email로 접근) |
+| `photoURL` (대문자) | Firebase Auth | Firebase Auth 프로필 사진 |
+| `photoUrl` (camelCase) | RTDB | 사용자 업로드 프로필 사진 (login.data.photoUrl로 접근) |
+
+자세한 내용은 [사용자 관리 개발 가이드](./sns-web-user.md)와 [코딩 가이드라인](./sns-web-coding-guideline.md#firebase-로그인-사용자-관리-login)을 참고하세요.
 
 ### 관련 가이드
 
@@ -269,9 +324,9 @@ export const POST_CATEGORIES = [
 
 ---
 
-## 글/댓글 통계 (stats)
+## 통계 (stats)
 
-전체 글과 댓글의 총 개수를 추적합니다.
+전체 사용자, 글, 댓글, 좋아요의 총 개수를 추적합니다.
 이 데이터는 **클라이언트에서 직접 수정하지 않으며**, **Firebase Cloud Functions에 의해 자동으로 관리**됩니다.
 
 ### 데이터 구조
@@ -279,13 +334,29 @@ export const POST_CATEGORIES = [
 ```
 /stats/
   /counters/
+    ├── user: 42           # 전체 사용자 총 개수 (Cloud Functions 관리)
     ├── post: 128          # 전체 게시글 총 개수 (Cloud Functions 관리)
-    └── comment: 456       # 전체 댓글 총 개수 (Cloud Functions 관리)
+    ├── comment: 456       # 전체 댓글 총 개수 (Cloud Functions 관리)
+    └── like: 1234         # 전체 좋아요 총 개수 (Cloud Functions 관리)
 ```
 
 ### 동작 방식
 
-#### 1. 게시글 생성 시 post 카운터 증가
+#### 1. 사용자 등록 시 user 카운터 증가
+
+새로운 사용자가 등록되면, Firebase Cloud Functions는 `/stats/counters/user`를 1 증가시킵니다.
+
+```typescript
+// onUserCreate 함수 내
+if (userData) {
+  // 📊 전체 사용자 통계 업데이트: user +1
+  const statsUpdates = {} as Record<string, unknown>;
+  statsUpdates[`stats/counters/user`] = admin.database.ServerValue.increment(1);
+  await admin.database().ref().update(statsUpdates);
+}
+```
+
+#### 2. 게시글 생성 시 post 카운터 증가
 
 새로운 게시글이 `/posts/` 경로에 생성되면, Firebase Cloud Functions는 `/stats/counters/post`를 1 증가시킵니다.
 
@@ -299,7 +370,7 @@ if (postData.category) {
 }
 ```
 
-#### 2. 게시글 삭제 시 post 카운터 감소
+#### 3. 게시글 삭제 시 post 카운터 감소
 
 게시글이 삭제되면, `/stats/counters/post`를 1 감소시킵니다.
 
@@ -313,7 +384,7 @@ if (postData.category) {
 }
 ```
 
-#### 3. 댓글 생성 시 comment 카운터 증가
+#### 4. 댓글 생성 시 comment 카운터 증가
 
 새로운 댓글이 `/comments/` 경로에 생성되면, Firebase Cloud Functions는 `/stats/counters/comment`를 1 증가시킵니다.
 
@@ -327,7 +398,7 @@ if (postData?.category) {
 }
 ```
 
-#### 4. 댓글 삭제 시 comment 카운터 감소
+#### 5. 댓글 삭제 시 comment 카운터 감소
 
 댓글이 삭제되면, `/stats/counters/comment`를 1 감소시킵니다.
 
@@ -337,6 +408,34 @@ if (postData?.category) {
   // 📊 전체 댓글 통계 업데이트: comment -1
   const statsUpdates = {} as Record<string, unknown>;
   statsUpdates[`stats/counters/comment`] = admin.database.ServerValue.increment(-1);
+  await admin.database().ref().update(statsUpdates);
+}
+```
+
+#### 6. 좋아요 추가 시 like 카운터 증가
+
+사용자가 게시글 또는 댓글에 좋아요를 추가하면, Firebase Cloud Functions는 `/stats/counters/like`를 1 증가시킵니다.
+
+```typescript
+// onLike 함수 내
+if (type === "post" || type === "comment") {
+  // 📊 전체 좋아요 통계 업데이트: like +1
+  const statsUpdates = {} as Record<string, unknown>;
+  statsUpdates[`stats/counters/like`] = admin.database.ServerValue.increment(1);
+  await admin.database().ref().update(statsUpdates);
+}
+```
+
+#### 7. 좋아요 취소 시 like 카운터 감소
+
+사용자가 좋아요를 취소하면, `/stats/counters/like`를 1 감소시킵니다.
+
+```typescript
+// onCancelLike 함수 내
+if (type === "post" || type === "comment") {
+  // 📊 전체 좋아요 통계 업데이트: like -1
+  const statsUpdates = {} as Record<string, unknown>;
+  statsUpdates[`stats/counters/like`] = admin.database.ServerValue.increment(-1);
   await admin.database().ref().update(statsUpdates);
 }
 ```

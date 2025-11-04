@@ -4,8 +4,8 @@
    * 애플리케이션 사용법과 도움말을 제공합니다.
    */
   import { onMount } from 'svelte';
-  import { t } from '../lib/stores/i18n.js';
-  import { setPageTitle } from '../lib/stores/pageTitle.js';
+  import { t } from '../lib/stores/i18n.ts';
+  import { setPageTitle } from '../lib/stores/pageTitle.ts';
 
   /**
    * 컴포넌트 마운트 시 페이지 제목 설정

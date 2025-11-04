@@ -1,5 +1,5 @@
 /**
- * error-handler.js 유닛 테스트
+ * error-handler.ts 유닛 테스트
  *
  * Firebase 에러 핸들링 유틸리티 함수들의 동작을 검증합니다.
  *
@@ -12,9 +12,18 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { mapFirebaseErrorCode, handleFirebaseError, logAndShowError } from './error-handler.js';
+import type { MockInstance } from 'vitest';
+import { mapFirebaseErrorCode, handleFirebaseError, logAndShowError } from './error-handler';
 
-describe('error-handler.js', () => {
+/**
+ * Firebase 에러 객체 타입
+ */
+interface FirebaseError {
+  code?: string;
+  message: string;
+}
+
+describe('error-handler.ts', () => {
 
   // ==========================================
   // 1. mapFirebaseErrorCode 테스트 (16개)
@@ -85,11 +94,11 @@ describe('error-handler.js', () => {
       });
 
       it('null은 기본값을 반환한다', () => {
-        expect(mapFirebaseErrorCode(null)).toBe('error.unknown');
+        expect(mapFirebaseErrorCode(null as unknown as string)).toBe('error.unknown');
       });
 
       it('undefined는 기본값을 반환한다', () => {
-        expect(mapFirebaseErrorCode(undefined)).toBe('error.unknown');
+        expect(mapFirebaseErrorCode(undefined as unknown as string)).toBe('error.unknown');
       });
 
       it('빈 문자열은 기본값을 반환한다', () => {
@@ -110,7 +119,7 @@ describe('error-handler.js', () => {
   // 2. handleFirebaseError 테스트 (8개)
   // ==========================================
   describe('handleFirebaseError', () => {
-    let consoleErrorSpy;
+    let consoleErrorSpy: MockInstance;
 
     // 각 테스트 전에 console.error를 모킹
     beforeEach(() => {
@@ -123,7 +132,7 @@ describe('error-handler.js', () => {
     });
 
     it('에러 객체를 올바르게 처리한다', () => {
-      const error = {
+      const error: FirebaseError = {
         code: 'auth/user-not-found',
         message: 'User not found'
       };
@@ -136,7 +145,7 @@ describe('error-handler.js', () => {
     });
 
     it('console.error를 호출한다', () => {
-      const error = {
+      const error: FirebaseError = {
         code: 'PERMISSION_DENIED',
         message: 'Permission denied'
       };
@@ -153,7 +162,7 @@ describe('error-handler.js', () => {
     });
 
     it('에러 메시지에서 코드를 추출한다', () => {
-      const error = {
+      const error: FirebaseError = {
         message: 'Firebase: Error (auth/invalid-email).'
       };
       const result = handleFirebaseError(error, 'signup');
@@ -172,7 +181,7 @@ describe('error-handler.js', () => {
     });
 
     it('코드 없는 에러를 처리한다', () => {
-      const error = {
+      const error: FirebaseError = {
         message: 'Some error without code'
       };
       const result = handleFirebaseError(error, 'testContext');
@@ -182,7 +191,7 @@ describe('error-handler.js', () => {
     });
 
     it('context 기본값을 사용한다', () => {
-      const error = {
+      const error: FirebaseError = {
         code: 'auth/user-not-found',
         message: 'User not found'
       };
@@ -192,7 +201,7 @@ describe('error-handler.js', () => {
     });
 
     it('Database 에러를 올바르게 처리한다', () => {
-      const error = {
+      const error: FirebaseError = {
         code: 'PERMISSION_DENIED',
         message: 'Permission denied to read at /posts'
       };
@@ -204,7 +213,7 @@ describe('error-handler.js', () => {
     });
 
     it('Storage 에러를 올바르게 처리한다', () => {
-      const error = {
+      const error: FirebaseError = {
         code: 'storage/unauthorized',
         message: 'User does not have permission to access this object'
       };
@@ -220,15 +229,15 @@ describe('error-handler.js', () => {
   // 3. logAndShowError 테스트 (8개)
   // ==========================================
   describe('logAndShowError', () => {
-    let consoleErrorSpy;
-    let mockShowToast;
-    let mockTranslate;
+    let consoleErrorSpy: MockInstance;
+    let mockShowToast: ReturnType<typeof vi.fn>;
+    let mockTranslate: ReturnType<typeof vi.fn>;
 
     // 각 테스트 전에 모킹 설정
     beforeEach(() => {
       consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       mockShowToast = vi.fn();
-      mockTranslate = vi.fn((key) => `번역됨: ${key}`);
+      mockTranslate = vi.fn((key: string) => `번역됨: ${key}`);
     });
 
     // 각 테스트 후에 모킹 해제
@@ -237,7 +246,7 @@ describe('error-handler.js', () => {
     });
 
     it('에러를 번역하고 토스트를 표시한다', () => {
-      const error = {
+      const error: FirebaseError = {
         code: 'auth/user-not-found',
         message: 'User not found'
       };
@@ -248,7 +257,7 @@ describe('error-handler.js', () => {
     });
 
     it('반환 값을 올바르게 제공한다', () => {
-      const error = {
+      const error: FirebaseError = {
         code: 'PERMISSION_DENIED',
         message: 'Permission denied'
       };
@@ -260,7 +269,7 @@ describe('error-handler.js', () => {
     });
 
     it('showToast가 한 번만 호출된다', () => {
-      const error = {
+      const error: FirebaseError = {
         code: 'auth/invalid-email',
         message: 'Invalid email'
       };
@@ -270,7 +279,7 @@ describe('error-handler.js', () => {
     });
 
     it('translate가 i18n 키로 호출된다', () => {
-      const error = {
+      const error: FirebaseError = {
         code: 'storage/unauthorized',
         message: 'Unauthorized'
       };
@@ -281,9 +290,9 @@ describe('error-handler.js', () => {
     });
 
     it('여러 에러 타입을 올바르게 처리한다', () => {
-      const authError = { code: 'auth/weak-password', message: 'Weak password' };
-      const dbError = { code: 'PERMISSION_DENIED', message: 'Permission denied' };
-      const storageError = { code: 'storage/quota-exceeded', message: 'Quota exceeded' };
+      const authError: FirebaseError = { code: 'auth/weak-password', message: 'Weak password' };
+      const dbError: FirebaseError = { code: 'PERMISSION_DENIED', message: 'Permission denied' };
+      const storageError: FirebaseError = { code: 'storage/quota-exceeded', message: 'Quota exceeded' };
 
       logAndShowError(authError, 'signup', mockShowToast, mockTranslate);
       logAndShowError(dbError, 'createPost', mockShowToast, mockTranslate);
@@ -303,7 +312,7 @@ describe('error-handler.js', () => {
     });
 
     it('코드 없는 에러를 올바르게 처리한다', () => {
-      const error = {
+      const error: FirebaseError = {
         message: 'Some error without code'
       };
       logAndShowError(error, 'testContext', mockShowToast, mockTranslate);
@@ -313,7 +322,7 @@ describe('error-handler.js', () => {
     });
 
     it('console.error가 호출되는지 확인한다', () => {
-      const error = {
+      const error: FirebaseError = {
         code: 'auth/user-not-found',
         message: 'User not found'
       };

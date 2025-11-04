@@ -5,8 +5,8 @@
    * 각 게시글을 표시하고, 실시간 좋아요 상태를 관리합니다.
    */
   import { rtdb } from "../lib/stores/database.js";
-  import { showToast } from "../lib/stores/toast.js";
-  import { t } from "../lib/stores/i18n.js";
+  import { showToast } from "../lib/stores/toast.ts";
+  import { t } from "../lib/stores/i18n.ts";
   import {
     createTopLevelComment,
     listenToComments,
