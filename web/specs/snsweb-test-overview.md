@@ -1,12 +1,12 @@
 ---
-name: snsweb-test-overview
+name: snsweb
 version: 1.0.0
 description: SNS 웹 테스트 가이드 문서의 SED 사양
 author: JaeHo Song
 email: thruthesky@gmail.com
 homepage: https://github.com/thruthesky/
 funding: ""
-license: GPL
+license: SED Specification License v1.0
 dependencies: []
 "프로젝트 이름": snsweb
 ---
@@ -29,10 +29,18 @@ dependencies: []
 
 ## 목차
 
-- [테스트 계정 정보](#테스트-계정-정보)
-  - [e2e 테스트용 임시 로그인 계정](#e2e-테스트용-임시-로그인-계정)
-  - [사용 방법](#사용-방법)
-  - [주의사항](#주의사항)
+- [SNS 웹 테스트 가이드](#sns-웹-테스트-가이드)
+  - [목차](#목차)
+  - [테스트 계정 정보](#테스트-계정-정보)
+    - [e2e 테스트용 임시 로그인 계정](#e2e-테스트용-임시-로그인-계정)
+      - [테스트 계정 1](#테스트-계정-1)
+      - [테스트 계정 2](#테스트-계정-2)
+      - [테스트 계정 3](#테스트-계정-3)
+    - [사용 방법](#사용-방법)
+      - [1. 수동 테스트 시](#1-수동-테스트-시)
+      - [2. e2e 테스트 시](#2-e2e-테스트-시)
+      - [3. Jest/Vitest 단위 테스트 시](#3-jestvitest-단위-테스트-시)
+    - [주의사항](#주의사항)
 
 ---
 

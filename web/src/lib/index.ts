@@ -25,6 +25,7 @@ import './components/Layout.wc.svelte';
 
 // UI 컴포넌트
 import './components/Accordion.wc.svelte';
+import './components/AlertDialog.wc.svelte';
 
 // 개발 도구 컴포넌트
 import './components/TestFab.wc.svelte';

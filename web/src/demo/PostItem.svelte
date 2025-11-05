@@ -248,7 +248,8 @@
   }
 
   /**
-   * AlertDialog 확인 버튼 클릭 핸들러
+   * AlertDialog 닫기 핸들러
+   * AlertDialog의 확인 버튼 또는 닫기 버튼 클릭 시 호출됩니다.
    */
   function handleAlertConfirm() {
     isAlertDialogOpen = false;

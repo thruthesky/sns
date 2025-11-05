@@ -1,12 +1,12 @@
 ---
-name: snsweb-development-codingguideline
+name: snsweb
 version: 1.0.0
 description: SNS 웹 코딩 가이드라인 문서의 SED 사양
 author: JaeHo Song
 email: thruthesky@gmail.com
 homepage: https://github.com/thruthesky/
 funding: ""
-license: GPL
+license: SED Specification License v1.0
 dependencies: []
 "프로젝트 이름": snsweb
 ---
@@ -30,6 +30,7 @@ dependencies: []
 ## 목차
 
 - [개요](#개요)
+- [프로젝트 디렉토리 구조](#프로젝트-디렉토리-구조)
 - [아이콘 사용 가이드라인](#아이콘-사용-가이드라인)
 - [Firebase Realtime Database 코딩 가이드라인](#firebase-realtime-database-코딩-가이드라인)
 - [타입 네이밍 규칙](#타입-네이밍-규칙)
@@ -46,6 +47,44 @@ dependencies: []
 - 본 문서는 SNS 웹 애플리케이션 개발 시 준수해야 할 코딩 가이드라인을 제공합니다.
 
 **⚠️ 중요 원칙**: 웹/앱 클라이언트에서는 **최소한의 정보만 RTDB에 기록**하고, **추가적인 정보 업데이트는 Firebase Cloud Functions 백엔드에서 처리**합니다.
+
+---
+
+# 프로젝트 디렉토리 구조
+
+앱과 웹을 하나의 저장소에서 관리하는 모노레포(Monorepo) 구조를 따릅니다.
+
+```
+sns/
+├── specs/                          # 프로젝트 문서
+│   ├── sns.md                      # SNS 전체 개요 및 기획
+│   └── app/                        # 앱 개발 문서
+│       └── sns-app.md              # Flutter 앱 개발 지침
+├── web/                            # 웹 프로젝트 (Svelte 5 Custom Elements)
+│   ├── specs/                      # 웹 개발 문서
+│   │   ├── sns-web.md              # 웹 개발 지침
+│   │   └── sns-custom-elements.md  # Svelte Custom Elements 개발 상세 가이드
+│   ├── src/
+│   │   ├── lib/                    # 라이브러리 소스
+│   │   └── demo/                   # 개발/테스트 앱
+│   └── dist/                       # 빌드 출력
+└── app/                            # 모바일 앱 프로젝트 (Flutter)
+    └── lib/                        # Flutter 소스
+```
+
+## 웹 개발
+
+- **소스 코드 위치**: `/web` 폴더
+- **작업 폴더**: `./web` 폴더에서 소스 코드 작업 및 빌드
+- **참고 문서**:
+  - [specs/sns-web.md](specs/sns-web.md)
+  - [specs/sns-custom-elements.md](specs/sns-custom-elements.md)
+
+## 앱 개발
+
+- **소스 코드 위치**: `/app` 폴더
+- **작업 폴더**: `./app` 폴더에서 소스 코드 작업 및 빌드
+- **참고 문서**: [../specs/app/sns-app.md](../specs/app/sns-app.md)
 
 ---
 

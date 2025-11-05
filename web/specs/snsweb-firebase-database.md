@@ -1,12 +1,12 @@
 ---
-name: snsweb-firebase-database
+name: snsweb
 version: 1.0.0
 description: Firebase Realtime Database 구조 가이드 문서의 SED 사양
 author: JaeHo Song
 email: thruthesky@gmail.com
 homepage: https://github.com/thruthesky/
 funding: ""
-license: GPL
+license: SED Specification License v1.0
 dependencies: []
 "프로젝트 이름": snsweb
 ---

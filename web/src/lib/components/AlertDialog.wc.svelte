@@ -1,4 +1,9 @@
-<svelte:options customElement="alert-dialog" />
+<svelte:options
+  customElement={{
+    tag: 'alert-dialog',
+    shadow: 'none'
+  }}
+/>
 
 <script lang="ts">
   /**
@@ -13,19 +18,28 @@
    * - title: 다이얼로그 제목 (기본값: '')
    * - message: 다이얼로그 내용 (기본값: '')
    * - confirmText: 확인 버튼 텍스트 (기본값: '확인')
+   * - onconfirm: 확인 버튼 클릭 시 호출될 콜백 함수 (선택)
+   * - onclose: 다이얼로그 닫기 시 호출될 콜백 함수 (선택)
    *
-   * 사용법:
+   * 사용법 1 (Svelte 컴포넌트에서 - 콜백 방식 권장):
    * <alert-dialog
    *   open="true"
    *   type="error"
    *   title="오류"
    *   message="댓글이 있어 수정할 수 없습니다."
    *   confirmText="확인"
+   *   onconfirm={handleConfirm}
+   *   onclose={handleClose}
    * ></alert-dialog>
    *
+   * 사용법 2 (일반 HTML/JavaScript - 이벤트 리스너 방식):
+   * const dialog = document.querySelector('alert-dialog');
+   * dialog.addEventListener('confirm', () => { ... });
+   * dialog.addEventListener('close', () => { ... });
+   *
    * 이벤트:
-   * - confirm: 확인 버튼 클릭 시 발생
-   * - close: 다이얼로그 닫기 시 발생
+   * - confirm: 확인 버튼 클릭 시 발생 (CustomEvent)
+   * - close: 다이얼로그 닫기 시 발생 (CustomEvent)
    */
 
   import { CheckCircle2, XCircle, Info, AlertTriangle, X } from 'lucide-svelte';
@@ -44,12 +58,16 @@
     title = '',
     message = '',
     confirmText = '확인',
+    onconfirm,
+    onclose,
   }: {
     open?: string;
     type?: AlertType;
     title?: string;
     message?: string;
     confirmText?: string;
+    onconfirm?: () => void;
+    onclose?: () => void;
   } = $props();
 
   /**
@@ -84,26 +102,53 @@
 
   /**
    * 확인 버튼 클릭 핸들러
+   * @param event - 클릭 이벤트
    */
-  function handleConfirm() {
-    // confirm 이벤트 디스패치
-    const event = new CustomEvent('confirm', {
+  function handleConfirm(event: MouseEvent) {
+    // 1. onconfirm 콜백 호출 (props로 전달된 경우)
+    if (onconfirm) {
+      onconfirm();
+    }
+
+    // 2. confirm 커스텀 이벤트 디스패치 (이벤트 방식 지원)
+    const customEvent = new CustomEvent('confirm', {
       bubbles: true,
       composed: true,
     });
-    dispatchEvent(event);
+    // 버튼의 상위 alert-dialog 커스텀 엘리먼트에서 이벤트 발생
+    const alertDialog = (event.target as HTMLElement).closest('alert-dialog');
+    if (alertDialog) {
+      alertDialog.dispatchEvent(customEvent);
+    }
   }
 
   /**
    * 다이얼로그 닫기 핸들러
+   * @param event - 클릭 이벤트 (선택적)
    */
-  function handleClose() {
-    // close 이벤트 디스패치
-    const event = new CustomEvent('close', {
+  function handleClose(event?: MouseEvent) {
+    // 1. onclose 콜백 호출 (props로 전달된 경우)
+    if (onclose) {
+      onclose();
+    }
+
+    // 2. close 커스텀 이벤트 디스패치 (이벤트 방식 지원)
+    const customEvent = new CustomEvent('close', {
       bubbles: true,
       composed: true,
     });
-    dispatchEvent(event);
+
+    // 이벤트가 있으면 타겟에서 alert-dialog 찾기, 없으면 document에서 찾기
+    let alertDialog: HTMLElement | null = null;
+    if (event) {
+      alertDialog = (event.target as HTMLElement).closest('alert-dialog');
+    } else {
+      alertDialog = document.querySelector('alert-dialog[open="true"]');
+    }
+
+    if (alertDialog) {
+      alertDialog.dispatchEvent(customEvent);
+    }
   }
 
   /**
@@ -111,7 +156,7 @@
    */
   function handleBackdropClick(event: MouseEvent) {
     if (event.target === event.currentTarget) {
-      handleClose();
+      handleClose(event);
     }
   }
 </script>
