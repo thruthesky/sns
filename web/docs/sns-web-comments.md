@@ -629,6 +629,6 @@ function listenToAuthorInfo(uid, callback) {
 ## 참고 문서
 
 - [Firebase Realtime Database 공식 문서](https://firebase.google.com/docs/database)
-- [게시판 개발 가이드](./sns-web-forum.md)
+- [게시판 개발 가이드](./sns-web-post.md)
 - [데이터베이스 구조 가이드](./sns-web-database.md)
 - [Svelte Custom Elements 개발 가이드](./sns-custom-elements.md)

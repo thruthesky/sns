@@ -890,6 +890,185 @@ Current Score: 42</code
             </div>
           </li>
           <li>
+            <strong>스펙 파일 구조 및 명명 규칙</strong>
+            <p class="phase-step-description">
+              스펙을 체계적으로 관리하고 AI가 효율적으로 참조할 수 있도록, 스펙 파일의 구조와 명명 규칙을 명확히 정의합니다.
+            </p>
+
+            <ul class="sub-list">
+              <li>
+                <strong>스펙 파일 이름 구조</strong>
+                <p style="margin: 0.5rem 0; color: #475569; font-size: 0.95rem;">
+                  스펙 파일 이름은 다음의 구조를 가집니다:
+                </p>
+                <pre style="background: #f5f5f5; padding: 12px; border-radius: 4px; overflow-x: auto; font-size: 13px; margin-top: 8px;">
+&lt;project-name&gt;-&lt;module-name&gt;-&lt;function-name&gt;.md
+                </pre>
+                <p style="margin: 0.5rem 0; color: #475569; font-size: 0.95rem;">
+                  기본적으로 "프로젝트명칭-모듈(기능)-함수(세부 유닛)" 구조로 확장자는 Markdown 파일인 <code>.md</code>가 됩니다.
+                </p>
+              </li>
+
+              <li>
+                <strong>스펙 파일 YAML 헤더 구조</strong>
+                <p style="margin: 0.5rem 0; color: #475569; font-size: 0.95rem;">
+                  모든 스펙 파일 상단에는 다음과 같은 YAML 구조를 가집니다:
+                </p>
+                <pre style="background: #f5f5f5; padding: 12px; border-radius: 4px; overflow-x: auto; font-size: 13px; margin-top: 8px;">
+---
+name: 스펙(또는 프로젝트) 이름. 영문, 숫자, 하이픈만 지원. (255 글자 이내)
+version: 스펙 버전. (SEM version 원칙)
+description: 프로젝트 설명 (4096 글자 이내)
+author: 작성자이름 (64글자 이내)
+email: 작성자 메일 주소 (64글자 이내)
+homepage: 참고 홈페이지 주소
+funding: 스펙 관리자에게 금전적 지원을 할 수 있는 결제 경로
+license: GPT, MIT 등
+dependencies: thruthesky/forum-spec, *withcenter/chat-spec[chat-rooms-join.md#chat-overview], **https://doma.com/abc/def
+---
+                </pre>
+              </li>
+
+              <li>
+                <strong>Dependencies (의존성) 설명</strong>
+                <ul class="sub-list">
+                  <li>
+                    <strong>기본 형식:</strong> 다른 스펙을 참고 또는 종속(반드시 사용)한다는 것으로 다른 사람의 스펙을 가져와 쓸 수 있습니다.
+                  </li>
+                  <li>
+                    <strong>GitHub 레포지토리:</strong> <code>계정/레포지토리</code> 형식으로 작성 (예: <code>thruthesky/forum-spec</code>)
+                  </li>
+                  <li>
+                    <strong>외부 URL:</strong> GitHub가 아닌 경우 전체 URL 경로를 지정 (예: <code>https://doma.com/abc/def</code>)
+                  </li>
+                  <li>
+                    <strong>우선 순위 지정:</strong> 별표(*)가 있는 것은 우선 권이 있다는 것입니다. 만약 동일한 내용의 여러 스펙이 있는 경우, 별 표시가 많을수록 해당 spec을 우선 참조합니다.
+                    <pre style="background: #f5f5f5; padding: 8px; border-radius: 4px; font-size: 12px; margin-top: 4px;">
+*withcenter/chat-spec     (우선순위 1)
+**another/spec            (우선순위 2, 가장 우선)
+                    </pre>
+                  </li>
+                  <li>
+                    <strong>특정 파일/섹션 참조:</strong> 스펙 끝에 <code>[xxx-yyy-zzz.md#section-name]</code>와 같은 내용이 있으면, 전체 스펙을 참고하지 말고 해당 스펙에서 특정 파일만 참고하거나, <code>#section-name</code>으로 해당 파일에서 해당 섹션만 참고합니다.
+                    <pre style="background: #f5f5f5; padding: 8px; border-radius: 4px; font-size: 12px; margin-top: 4px;">
+withcenter/chat-spec[chat-rooms-join.md]           # 특정 파일만
+withcenter/chat-spec[chat-rooms-join.md#overview]  # 특정 섹션만
+                    </pre>
+                  </li>
+                </ul>
+              </li>
+
+              <li>
+                <strong>스펙 인덱스 구조</strong>
+                <p style="margin: 0.5rem 0; color: #475569; font-size: 0.95rem;">
+                  모든 프로젝트는 다음과 같은 인덱스 파일을 반드시 포함해야 합니다:
+                </p>
+                <pre style="background: #f5f5f5; padding: 12px; border-radius: 4px; overflow-x: auto; font-size: 13px; margin-top: 8px;">
+&lt;project-name&gt;-index.md
+                </pre>
+                <ul class="sub-list">
+                  <li>
+                    <strong>DTOC 형태:</strong> Detailed Table of Contents (DTOC) 형태로 작성합니다.
+                  </li>
+                  <li>
+                    <strong>목차와 요약:</strong> 목차와 함께 해당 파일(항목)이 가지는 스펙의 요약/줄거리를 포함합니다.
+                  </li>
+                  <li>
+                    <strong>LLM 활용:</strong> 스펙의 규모가 큰 경우, LLM이 index.md 파일을 참고하여 언제 어느 문서를 참고할지 결정할 수 있습니다.
+                  </li>
+                  <li>
+                    <strong>상단 YAML:</strong> 인덱스 파일도 상단에 YAML 헤더를 포함합니다.
+                  </li>
+                </ul>
+              </li>
+
+              <li>
+                <strong>스펙 파일 내용 구조</strong>
+                <p style="margin: 0.5rem 0; color: #475569; font-size: 0.95rem;">
+                  개별 스펙 파일은 다음과 같은 구조를 따릅니다:
+                </p>
+                <ol style="margin: 0.5rem 0; padding-left: 1.5rem; color: #475569; font-size: 0.95rem;">
+                  <li style="margin-bottom: 0.5rem;">
+                    <strong>YAML 헤더:</strong> 파일 상단에 위치하며, dependencies를 기록하여 어떤 문서를 참고할지 지시할 수 있습니다. 외부 문서뿐만 아니라 내부 문서도 참고 가능합니다.
+                  </li>
+                  <li style="margin-bottom: 0.5rem;">
+                    <strong>Overview (개요):</strong> YAML 헤더 아래에는 짧은 요약 Overview 항목을 반드시 포함합니다.
+                  </li>
+                  <li style="margin-bottom: 0.5rem;">
+                    <strong>요구사항 (Requirements):</strong> 해당 스펙을 구현하기 위해 필요한 사전 조건들을 명시합니다. 명령어 실행, 라이브러리 설치, 환경 설정 등을 포함합니다.
+                  </li>
+                  <li style="margin-bottom: 0.5rem;">
+                    <strong>워크플로우:</strong> 요구사항 다음에는 반드시 워크플로우가 따라 나와야 합니다. 워크플로우는 인공지능이 반드시 따라야 하는 단계를 포함합니다.
+                  </li>
+                  <li style="margin-bottom: 0.5rem;">
+                    <strong>세부 항목:</strong> 워크플로우 아래로 세부 항목에 대한 설명들이 나옵니다.
+                  </li>
+                </ol>
+                <div class="code-block" style="margin-top: 1rem;">
+                  <div class="code-header">스펙 파일 구조 예시</div>
+                  <pre style="white-space: pre-wrap; color: #cbd5e1; line-height: 1.8;">---
+name: sns-forum-post-create
+version: 1.0.0
+description: SNS 게시글 작성 기능 상세 스펙
+author: 송재호
+email: thruthesky@gmail.com
+license: MIT
+dependencies: sns-database[posts-schema.md], sns-auth[user-session.md#current-user]
+---
+
+## Overview
+사용자가 새로운 게시글을 작성하는 기능입니다. 제목, 내용, 카테고리를 입력받아 Firebase Realtime Database에 저장합니다.
+
+## 요구사항 (Requirements)
+
+### 라이브러리
+- Firebase SDK 10.7.1 이상
+- Svelte 5.0.0 이상
+
+### 설치 명령어
+```bash
+npm install firebase@^10.7.1
+```
+
+### 환경 설정
+- `.env` 파일에 Firebase 설정 필수:
+  - VITE_FIREBASE_API_KEY
+  - VITE_FIREBASE_AUTH_DOMAIN
+  - VITE_FIREBASE_DATABASE_URL
+  - VITE_FIREBASE_PROJECT_ID
+
+### 사전 조건
+- Firebase 프로젝트가 생성되어 있어야 함
+- Realtime Database가 활성화되어 있어야 함
+- 사용자가 로그인된 상태여야 함
+
+## 워크플로우
+1. 사용자 인증 상태 확인
+2. 입력 폼 유효성 검증
+3. 게시글 데이터 구조 생성
+4. Firebase에 저장
+5. 성공/실패 처리
+
+## 세부 항목
+### 입력 필드
+- title: 제목 (필수, 1~100자)
+- content: 내용 (필수, 1~5000자)
+- category: 카테고리 (필수, community|qna|news|market)
+
+### 데이터베이스 경로
+/posts/&#123;category&#125;/&#123;postId&#125;
+
+...</pre>
+                </div>
+              </li>
+            </ul>
+
+            <div class="highlight-box" style="margin-top: 1.5rem;">
+              ✅ <strong>스펙 파일 구조화의 장점</strong><br />
+              명확한 파일 구조와 명명 규칙은 대규모 프로젝트에서 스펙을 체계적으로 관리하고, AI가 필요한 정보를 빠르게 찾아 참조할 수 있게 합니다. Dependencies를 통해 스펙 간 의존성을 명시함으로써 스펙의 재사용성과 일관성을 높일 수 있습니다.
+            </div>
+          </li>
+          <li>
             <strong>스펙 검증</strong>
             <ul class="sub-list">
               <li>
@@ -1079,6 +1258,138 @@ Suggested Action: Review and revise spec or code alignment.</code
         명세의 완전성, 자동 검증, 절대적 일관성을 중심으로 한
         <strong>AI 기반 개발 표준 철학</strong>으로 정의됩니다.
       </p>
+    </div>
+
+    <!-- SED Utility 다운로드/실행 섹션 -->
+    <div class="section utility-section">
+      <h2 class="section-title">🛠️ SED Utility 다운로드 및 실행</h2>
+      <div class="content">
+        <p>
+          SED 방법론을 실제로 적용하기 위해서는 작성한 스펙의 구조와 완성도를
+          검증할 수 있는 도구가 필요합니다. <strong>SEDVibe</strong>는 여러분이
+          작성한 스펙을 분석하고 점수를 매겨주는 유틸리티입니다.
+        </p>
+
+        <div class="utility-box">
+          <h3 class="utility-title">📦 설치 및 실행</h3>
+          <p style="margin-bottom: 1rem; color: #475569;">
+            NPM을 통해 즉시 실행할 수 있습니다. 별도 설치 없이 npx를 사용하면
+            됩니다:
+          </p>
+
+          <div class="code-block">
+            <div class="code-header">스펙 검증 명령어</div>
+            <pre><code>npx sedvibe doctor</code></pre>
+          </div>
+
+          <div style="margin-top: 1.5rem;">
+            <h4 style="font-size: 1.125rem; font-weight: 600; color: #0f172a; margin-bottom: 0.75rem;">
+              🔍 SEDVibe Doctor가 수행하는 작업
+            </h4>
+            <ul class="feature-list">
+              <li>
+                <strong>스펙 파일 구조 검증:</strong> YAML 헤더, Overview, 요구사항,
+                워크플로우, 세부 항목이 올바른 순서로 작성되었는지 확인합니다.
+              </li>
+              <li>
+                <strong>필수 항목 확인:</strong> 각 스펙 파일에 반드시 포함되어야
+                할 필드(name, version, dependencies 등)가 누락되지 않았는지
+                검사합니다.
+              </li>
+              <li>
+                <strong>의존성 분석:</strong> dependencies에 명시된 다른 스펙들이
+                올바른 형식으로 참조되었는지 확인합니다.
+              </li>
+              <li>
+                <strong>완성도 점수 산출:</strong> 스펙의 정밀함과 완성도를
+                분석하여 0~100점 사이의 점수를 부여합니다.
+              </li>
+              <li>
+                <strong>개선 제안:</strong> 점수가 90점 미만인 경우, 어떤 부분을
+                보완해야 하는지 구체적인 제안을 제공합니다.
+              </li>
+            </ul>
+          </div>
+
+          <div class="highlight-box" style="margin-top: 1.5rem;">
+            💡 <strong>참고:</strong> SED 방법론에서는 스펙 점수가 <strong
+              >90점 이상</strong
+            >이어야 개발을 시작할 수 있습니다. 90점 미만인 경우, SEDVibe Doctor의
+            제안을 따라 스펙을 보완한 후 다시 검증하세요.
+          </div>
+        </div>
+
+        <div class="utility-box" style="margin-top: 1.5rem;">
+          <h3 class="utility-title">📊 출력 예시</h3>
+          <div class="code-block">
+            <div class="code-header">SEDVibe Doctor 실행 결과</div>
+            <pre style="white-space: pre-wrap; color: #cbd5e1; line-height: 1.8;">$ npx sedvibe doctor
+
+🔍 Analyzing your SED specifications...
+
+📁 Found 12 spec files in ./specs/
+
+✅ sns-forum-post-create.md
+   - Structure: Valid
+   - Required Fields: Complete
+   - Dependencies: Resolved
+   - Score: 95/100
+
+⚠️  sns-user-profile.md
+   - Structure: Valid
+   - Required Fields: Missing 'version'
+   - Dependencies: Resolved
+   - Score: 78/100
+
+   💡 Suggestions:
+   - Add version field to YAML header
+   - Expand workflow section (currently 3 steps, recommend 5+ steps)
+   - Add more detailed error handling scenarios
+
+❌ sns-payment-integration.md
+   - Structure: Invalid (missing workflow section)
+   - Required Fields: Complete
+   - Dependencies: Unresolved (payment-gateway-spec not found)
+   - Score: 42/100
+
+   💡 Suggestions:
+   - Add workflow section after requirements
+   - Resolve dependency: payment-gateway-spec
+   - Add database schema details
+   - Include API endpoint specifications
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📈 Overall Project Score: 72/100
+
+✅ Ready for development: 8 files
+⚠️  Need improvement: 3 files
+❌ Critical issues: 1 file
+
+⚠️  Your project score is below 90.
+   Please address the issues above before starting development.</pre>
+          </div>
+        </div>
+
+        <div class="info-box" style="margin-top: 1.5rem;">
+          <h3 style="font-size: 1.125rem; font-weight: 600; color: #0f172a; margin-bottom: 0.75rem;">
+            🚀 다음 단계
+          </h3>
+          <ol style="margin: 0; padding-left: 1.5rem; color: #475569; line-height: 1.8;">
+            <li>
+              SEDVibe Doctor를 실행하여 현재 스펙의 상태를 확인합니다.
+            </li>
+            <li>
+              점수가 90점 미만인 파일들을 우선적으로 보완합니다.
+            </li>
+            <li>
+              제안된 개선 사항을 적용한 후 다시 검증을 실행합니다.
+            </li>
+            <li>
+              모든 스펙이 90점 이상이 되면 AI 기반 개발을 시작합니다.
+            </li>
+          </ol>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -1520,6 +1831,60 @@ Suggested Action: Review and revise spec or code alignment.</code
     left: 0;
     color: #f59e0b;
     font-weight: bold;
+  }
+
+  /* SED Utility 섹션 */
+  .utility-section {
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    border: 2px solid #38bdf8;
+  }
+
+  .utility-box {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    margin-top: 1.5rem;
+  }
+
+  .utility-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #0f172a;
+    margin: 0 0 1rem 0;
+  }
+
+  .feature-list {
+    list-style: none;
+    padding: 0;
+    margin: 0.75rem 0;
+  }
+
+  .feature-list li {
+    padding: 0.75rem 0.75rem 0.75rem 2rem;
+    margin-bottom: 0.75rem;
+    position: relative;
+    color: #334155;
+    line-height: 1.7;
+    background: #f8fafc;
+    border-radius: 0.5rem;
+    border-left: 3px solid #38bdf8;
+  }
+
+  .feature-list li::before {
+    content: "✓";
+    position: absolute;
+    left: 0.75rem;
+    color: #38bdf8;
+    font-weight: bold;
+    font-size: 1.125rem;
+  }
+
+  .info-box {
+    background: linear-gradient(135deg, #fefce8 0%, #fef3c7 100%);
+    border: 1px solid #fbbf24;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
   }
 
   /* 반응형 디자인 */

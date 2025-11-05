@@ -24,59 +24,124 @@
       </div>
     </div>
 
-    <!-- 2025-10-27 세미나 섹션 -->
+    <!-- 2025-11-05 세미나 섹션 (최신) -->
     <div class="timeline-section">
       <!-- 날짜 및 제목 -->
       <div class="date-header">
-        <h2 class="date-title">{$t("dev.history.seminar1.date")}</h2>
+        <h2 class="date-title">{$t("dev.history.seminar4.date")}</h2>
       </div>
 
       <!-- 구현 완료 섹션 -->
       <div class="card">
-        <h3 class="card-title">{$t("dev.history.seminar1.completed")}</h3>
+        <h3 class="card-title">{$t("dev.history.seminar4.completed")}</h3>
         <ul class="item-list">
           <li class="item">
             <span class="bullet">•</span>
-            <span>{$t("dev.history.seminar1.item1")}</span>
+            <span>{$t("dev.history.seminar4.item1")}</span>
           </li>
           <li class="item">
             <span class="bullet">•</span>
-            <span>{$t("dev.history.seminar1.item2")}</span>
+            <span>{$t("dev.history.seminar4.item2")}</span>
           </li>
           <li class="item">
             <span class="bullet">•</span>
-            <span>{$t("dev.history.seminar1.item3")}</span>
+            <span>{$t("dev.history.seminar4.item3")}</span>
           </li>
           <li class="item">
             <span class="bullet">•</span>
-            <span>{$t("dev.history.seminar1.item4")}</span>
+            <span>{$t("dev.history.seminar4.item4")}</span>
           </li>
           <li class="item">
             <span class="bullet">•</span>
-            <span>{$t("dev.history.seminar1.item5")}</span>
+            <span>{$t("dev.history.seminar4.item5")}</span>
           </li>
         </ul>
       </div>
 
       <!-- 배운 것들 섹션 -->
       <div class="card">
-        <h3 class="card-title">{$t("dev.history.seminar1.learned")}</h3>
+        <h3 class="card-title">{$t("dev.history.seminar4.learned")}</h3>
         <ul class="item-list">
           <li class="item">
             <span class="bullet">•</span>
-            <span>{$t("dev.history.seminar1.learned1")}</span>
+            <span>{$t("dev.history.seminar4.learned1")}</span>
           </li>
           <li class="item">
             <span class="bullet">•</span>
-            <span>{$t("dev.history.seminar1.learned2")}</span>
+            <span>{$t("dev.history.seminar4.learned2")}</span>
           </li>
           <li class="item">
             <span class="bullet">•</span>
-            <span>{$t("dev.history.seminar1.learned3")}</span>
+            <span>{$t("dev.history.seminar4.learned3")}</span>
           </li>
           <li class="item">
             <span class="bullet">•</span>
-            <span>{$t("dev.history.seminar1.learned4")}</span>
+            <span>{$t("dev.history.seminar4.learned4")}</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 구분선 -->
+    <div class="divider"></div>
+
+    <!-- 2025-11-04 세미나 섹션 -->
+    <div class="timeline-section">
+      <!-- 날짜 및 제목 -->
+      <div class="date-header">
+        <h2 class="date-title">{$t("dev.history.seminar3.date")}</h2>
+      </div>
+
+      <!-- 구현 완료 섹션 -->
+      <div class="card">
+        <h3 class="card-title">{$t("dev.history.seminar3.completed")}</h3>
+        <ul class="item-list">
+          <li class="item">
+            <span class="bullet">•</span>
+            <span>{$t("dev.history.seminar3.item1")}</span>
+          </li>
+          <li class="item">
+            <span class="bullet">•</span>
+            <span>{$t("dev.history.seminar3.item2")}</span>
+          </li>
+          <li class="item">
+            <span class="bullet">•</span>
+            <span>{$t("dev.history.seminar3.item3")}</span>
+          </li>
+          <li class="item">
+            <span class="bullet">•</span>
+            <span>{$t("dev.history.seminar3.item4")}</span>
+          </li>
+          <li class="item">
+            <span class="bullet">•</span>
+            <span>{$t("dev.history.seminar3.item5")}</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- 배운 것들 섹션 -->
+      <div class="card">
+        <h3 class="card-title">{$t("dev.history.seminar3.learned")}</h3>
+        <ul class="item-list">
+          <li class="item">
+            <span class="bullet">•</span>
+            <span>{$t("dev.history.seminar3.learned1")}</span>
+          </li>
+          <li class="item">
+            <span class="bullet">•</span>
+            <span>{$t("dev.history.seminar3.learned2")}</span>
+          </li>
+          <li class="item">
+            <span class="bullet">•</span>
+            <span>{$t("dev.history.seminar3.learned3")}</span>
+          </li>
+          <li class="item">
+            <span class="bullet">•</span>
+            <span>{$t("dev.history.seminar3.learned4")}</span>
+          </li>
+          <li class="item">
+            <span class="bullet">•</span>
+            <span>{$t("dev.history.seminar3.learned5")}</span>
           </li>
         </ul>
       </div>
@@ -146,63 +211,59 @@
     <!-- 구분선 -->
     <div class="divider"></div>
 
-    <!-- 2025-11-04 세미나 섹션 -->
+    <!-- 2025-10-27 세미나 섹션 -->
     <div class="timeline-section">
       <!-- 날짜 및 제목 -->
       <div class="date-header">
-        <h2 class="date-title">{$t("dev.history.seminar3.date")}</h2>
+        <h2 class="date-title">{$t("dev.history.seminar1.date")}</h2>
       </div>
 
       <!-- 구현 완료 섹션 -->
       <div class="card">
-        <h3 class="card-title">{$t("dev.history.seminar3.completed")}</h3>
+        <h3 class="card-title">{$t("dev.history.seminar1.completed")}</h3>
         <ul class="item-list">
           <li class="item">
             <span class="bullet">•</span>
-            <span>{$t("dev.history.seminar3.item1")}</span>
+            <span>{$t("dev.history.seminar1.item1")}</span>
           </li>
           <li class="item">
             <span class="bullet">•</span>
-            <span>{$t("dev.history.seminar3.item2")}</span>
+            <span>{$t("dev.history.seminar1.item2")}</span>
           </li>
           <li class="item">
             <span class="bullet">•</span>
-            <span>{$t("dev.history.seminar3.item3")}</span>
+            <span>{$t("dev.history.seminar1.item3")}</span>
           </li>
           <li class="item">
             <span class="bullet">•</span>
-            <span>{$t("dev.history.seminar3.item4")}</span>
+            <span>{$t("dev.history.seminar1.item4")}</span>
           </li>
           <li class="item">
             <span class="bullet">•</span>
-            <span>{$t("dev.history.seminar3.item5")}</span>
+            <span>{$t("dev.history.seminar1.item5")}</span>
           </li>
         </ul>
       </div>
 
       <!-- 배운 것들 섹션 -->
       <div class="card">
-        <h3 class="card-title">{$t("dev.history.seminar3.learned")}</h3>
+        <h3 class="card-title">{$t("dev.history.seminar1.learned")}</h3>
         <ul class="item-list">
           <li class="item">
             <span class="bullet">•</span>
-            <span>{$t("dev.history.seminar3.learned1")}</span>
+            <span>{$t("dev.history.seminar1.learned1")}</span>
           </li>
           <li class="item">
             <span class="bullet">•</span>
-            <span>{$t("dev.history.seminar3.learned2")}</span>
+            <span>{$t("dev.history.seminar1.learned2")}</span>
           </li>
           <li class="item">
             <span class="bullet">•</span>
-            <span>{$t("dev.history.seminar3.learned3")}</span>
+            <span>{$t("dev.history.seminar1.learned3")}</span>
           </li>
           <li class="item">
             <span class="bullet">•</span>
-            <span>{$t("dev.history.seminar3.learned4")}</span>
-          </li>
-          <li class="item">
-            <span class="bullet">•</span>
-            <span>{$t("dev.history.seminar3.learned5")}</span>
+            <span>{$t("dev.history.seminar1.learned4")}</span>
           </li>
         </ul>
       </div>

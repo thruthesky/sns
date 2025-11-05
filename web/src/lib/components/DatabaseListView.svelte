@@ -37,6 +37,7 @@
     get,
     onValue,
     onChildAdded,
+    onChildRemoved,
     query,
     orderByChild,
     limitToFirst,
@@ -170,6 +171,12 @@
    */
   let childAddedListenerReady = $state<boolean>(false);
 
+  /**
+   * onChildRemoved 리스너 해제 함수
+   * 노드 삭제를 감지하는 리스너
+   */
+  let childRemovedUnsubscribe: (() => void) | null = null;
+
   // ============================================================================
   // Lifecycle (생명주기)
   // ============================================================================
@@ -191,6 +198,12 @@
       if (childAddedUnsubscribe) {
         childAddedUnsubscribe();
         childAddedUnsubscribe = null;
+      }
+
+      // child_removed 리스너 해제
+      if (childRemovedUnsubscribe) {
+        childRemovedUnsubscribe();
+        childRemovedUnsubscribe = null;
       }
 
       // 모든 onValue 리스너 해제
@@ -410,6 +423,80 @@
   }
 
   /**
+   * 노드 삭제 감지 리스너 설정 (onChildRemoved)
+   *
+   * Firebase의 onChildRemoved()를 사용하여 노드가 삭제되면 실시간으로 화면에서 제거합니다.
+   * - items 배열에서 해당 노드를 필터링하여 제거
+   * - 해당 노드의 onValue 리스너도 해제
+   */
+  function setupChildRemovedListener() {
+    if (childRemovedUnsubscribe) {
+      // 기존 리스너가 있으면 먼저 해제
+      childRemovedUnsubscribe();
+      childRemovedUnsubscribe = null;
+    }
+
+    console.log('DatabaseListView: Setting up child_removed listener for', path);
+
+    const baseRef = dbRef(database, path);
+
+    // sortPrefix가 있으면 범위 쿼리 추가
+    // child_added 리스너와 동일한 쿼리 사용
+    let dataQuery;
+    if (sortPrefix) {
+      dataQuery = query(
+        baseRef,
+        orderByChild(orderBy),
+        startAt(sortPrefix),
+        endAt(sortPrefix + '\uf8ff')
+      );
+      console.log('DatabaseListView: child_removed listener with sortPrefix:', sortPrefix);
+    } else {
+      // sortPrefix가 없으면 startAt(false) 사용
+      dataQuery = query(
+        baseRef,
+        orderByChild(orderBy),
+        startAt(false)
+      );
+      console.log('DatabaseListView: child_removed listener with startAt(false)');
+    }
+
+    childRemovedUnsubscribe = onChildRemoved(dataQuery, (snapshot) => {
+      const removedKey = snapshot.key;
+
+      // key가 null인 경우 무시
+      if (!removedKey) {
+        console.warn('DatabaseListView: Removed snapshot key is null, skipping');
+        return;
+      }
+
+      console.log('DatabaseListView: Child removed:', removedKey);
+
+      // items 배열에서 해당 key를 가진 아이템 찾기
+      const removedIndex = items.findIndex(item => item.key === removedKey);
+
+      if (removedIndex !== -1) {
+        // items 배열에서 제거
+        items = items.filter(item => item.key !== removedKey);
+        console.log('DatabaseListView: Removed item from list:', removedKey, '(was at index', removedIndex, ')');
+
+        // 해당 아이템의 onValue 리스너 해제
+        const listenerKey = `${removedKey}`;
+        const unsubscribe = unsubscribers.get(listenerKey);
+        if (unsubscribe) {
+          unsubscribe();
+          unsubscribers.delete(listenerKey);
+          console.log('DatabaseListView: Unsubscribed from removed item:', removedKey);
+        }
+      } else {
+        console.log('DatabaseListView: Removed item not found in current list:', removedKey);
+      }
+    }, (error) => {
+      console.error('DatabaseListView: Error in child_removed listener', error);
+    });
+  }
+
+  /**
    * 초기 데이터 로드 (페이지별 Firebase 쿼리)
    *
    * Firebase 쿼리를 사용하여 첫 번째 페이지 + 1개를 로드합니다.
@@ -435,6 +522,12 @@
       childAddedUnsubscribe = null;
     }
     childAddedListenerReady = false;
+
+    // child_removed 리스너 해제
+    if (childRemovedUnsubscribe) {
+      childRemovedUnsubscribe();
+      childRemovedUnsubscribe = null;
+    }
 
     lastLoadedValue = null;
     lastLoadedKey = null;
@@ -585,6 +678,10 @@
       // 초기 로드 완료 후 child_added 리스너 설정
       // 이후 새로 생성되는 노드를 실시간으로 감지하여 화면에 추가
       setupChildAddedListener();
+
+      // 초기 로드 완료 후 child_removed 리스너 설정
+      // 노드가 삭제되면 실시간으로 화면에서 제거
+      setupChildRemovedListener();
     }
   }
 

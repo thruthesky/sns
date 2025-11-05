@@ -2,6 +2,7 @@
 
 본 문서는 Svelte 5 기반으로 게시판 기능을 개발하는 데 필요한 지침과 로직을 제공합니다.
 게시판 관련 코드 작성을 할 때, 반드시 이 문서를 따라서 작성해야 합니다.
+참고로 코멘트(댓글) 관련해서는 [댓글 개발 가이드](./sns-web-comments.md)를 참고하세요.
 
 ---
 
@@ -31,13 +32,22 @@
 - 최신 10개의 게시글을 표시합니다.
 - 게시글이 없는 경우 "게시글이 없습니다" 메시지 표시
 
-### 3. 글 수정 (향후 구현)
+### 3. 글 수정
 - 사용자는 자신이 작성한 글을 수정할 수 있습니다.
-- 수정된 글은 데이터베이스에 업데이트됩니다.
+- 수정 버튼은 글 작성자에게만 표시됩니다 (아이콘만 표시).
+- **댓글 제한**: `commentCount`가 0 또는 null인 경우에만 수정 가능합니다.
+  - 댓글이 1개 이상인 경우 "댓글이 달려 있는 경우 수정을 할 수 없습니다." 메시지 표시
+- 수정 시 모달 다이얼로그를 통해 입력받습니다.
+- 수정된 글은 데이터베이스에 업데이트됩니다 (`updatedAt` 필드 자동 갱신).
 
-### 4. 글 삭제 (향후 구현)
+### 4. 글 삭제
 - 사용자는 자신이 작성한 글을 삭제할 수 있습니다.
-- 삭제된 글은 데이터베이스에서 제거됩니다.
+- 삭제 버튼은 글 작성자에게만 표시됩니다 (아이콘만 표시).
+- **댓글 제한**: `commentCount`가 0 또는 null인 경우에만 삭제 가능합니다.
+  - 댓글이 1개 이상인 경우 "댓글이 달려 있는 경우 삭제를 할 수 없습니다." 경고 표시
+  - 이유: 댓글이 있는데 글을 완전히 삭제하면 댓글까지 사라지기 때문
+- 삭제 전 확인 다이얼로그를 표시합니다.
+- 삭제된 글은 데이터베이스에서 완전히 제거됩니다.
 
 ---
 
@@ -284,38 +294,145 @@ onMount(() => {
 // )
 ```
 
-#### 3. updatePost() - 게시글 수정 (향후 구현)
+#### 3. updatePost() - 게시글 수정
 
 ```javascript
 /**
  * 기존 게시글을 수정합니다.
  * 본인이 작성한 글만 수정 가능합니다.
+ * commentCount가 0 또는 null인 경우에만 수정 가능합니다.
  *
  * @param {string} postId - 게시글 ID
+ * @param {string} currentUserId - 현재 로그인한 사용자 UID
  * @param {Object} updates - 수정할 내용 { title?: string, content?: string }
  * @returns {Promise<{success: boolean, error?: string}>}
  */
-export async function updatePost(postId, updates) {
-  // 구현 코드
-  // flat style 구조에서는 postId만으로 직접 접근 가능
-  // /posts/{postId}
+export async function updatePost(postId, currentUserId, updates) {
+  try {
+    const postRef = ref(database, `posts/${postId}`);
+    const snapshot = await get(postRef);
+
+    if (!snapshot.exists()) {
+      return { success: false, error: '게시글을 찾을 수 없습니다.' };
+    }
+
+    const postData = snapshot.val();
+
+    // 작성자 권한 확인
+    if (postData.uid !== currentUserId) {
+      return { success: false, error: '수정 권한이 없습니다.' };
+    }
+
+    // 댓글 여부 확인
+    const commentCount = postData.commentCount || 0;
+    if (commentCount > 0) {
+      return { success: false, error: '댓글이 달려 있는 경우 수정을 할 수 없습니다.' };
+    }
+
+    // 게시글 수정
+    const updateData = {
+      ...updates,
+      updatedAt: Date.now()
+    };
+
+    await update(postRef, updateData);
+    return { success: true };
+  } catch (error) {
+    console.error('게시글 수정 오류:', error);
+    return { success: false, error: error.message };
+  }
 }
 ```
 
-#### 4. deletePost() - 게시글 삭제 (향후 구현)
+**기능:**
+- 본인이 작성한 글만 수정 가능 (uid 확인)
+- `commentCount`가 0 또는 null인 경우에만 수정 허용
+- 댓글이 있는 경우 수정 불가
+- `updatedAt` 필드 자동 업데이트
+- flat style 구조에서는 postId만으로 직접 접근 가능 (`/posts/{postId}`)
+
+**사용 예시:**
+```javascript
+const result = await updatePost(
+  "post-abc123",
+  "user-uid-123",
+  {
+    title: "수정된 제목",
+    content: "수정된 내용"
+  }
+);
+
+if (result.success) {
+  console.log("게시글이 수정되었습니다.");
+} else {
+  console.error("수정 실패:", result.error);
+}
+```
+
+#### 4. deletePost() - 게시글 삭제
 
 ```javascript
 /**
  * 게시글을 삭제합니다.
  * 본인이 작성한 글만 삭제 가능합니다.
+ * commentCount가 0 또는 null인 경우에만 삭제 가능합니다.
  *
  * @param {string} postId - 게시글 ID
+ * @param {string} currentUserId - 현재 로그인한 사용자 UID
  * @returns {Promise<{success: boolean, error?: string}>}
  */
-export async function deletePost(postId) {
-  // 구현 코드
-  // flat style 구조에서는 postId만으로 직접 접근 가능
-  // /posts/{postId}
+export async function deletePost(postId, currentUserId) {
+  try {
+    const postRef = ref(database, `posts/${postId}`);
+    const snapshot = await get(postRef);
+
+    if (!snapshot.exists()) {
+      return { success: false, error: '게시글을 찾을 수 없습니다.' };
+    }
+
+    const postData = snapshot.val();
+
+    // 작성자 권한 확인
+    if (postData.uid !== currentUserId) {
+      return { success: false, error: '삭제 권한이 없습니다.' };
+    }
+
+    // 댓글 여부 확인
+    const commentCount = postData.commentCount || 0;
+    if (commentCount > 0) {
+      return { success: false, error: '댓글이 달려 있는 경우 삭제를 할 수 없습니다.' };
+    }
+
+    // 게시글 완전 삭제
+    await remove(postRef);
+    return { success: true };
+  } catch (error) {
+    console.error('게시글 삭제 오류:', error);
+    return { success: false, error: error.message };
+  }
+}
+```
+
+**기능:**
+- 본인이 작성한 글만 삭제 가능 (uid 확인)
+- `commentCount`가 0 또는 null인 경우에만 삭제 허용
+- 댓글이 있는 경우 삭제 불가 (댓글이 사라지는 것을 방지)
+- 게시글 node를 완전히 제거
+- flat style 구조에서는 postId만으로 직접 접근 가능 (`/posts/{postId}`)
+
+**사용 예시:**
+```javascript
+// 삭제 전 확인 다이얼로그
+if (confirm('정말로 삭제하시겠습니까?')) {
+  const result = await deletePost("post-abc123", "user-uid-123");
+
+  if (result.success) {
+    console.log("게시글이 삭제되었습니다.");
+    // 목록 페이지로 이동
+    window.location.href = '/forum?category=community';
+  } else {
+    alert(result.error);
+  }
 }
 ```
 
@@ -681,9 +798,91 @@ Svelte 5의 Runes를 사용하여 반응형 상태를 관리합니다.
 </style>
 ```
 
-### 7. 게시글 목록 렌더링
+### 7. 게시글 목록 렌더링 (수정/삭제 버튼 포함)
 
 ```svelte
+<script>
+  import { Edit, Trash2 } from 'lucide-svelte';
+
+  // 수정 모달 상태
+  let isEditDialogOpen = $state(false);
+  let editingPost = $state(null);
+  let editTitle = $state('');
+  let editContent = $state('');
+
+  /**
+   * 수정 버튼 클릭 핸들러
+   */
+  async function handleEdit(post) {
+    // 댓글 여부 확인
+    const commentCount = post.commentCount || 0;
+    if (commentCount > 0) {
+      alert('댓글이 달려 있는 경우 수정을 할 수 없습니다.');
+      return;
+    }
+
+    // 수정 모달 열기
+    editingPost = post;
+    editTitle = post.title;
+    editContent = post.content;
+    isEditDialogOpen = true;
+  }
+
+  /**
+   * 수정 전송 핸들러
+   */
+  async function handleEditSubmit() {
+    if (!editTitle.trim() || !editContent.trim()) {
+      alert('제목과 내용을 입력해주세요.');
+      return;
+    }
+
+    const result = await updatePost(
+      editingPost.postId,
+      userId,
+      {
+        title: editTitle,
+        content: editContent
+      }
+    );
+
+    if (result.success) {
+      alert('게시글이 수정되었습니다.');
+      isEditDialogOpen = false;
+      editingPost = null;
+      editTitle = '';
+      editContent = '';
+    } else {
+      alert(result.error);
+    }
+  }
+
+  /**
+   * 삭제 버튼 클릭 핸들러
+   */
+  async function handleDelete(post) {
+    // 댓글 여부 확인
+    const commentCount = post.commentCount || 0;
+    if (commentCount > 0) {
+      alert('댓글이 달려 있는 경우 삭제를 할 수 없습니다.');
+      return;
+    }
+
+    // 삭제 확인
+    if (!confirm('정말로 삭제하시겠습니까?')) {
+      return;
+    }
+
+    const result = await deletePost(post.postId, userId);
+
+    if (result.success) {
+      alert('게시글이 삭제되었습니다.');
+    } else {
+      alert(result.error);
+    }
+  }
+</script>
+
 <!-- 게시글 목록 또는 빈 상태 -->
 {#if posts.length === 0}
   <!-- 게시글이 없는 경우 -->
@@ -696,7 +895,28 @@ Svelte 5의 Runes를 사용하여 반응형 상태를 관리합니다.
   <div class="posts-list">
     {#each posts as post (post.postId)}
       <div class="post-item">
-        <h3 class="post-title">{post.title}</h3>
+        <div class="post-header">
+          <h3 class="post-title">{post.title}</h3>
+          <!-- 작성자에게만 수정/삭제 버튼 표시 -->
+          {#if post.uid === userId}
+            <div class="post-actions">
+              <button
+                class="btn-icon"
+                onclick={() => handleEdit(post)}
+                title="수정"
+              >
+                <Edit size={18} />
+              </button>
+              <button
+                class="btn-icon btn-danger"
+                onclick={() => handleDelete(post)}
+                title="삭제"
+              >
+                <Trash2 size={18} />
+              </button>
+            </div>
+          {/if}
+        </div>
         <p class="post-content">{post.content}</p>
         <div class="post-meta">
           <span class="post-author">작성자: {post.author}</span>
@@ -712,6 +932,46 @@ Svelte 5의 Runes를 사용하여 반응형 상태를 관리합니다.
         </div>
       </div>
     {/each}
+  </div>
+{/if}
+
+<!-- 수정 모달 다이얼로그 -->
+{#if isEditDialogOpen}
+  <div class="modal-backdrop" onclick={() => isEditDialogOpen = false}>
+    <div class="modal" onclick={(e) => e.stopPropagation()}>
+      <h2>게시글 수정</h2>
+
+      <!-- 제목 입력 -->
+      <input
+        type="text"
+        bind:value={editTitle}
+        placeholder="제목을 입력하세요"
+        class="form-control"
+      />
+
+      <!-- 내용 입력 -->
+      <textarea
+        bind:value={editContent}
+        placeholder="내용을 입력하세요"
+        class="form-control textarea"
+      ></textarea>
+
+      <!-- 버튼 -->
+      <div class="modal-buttons">
+        <button
+          class="btn-submit"
+          onclick={handleEditSubmit}
+        >
+          수정
+        </button>
+        <button
+          class="btn-cancel"
+          onclick={() => isEditDialogOpen = false}
+        >
+          취소
+        </button>
+      </div>
+    </div>
   </div>
 {/if}
 
@@ -754,11 +1014,53 @@ Svelte 5의 Runes를 사용하여 반응형 상태를 관리합니다.
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   }
 
+  .post-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+  }
+
   .post-title {
-    margin: 0 0 1rem 0;
+    margin: 0;
     font-size: 1.125rem;
     font-weight: 600;
     color: #111827;
+    flex: 1;
+  }
+
+  .post-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .btn-icon {
+    padding: 0.5rem;
+    background-color: transparent;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6b7280;
+  }
+
+  .btn-icon:hover {
+    background-color: #f3f4f6;
+    border-color: #d1d5db;
+    color: #374151;
+  }
+
+  .btn-icon.btn-danger {
+    color: #dc2626;
+  }
+
+  .btn-icon.btn-danger:hover {
+    background-color: #fee2e2;
+    border-color: #fca5a5;
+    color: #b91c1c;
   }
 
   .post-content {
@@ -1189,17 +1491,7 @@ function listenToComments(postId, callback) {
 - **파일**: `src/demo/ForumDetail.svelte`
 - **기능**: 게시글 전체 내용 표시, 수정/삭제 버튼 (본인만 노출)
 
-### 2. 게시글 수정 기능
-- 본인이 작성한 글만 수정 가능
-- 수정 시 `updatedAt` 필드 자동 업데이트
-- updatePost() 함수 구현
-
-### 3. 게시글 삭제 기능
-- 본인이 작성한 글만 삭제 가능
-- 삭제 확인 다이얼로그
-- deletePost() 함수 구현
-
-### 4. 좋아요 기능
+### 2. 좋아요 기능
 - 게시글과 댓글에 좋아요 추가
 - 중복 방지 (한 사용자당 한 번만)
 - 데이터 구조 (Flat Style - 통합 좋아요):
@@ -1207,30 +1499,30 @@ function listenToComments(postId, callback) {
   - 댓글 좋아요: `/likes/comment-{commentId}-{uid}` (값: 1)
 - 서비스 함수: `src/lib/services/like.js` 참조
 
-### 5. 검색 및 필터링
+### 3. 검색 및 필터링
 - 제목, 내용, 작성자로 검색
 - 날짜 범위 필터링
 - Firestore Query 또는 클라이언트 측 필터링
 
-### 7. 페이지네이션
+### 4. 페이지네이션
 - 무한 스크롤 또는 페이지 번호
 - 더보기 버튼
 - Svelte 반응형 상태로 구현
 
-### 8. 이미지 업로드
+### 5. 이미지 업로드
 - Firebase Storage 사용
 - 이미지 미리보기
 - 드래그 앤 드롭 기능
 
-### 9. Svelte 5 Runes 최적화
+### 6. Svelte 5 Runes 최적화
 - `$derived` 사용하여 파생 상태 관리
 - `$effect` 사용하여 부수 효과 관리
 - 성능 최적화
 
 ---
 
-**Last Updated**: 2025-11-03
-**Version**: 2.0.0 (Svelte 5 기반)
+**Last Updated**: 2025-11-05
+**Version**: 2.1.0 (게시글 수정/삭제 기능 추가)
 
 ## 관련 문서
 

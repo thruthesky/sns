@@ -34,7 +34,7 @@
  */
 
 import { database } from '../utils/firebase.js';
-import { ref, push, update, remove, query, orderByChild, limitToLast, startAt, endAt, onValue, off } from 'firebase/database';
+import { ref, push, update, remove, get, query, orderByChild, limitToLast, startAt, endAt, onValue, off } from 'firebase/database';
 import { handleFirebaseError } from '../utils/error-handler.js';
 import type {
   PostCategory,
@@ -250,16 +250,37 @@ export async function updatePost(
   updates: UpdatePostParams
 ): Promise<UpdatePostResult> {
   try {
-    // 수정 데이터에 updatedAt 추가
+    // Firebase 경로: /posts/{postId} (flat style)
+    const postRef = ref(database, `posts/${postId}`);
+
+    // 1. 게시글 데이터 읽기 - commentCount 확인
+    const snapshot = await get(postRef);
+    if (!snapshot.exists()) {
+      return {
+        success: false,
+        error: 'error.db.objectNotFound',
+        errorMessage: 'Post not found'
+      };
+    }
+
+    const postData = snapshot.val();
+
+    // 2. commentCount 확인 - 댓글이 있으면 수정 불가
+    if (postData.commentCount && postData.commentCount > 0) {
+      return {
+        success: false,
+        error: '댓글이달려있어수정불가',
+        errorMessage: 'Cannot edit post with comments'
+      };
+    }
+
+    // 3. 수정 데이터에 updatedAt 추가
     const updateData = {
       ...updates,
       updatedAt: Date.now()
     };
 
-    // Firebase 경로: /posts/{postId} (flat style)
-    const postRef = ref(database, `posts/${postId}`);
-
-    // update() - 특정 필드만 수정
+    // 4. update() - 특정 필드만 수정
     await update(postRef, updateData);
 
     // ✅ 게시글 수정 성공
@@ -304,7 +325,28 @@ export async function deletePost(
     // Firebase 경로: /posts/{postId} (flat style)
     const postRef = ref(database, `posts/${postId}`);
 
-    // remove() - 데이터 삭제
+    // 1. 게시글 데이터 읽기 - commentCount 확인
+    const snapshot = await get(postRef);
+    if (!snapshot.exists()) {
+      return {
+        success: false,
+        error: 'error.db.objectNotFound',
+        errorMessage: 'Post not found'
+      };
+    }
+
+    const postData = snapshot.val();
+
+    // 2. commentCount 확인 - 댓글이 있으면 삭제 불가
+    if (postData.commentCount && postData.commentCount > 0) {
+      return {
+        success: false,
+        error: '댓글이달려있어삭제불가',
+        errorMessage: 'Cannot delete post with comments'
+      };
+    }
+
+    // 3. remove() - 데이터 삭제
     await remove(postRef);
 
     // ✅ 게시글 삭제 성공

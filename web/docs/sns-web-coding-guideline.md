@@ -1,7 +1,127 @@
-기본적인 코딩 기법:
+# SNS 웹 코딩 가이드라인
+
+## 목차
+
+- [개요](#개요)
+- [아이콘 사용 가이드라인](#아이콘-사용-가이드라인)
+- [Firebase Realtime Database 코딩 가이드라인](#firebase-realtime-database-코딩-가이드라인)
+- [타입 네이밍 규칙](#타입-네이밍-규칙)
+- [createRealtimeStore() - 함수형 API](#-createrealtimestore---함수형-api)
+- [Firebase Server Values (increment, serverTimestamp)](#firebase-server-values-increment-servertimestamp)
+- [Firebase 로그인 사용자 관리 (login)](#firebase-로그인-사용자-관리-login)
+- [DatabaseListView 컴포넌트](#databaselistview-컴포넌트-코딩-가이드라인)
+  - [실시간 노드 삭제 감지](#11-실시간-노드-삭제-감지)
+
+---
+
+## 개요
+
 - 본 문서는 SNS 웹 애플리케이션 개발 시 준수해야 할 코딩 가이드라인을 제공합니다.
 
 **⚠️ 중요 원칙**: 웹/앱 클라이언트에서는 **최소한의 정보만 RTDB에 기록**하고, **추가적인 정보 업데이트는 Firebase Cloud Functions 백엔드에서 처리**합니다.
+
+---
+
+# 아이콘 사용 가이드라인
+
+**아이콘을 표시할 때는 항상 lucide-svelte 아이콘을 먼저 고려합니다**
+
+## 핵심 규칙
+
+- ✅ 아이콘이 필요할 때는 **lucide-svelte**를 우선적으로 사용
+- ✅ lucide-svelte는 이미 프로젝트 종속성에 포함되어 있음 ([lucide.dev](https://lucide.dev) 참고)
+- ✅ Tree-shakable하여 번들 크기 최적화에 유리
+- ✅ Svelte 5와 완벽하게 호환됨
+
+## 사용 예시
+
+```svelte
+<script>
+  import { Heart, Share2, MessageCircle } from 'lucide-svelte';
+</script>
+
+<Heart size={24} />
+<Share2 size={20} color="#666" />
+<MessageCircle size={18} strokeWidth={1.5} />
+```
+
+## 주요 Props
+
+| Prop | 타입 | 기본값 | 설명 |
+|------|------|--------|------|
+| `size` | `number \| string` | `24` | 아이콘 크기 (픽셀) |
+| `color` | `string` | `'currentColor'` | 아이콘 색상 (CSS color) |
+| `strokeWidth` | `number` | `2` | 선 굵기 |
+| `class` | `string` | `''` | CSS 클래스 |
+
+## 자주 사용하는 아이콘 예시
+
+```svelte
+<script>
+  import {
+    Heart,           // 좋아요
+    MessageCircle,   // 댓글
+    Share2,          // 공유
+    Bookmark,        // 북마크
+    MoreVertical,    // 더보기 (세로)
+    MoreHorizontal,  // 더보기 (가로)
+    ChevronLeft,     // 뒤로가기
+    ChevronRight,    // 앞으로가기
+    Search,          // 검색
+    Bell,            // 알림
+    User,            // 사용자
+    Settings,        // 설정
+    LogOut,          // 로그아웃
+    Edit,            // 수정
+    Trash2,          // 삭제
+    Plus,            // 추가
+    X,               // 닫기
+    Check,           // 확인
+  } from 'lucide-svelte';
+</script>
+```
+
+## 스타일링 예시
+
+```svelte
+<script>
+  import { Heart } from 'lucide-svelte';
+  let liked = $state(false);
+</script>
+
+<!-- 조건부 색상 변경 -->
+<button onclick={() => liked = !liked}>
+  <Heart
+    size={24}
+    color={liked ? '#ef4444' : '#9ca3af'}
+    fill={liked ? '#ef4444' : 'none'}
+  />
+</button>
+
+<!-- CSS 클래스 사용 -->
+<Heart class="icon-like" />
+
+<style>
+  .icon-like {
+    width: 1.5rem;
+    height: 1.5rem;
+    color: #3b82f6;
+    cursor: pointer;
+    transition: color 0.2s;
+  }
+
+  .icon-like:hover {
+    color: #2563eb;
+  }
+</style>
+```
+
+## 참고 링크
+
+- 사용 가능한 아이콘 목록: [lucide.dev/icons](https://lucide.dev/icons)
+- lucide-svelte 사용법: [lucide.dev/guide/packages/lucide-svelte](https://lucide.dev/guide/packages/lucide-svelte)
+
+---
 
 
 # Firebase Realtime Database 코딩 가이드라인
@@ -614,6 +734,7 @@ import { login } from '$lib/utils/firebase-login-user.svelte.js';
 - **특징**:
   - 자동 스크롤 감지 (컨테이너 스크롤 + window 스크롤)
   - 실시간 데이터 동기화 (`onValue` 기반)
+  - 실시간 노드 삭제 감지 (`onChildRemoved` 기반)
   - Svelte 5 Runes 기반 반응형 상태 관리
   - 커스터마이징 가능한 snippet 지원
 
@@ -1210,12 +1331,239 @@ DatabaseListView는 두 가지 스크롤을 **모두** 감지합니다:
 | 복잡한 레이아웃 | 컨테이너 스크롤 |
 | 모바일 네이티브 느낌 | Body 스크롤 |
 
-## 11. 요약
+## 11. 실시간 노드 삭제 감지
+
+DatabaseListView는 Firebase Realtime Database에서 **노드가 삭제될 때 자동으로 화면에서 제거**하는 기능을 제공합니다.
+
+### 11.1. 개요
+
+- **이벤트**: `onChildRemoved` 리스너 사용
+- **자동 처리**: 삭제된 노드가 감지되면 items 배열에서 자동 제거
+- **메모리 관리**: 삭제된 노드의 `onValue` 리스너도 자동 해제
+- **실시간 동기화**: 다른 사용자가 노드를 삭제해도 즉시 반영
+
+### 11.2. 작동 방식
+
+1. **리스너 설정**:
+   - 초기 데이터 로드 완료 후 `onChildRemoved` 리스너 자동 등록
+   - 초기 `onChildAdded` 리스너와 동일한 쿼리 범위 사용
+   - sortPrefix가 있으면 해당 범위에서만 삭제 감지
+
+2. **삭제 감지**:
+   - Firebase에서 노드가 삭제되면 `onChildRemoved` 이벤트 발생
+   - 삭제된 노드의 key를 기준으로 items 배열에서 해당 아이템 찾기
+   - 해당 아이템을 배열에서 필터링하여 제거
+
+3. **메모리 정리**:
+   - 삭제된 노드의 `onValue` 리스너 해제 (메모리 누수 방지)
+   - 리스너 맵(unsubscribers)에서 해당 항목 제거
+
+4. **UI 업데이트**:
+   - items 배열이 Svelte 5 `$state`로 관리되므로 자동 반응형 업데이트
+   - 화면에서 삭제된 아이템이 즉시 사라짐
+
+### 11.3. 사용 예시
+
+#### 예시 1: 게시글 삭제 시 자동 제거
+
+```svelte
+<script>
+  import DatabaseListView from '$lib/components/DatabaseListView.svelte';
+  import { deletePost } from '$lib/services/forum.js';
+
+  async function handleDelete(postId) {
+    // 게시글 삭제 API 호출
+    const result = await deletePost(postId);
+
+    if (result.success) {
+      // ✅ DatabaseListView가 자동으로 삭제를 감지하여 화면에서 제거
+      // 따로 items 배열을 수동으로 업데이트할 필요 없음!
+      console.log('게시글이 삭제되었습니다. 자동으로 화면에서 제거됩니다.');
+    }
+  }
+</script>
+
+<DatabaseListView
+  path="posts"
+  orderBy="order"
+  sortPrefix="community-"
+  pageSize={20}
+>
+  {#snippet item(itemData)}
+    <div class="post-card">
+      <h3>{itemData.data.title}</h3>
+      <p>{itemData.data.content}</p>
+      <button onclick={() => handleDelete(itemData.key)}>
+        삭제
+      </button>
+    </div>
+  {/snippet}
+</DatabaseListView>
+```
+
+**결과**:
+- ✅ 사용자가 "삭제" 버튼 클릭 → Firebase에서 노드 삭제
+- ✅ `onChildRemoved` 리스너가 삭제 감지
+- ✅ items 배열에서 해당 게시글 자동 제거
+- ✅ 화면에서 즉시 사라짐 (새로고침 불필요)
+
+#### 예시 2: 다른 사용자의 삭제도 실시간 반영
+
+```svelte
+<script>
+  import DatabaseListView from '$lib/components/DatabaseListView.svelte';
+</script>
+
+<!-- 채팅 메시지 목록 -->
+<DatabaseListView
+  path="chat-messages"
+  orderBy="createdAt"
+  pageSize={50}
+>
+  {#snippet item(itemData)}
+    <div class="message">
+      <p>{itemData.data.text}</p>
+      <span>{itemData.data.author}</span>
+    </div>
+  {/snippet}
+</DatabaseListView>
+```
+
+**결과**:
+- ✅ 사용자 A가 메시지 삭제 → 사용자 B의 화면에서도 즉시 사라짐
+- ✅ 실시간 협업 환경에서 자동 동기화
+- ✅ 수동으로 폴링하거나 새로고침할 필요 없음
+
+### 11.4. 내부 구현 상세
+
+DatabaseListView는 다음과 같이 삭제를 처리합니다:
+
+```typescript
+// 1. onChildRemoved 리스너 등록 (초기 로드 완료 후)
+function setupChildRemovedListener() {
+  const baseRef = dbRef(database, path);
+
+  // sortPrefix가 있으면 범위 쿼리 사용
+  let dataQuery;
+  if (sortPrefix) {
+    dataQuery = query(
+      baseRef,
+      orderByChild(orderBy),
+      startAt(sortPrefix),
+      endAt(sortPrefix + '\uf8ff')
+    );
+  } else {
+    // sortPrefix가 없으면 startAt(false) 사용
+    dataQuery = query(
+      baseRef,
+      orderByChild(orderBy),
+      startAt(false)
+    );
+  }
+
+  // 2. 삭제 이벤트 감지
+  childRemovedUnsubscribe = onChildRemoved(dataQuery, (snapshot) => {
+    const removedKey = snapshot.key;
+
+    // 3. items 배열에서 제거
+    items = items.filter(item => item.key !== removedKey);
+
+    // 4. 해당 아이템의 onValue 리스너 해제 (메모리 관리)
+    const unsubscribe = unsubscribers.get(removedKey);
+    if (unsubscribe) {
+      unsubscribe();
+      unsubscribers.delete(removedKey);
+    }
+  });
+}
+
+// 5. 컴포넌트 언마운트 시 리스너 정리
+$effect(() => {
+  return () => {
+    if (childRemovedUnsubscribe) {
+      childRemovedUnsubscribe();
+      childRemovedUnsubscribe = null;
+    }
+  };
+});
+```
+
+### 11.5. 메모리 관리의 중요성
+
+**왜 onValue 리스너도 해제해야 하나요?**
+
+1. **메모리 누수 방지**:
+   - 삭제된 노드의 `onValue` 리스너가 계속 실행되면 메모리 낭비
+   - 장시간 사용 시 메모리 사용량이 계속 증가
+
+2. **네트워크 비용 절감**:
+   - Firebase는 각 리스너마다 실시간 연결 유지
+   - 불필요한 리스너는 즉시 해제하여 비용 절감
+
+3. **성능 최적화**:
+   - 리스너가 많을수록 이벤트 처리 오버헤드 증가
+   - 사용하지 않는 리스너는 제거하여 성능 향상
+
+**DatabaseListView는 자동으로 처리합니다:**
+- ✅ 삭제된 노드의 리스너 자동 해제
+- ✅ unsubscribers 맵에서 자동 제거
+- ✅ 메모리 누수 걱정 없음
+
+### 11.6. 주의사항
+
+#### ⚠️ onChildRemoved는 쿼리 범위 내에서만 작동
+
+sortPrefix를 사용하는 경우, **해당 범위 내에서 삭제된 노드만 감지**합니다:
+
+```svelte
+<!-- community 카테고리의 게시글만 표시 -->
+<DatabaseListView
+  path="posts"
+  orderBy="order"
+  sortPrefix="community-"
+  pageSize={20}
+/>
+```
+
+**결과**:
+- ✅ `order`가 `"community-"`로 시작하는 게시글 삭제 → 감지됨
+- ❌ `order`가 `"qna-"`로 시작하는 게시글 삭제 → 감지 안 됨 (범위 밖)
+
+#### ⚠️ 초기 로드 완료 후에만 작동
+
+`onChildRemoved` 리스너는 **초기 데이터 로드가 완료된 후에만 등록**됩니다:
+
+1. **초기 로드 단계**: `onChildAdded` 리스너로 초기 데이터 수집
+2. **로드 완료 후**: `setupChildRemovedListener()` 호출
+3. **실시간 감지**: 이후 삭제된 노드 자동 감지
+
+**이유**: 초기 로드 중에는 아직 화면에 없는 데이터이므로 삭제 감지가 불필요
+
+### 11.7. 장점
+
+- ✅ **자동 동기화**: 수동으로 배열을 관리할 필요 없음
+- ✅ **실시간 반영**: 다른 사용자의 삭제도 즉시 반영
+- ✅ **메모리 안전**: 자동 리스너 해제로 메모리 누수 방지
+- ✅ **코드 간결화**: 삭제 후 UI 업데이트 로직 불필요
+- ✅ **일관성 보장**: Firebase 데이터와 화면이 항상 동기화
+
+### 11.8. 실제 사용 사례
+
+- **게시판**: 게시글 삭제 시 목록에서 자동 제거
+- **채팅**: 메시지 삭제 시 채팅창에서 자동 제거
+- **댓글**: 댓글 삭제 시 댓글 목록에서 자동 제거
+- **사용자 목록**: 사용자 탈퇴 시 목록에서 자동 제거
+- **알림**: 알림 삭제 시 알림 목록에서 자동 제거
+
+---
+
+## 12. 요약
 
 - ✅ **자동 null/undefined 필터링**: sortPrefix가 없으면 startAt(false) 자동 적용
 - ✅ **sortPrefix 지원**: prefix 기반 범위 쿼리 지원
 - ✅ **두 가지 스크롤 방식**: Body 스크롤 (전체 페이지) vs 컨테이너 스크롤 (제한된 영역)
 - ✅ **자동 감지**: 두 방식 모두 자동으로 감지하여 무한 스크롤 작동
+- ✅ **실시간 노드 삭제**: onChildRemoved로 삭제된 노드 자동 제거 및 리스너 정리
 - ✅ **높이 설정 필수**: 컨테이너 스크롤 사용 시 명시적인 높이 설정 필요
 - ✅ **Flexbox 활용**: flex를 사용하면 동적 높이 계산 가능
 - ✅ **용도별 선택**: 페이지 구조와 요구사항에 맞는 방식 선택

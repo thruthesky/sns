@@ -298,5 +298,14 @@
   "error.storage.objectNotFound": "File not found.",
   "error.storage.retryLimitExceeded": "File upload error. Please try again.",
   "error.storage.quotaExceeded": "Storage quota exceeded.",
-  "error.storage.canceled": "File upload canceled."
+  "error.storage.canceled": "File upload canceled.",
+  "게시글수정": "Edit Post",
+  "게시글수정완료": "Post has been updated.",
+  "게시글삭제확인": "Are you sure you want to delete this post?",
+  "게시글삭제완료": "Post has been deleted.",
+  "댓글이달려있어수정불가": "Cannot edit post with comments.",
+  "댓글이달려있어삭제불가": "Cannot delete post with comments.",
+  "제목과내용을입력하세요": "Please enter title and content.",
+  "수정불가": "Cannot Edit",
+  "댓글이달려있어수정불가메시지": "Cannot edit the post because there are comments.\nPlease delete the comments first before editing."
 }

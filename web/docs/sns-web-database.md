@@ -24,7 +24,7 @@
 - [Firebase Cloud Functions 개발 가이드](./sns-firebase-cloud-functions.md) - Cloud Functions 구현 예제
 - [좋아요 개발 가이드](./sns-web-likes.md) - 좋아요 기능 구현 예제
 - [댓글 개발 가이드](./sns-web-comments.md) - 댓글 기능 구현 예제
-- [게시판 개발 가이드](./sns-web-forum.md) - 게시판 기능 구현 예제
+- [게시판 개발 가이드](./sns-web-post.md) - 게시판 기능 구현 예제
 
 ### 🔀 클라이언트와 백엔드의 데이터 책임 구분
 
@@ -310,7 +310,7 @@ Firebase Authentication의 다음 필드들은 `/users/<uid>` 노드에 **저장
 
 지원 카테고리: `community` (커뮤니티), `qna` (질문과 답변), `news` (뉴스), `market` (회원장터)
 
-카테고리 상수 정의 및 사용법은 [게시판 개발 가이드](./sns-web-forum.md)를 참고하세요.
+카테고리 상수 정의 및 사용법은 [게시판 개발 가이드](./sns-web-post.md)를 참고하세요.
 
 ### 클라이언트/서버 역할 분리
 
@@ -320,7 +320,7 @@ Firebase Authentication의 다음 필드들은 `/users/<uid>` 노드에 **저장
 
 ### 관련 가이드
 
-- **📖 구현 가이드**: [게시판 개발 가이드](./sns-web-forum.md) - 게시글 작성, 조회, 수정, 삭제, 카테고리 관리
+- **📖 구현 가이드**: [게시판 개발 가이드](./sns-web-post.md) - 게시글 작성, 조회, 수정, 삭제, 카테고리 관리
 - **📖 좋아요 기능**: [좋아요 개발 가이드](./sns-web-likes.md) - 게시글/댓글 좋아요 추가/취소, likeCount 관리
 - **📖 보안 규칙**: [Firebase 보안 규칙 개발 가이드](./sns-web-security.md) - 게시판 접근 제어, 권한 관리
 
@@ -477,7 +477,7 @@ post-abc123-00002,0000,000,...  # 두 번째 댓글
 
 ### 관련 가이드
 
-- **📖 게시글 기능**: [게시판 개발 가이드](./sns-web-forum.md) - 게시글 작성, 수정, 삭제
+- **📖 게시글 기능**: [게시판 개발 가이드](./sns-web-post.md) - 게시글 작성, 수정, 삭제
 - **📖 댓글 기능**: [댓글 개발 가이드](./sns-web-comments.md) - 댓글 작성, 삭제
 - **📖 Cloud Functions**: [Firebase Cloud Functions 개발 가이드](./sns-firebase-cloud-functions.md) - 트리거 함수 구현
 
@@ -555,7 +555,7 @@ post-abc123-00002,0000,000,...  # 두 번째 댓글
 
 ### 관련 가이드
 
-- **📖 게시글 기능**: [게시판 개발 가이드](./sns-web-forum.md) - 게시글 작성, 수정, 삭제
+- **📖 게시글 기능**: [게시판 개발 가이드](./sns-web-post.md) - 게시글 작성, 수정, 삭제
 - **📖 댓글 기능**: [댓글 개발 가이드](./sns-web-comments.md) - 댓글 작성, 삭제
 - **📖 Cloud Functions**: [Firebase Cloud Functions 개발 가이드](./sns-firebase-cloud-functions.md) - 트리거 함수 구현
 - **📖 보안 규칙**: [Firebase 보안 규칙 개발 가이드](./sns-web-security.md) - categories 읽기 권한 설정
@@ -645,7 +645,7 @@ post-abc123-00002,0000,000,...  # 두 번째 댓글
 **구체적인 예시와 구현 방법은 각 기능별 개발 가이드 문서를 참고하세요:**
 - [좋아요 개발 가이드](./sns-web-likes.md) - 좋아요 기능 클라이언트/백엔드 역할 구분 예시
 - [댓글 개발 가이드](./sns-web-comments.md) - 댓글 기능 구현 예시
-- [게시판 개발 가이드](./sns-web-forum.md) - 게시판 기능 구현 예시
+- [게시판 개발 가이드](./sns-web-post.md) - 게시판 기능 구현 예시
 - [Firebase Cloud Functions 개발 가이드](./sns-firebase-cloud-functions.md) - 백엔드 로직 구현 상세 가이드
 
 ### 4. 보안 규칙
@@ -673,7 +673,7 @@ post-abc123-00002,0000,000,...  # 두 번째 댓글
 전체 데이터베이스 구조와 관련된 상세한 개발 가이드:
 
 - **[사용자 관리](./sns-web-user.md)** - 사용자 프로필, 속성 분리, Cloud Functions
-- **[게시판](./sns-web-forum.md)** - 게시글 작성, 수정, 삭제
+- **[게시판](./sns-web-post.md)** - 게시글 작성, 수정, 삭제
 - **[좋아요](./sns-web-likes.md)** - 게시글/댓글 좋아요 기능, Cloud Functions 연동
 - **[댓글](./sns-web-comments.md)** - 댓글 트리 구조, order 필드, 대댓글
 - **[카테고리 통계](#카테고리-통계-categories)** - 게시글/댓글 개수 자동 관리, Cloud Functions 트리거

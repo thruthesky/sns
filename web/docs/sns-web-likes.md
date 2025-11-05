@@ -568,5 +568,5 @@ export interface ToggleLikeParams {
 
 - [Firebase Realtime Database 공식 문서](https://firebase.google.com/docs/database)
 - [Firebase Cloud Functions 공식 문서](https://firebase.google.com/docs/functions)
-- [게시판 개발 가이드](./sns-web-forum.md)
+- [게시판 개발 가이드](./sns-web-post.md)
 - [데이터베이스 구조 가이드](./sns-web-database.md)

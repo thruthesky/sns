@@ -12,8 +12,10 @@
     listenToComments,
   } from "../lib/services/comment.js";
   import { toggleLike } from "../lib/services/like.js";
+  import { updatePost, deletePost } from "../lib/services/forum.js";
   import { onMount } from "svelte";
   import CommentItem from "./CommentItem.svelte";
+  import { Edit, Trash2 } from "lucide-svelte";
   import type { PostWithId, PostCategory } from "../lib/types/post";
   import type { CommentWithId } from "../lib/types/comment";
   import type { FirebaseKey } from "../lib/types/common";
@@ -51,6 +53,15 @@
   let isCommentDialogOpen = $state<boolean>(false);
   let commentContent = $state<string>("");
   let isSubmitting = $state<boolean>(false);
+
+  // 게시글 수정 모달 상태 관리
+  let isEditDialogOpen = $state<boolean>(false);
+  let editTitle = $state<string>("");
+  let editContent = $state<string>("");
+  let isEditSubmitting = $state<boolean>(false);
+
+  // AlertDialog 상태 관리 (댓글이 있을 때 수정 불가 알림)
+  let isAlertDialogOpen = $state<boolean>(false);
 
   // 댓글 목록 상태 관리
   // CommentWithId[] 타입을 명시하여 타입 안전성 확보
@@ -209,6 +220,128 @@
     isCommentDialogOpen = false;
     commentContent = "";
   }
+
+  /**
+   * 게시글 수정 버튼 클릭 핸들러
+   */
+  function handleEdit() {
+    // 1. 로그인 확인
+    if (!userId) {
+      alert($t("로그인필요"));
+      window.location.href = "/user/login";
+      return;
+    }
+
+    // 2. 댓글이 있는지 확인
+    if (comments.length > 0) {
+      // 댓글이 있으면 AlertDialog 표시
+      isAlertDialogOpen = true;
+      return;
+    }
+
+    // 3. 현재 게시글 데이터를 편집 필드에 채움
+    editTitle = itemData.title;
+    editContent = itemData.content;
+
+    // 4. 모달 열기
+    isEditDialogOpen = true;
+  }
+
+  /**
+   * AlertDialog 확인 버튼 클릭 핸들러
+   */
+  function handleAlertConfirm() {
+    isAlertDialogOpen = false;
+  }
+
+  /**
+   * 게시글 수정 취소 핸들러
+   */
+  function handleEditCancel() {
+    isEditDialogOpen = false;
+    editTitle = "";
+    editContent = "";
+  }
+
+  /**
+   * 게시글 수정 제출 핸들러
+   */
+  async function handleEditSubmit() {
+    // 1. 로그인 확인
+    if (!userId) {
+      showToast($t("로그인필요"), "error");
+      return;
+    }
+
+    // 2. 제목과 내용 검증
+    if (!editTitle.trim() || !editContent.trim()) {
+      showToast($t("제목과내용을입력하세요"), "error");
+      return;
+    }
+
+    // 3. 수정 시작
+    isEditSubmitting = true;
+
+    try {
+      // 4. Firebase에 게시글 수정 (commentCount 체크 포함)
+      const result = await updatePost(itemData.postId, {
+        title: editTitle.trim(),
+        content: editContent.trim(),
+      });
+
+      // 5. 결과 처리
+      if (result.success) {
+        showToast($t("게시글수정완료"), "success");
+        isEditDialogOpen = false;
+        editTitle = "";
+        editContent = "";
+      } else {
+        // result.error는 i18n 키 (예: '댓글이달려있어수정불가', 'error.db.permissionDenied')
+        showToast($t(result.error), "error");
+      }
+    } catch (error: unknown) {
+      // 예상치 못한 에러 발생 시 기본 에러 메시지 표시
+      console.error("게시글 수정 오류:", error);
+      showToast($t("error.unknown"), "error");
+    } finally {
+      isEditSubmitting = false;
+    }
+  }
+
+  /**
+   * 게시글 삭제 버튼 클릭 핸들러
+   */
+  async function handleDelete() {
+    // 1. 로그인 확인
+    if (!userId) {
+      alert($t("로그인필요"));
+      window.location.href = "/user/login";
+      return;
+    }
+
+    // 2. 삭제 확인 다이얼로그
+    if (!confirm($t("게시글삭제확인"))) {
+      return;
+    }
+
+    try {
+      // 3. Firebase에서 게시글 삭제 (commentCount 체크 포함)
+      const result = await deletePost(itemData.postId);
+
+      // 4. 결과 처리
+      if (result.success) {
+        showToast($t("게시글삭제완료"), "success");
+        // 게시글이 삭제되면 자동으로 목록에서 사라짐 (실시간 동기화)
+      } else {
+        // result.error는 i18n 키 (예: '댓글이달려있어삭제불가', 'error.db.permissionDenied')
+        showToast($t(result.error), "error");
+      }
+    } catch (error: unknown) {
+      // 예상치 못한 에러 발생 시 기본 에러 메시지 표시
+      console.error("게시글 삭제 오류:", error);
+      showToast($t("error.unknown"), "error");
+    }
+  }
 </script>
 
 <div class="post-item">
@@ -277,11 +410,11 @@
     <!-- 오른쪽 버튼 그룹: 수정, 삭제 (작성자만 표시) -->
     <div class="post-actions-right">
       {#if userId === itemData.uid}
-        <button class="action-btn edit icon-only" title={$t("수정")}>
-          ✏️
+        <button class="action-btn edit icon-only" title={$t("게시글수정")} onclick={handleEdit}>
+          <Edit size={18} />
         </button>
-        <button class="action-btn delete icon-only" title={$t("삭제")}>
-          🗑️
+        <button class="action-btn delete icon-only" title={$t("삭제")} onclick={handleDelete}>
+          <Trash2 size={18} />
         </button>
       {/if}
     </div>
@@ -334,6 +467,19 @@
   {/if}
 </div>
 
+<!-- AlertDialog: 댓글이 있어서 수정할 수 없다는 알림 -->
+{#if isAlertDialogOpen}
+  <alert-dialog
+    open="true"
+    type="error"
+    title={$t("수정불가")}
+    message={$t("댓글이달려있어수정불가메시지")}
+    confirmText={$t("확인")}
+    onconfirm={handleAlertConfirm}
+    onclose={handleAlertConfirm}
+  ></alert-dialog>
+{/if}
+
 <!-- 댓글 작성 모달 다이얼로그 -->
 {#if isCommentDialogOpen}
   <div class="modal-backdrop" onclick={handleCommentCancel}>
@@ -365,6 +511,50 @@
           disabled={isSubmitting}
         >
           {isSubmitting ? $t("전송중") : $t("전송")}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- 게시글 수정 모달 다이얼로그 -->
+{#if isEditDialogOpen}
+  <div class="modal-backdrop" onclick={handleEditCancel}>
+    <div class="modal" onclick={(e) => e.stopPropagation()}>
+      <!-- 모달 헤더 -->
+      <div class="modal-header">
+        <h2>{$t("게시글수정")}</h2>
+        <button class="btn-close" onclick={handleEditCancel}>×</button>
+      </div>
+
+      <!-- 모달 내용 -->
+      <div class="modal-content edit-form">
+        <input
+          type="text"
+          bind:value={editTitle}
+          placeholder={$t("제목입력")}
+          autofocus
+          class="edit-title-input"
+        />
+        <textarea
+          bind:value={editContent}
+          placeholder={$t("내용입력")}
+          rows="10"
+          class="edit-content-textarea"
+        ></textarea>
+      </div>
+
+      <!-- 모달 푸터 -->
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick={handleEditCancel}>
+          {$t("취소")}
+        </button>
+        <button
+          class="btn-submit"
+          onclick={handleEditSubmit}
+          disabled={isEditSubmitting}
+        >
+          {isEditSubmitting ? $t("저장중") : $t("저장")}
         </button>
       </div>
     </div>

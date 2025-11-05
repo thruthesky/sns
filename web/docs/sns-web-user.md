@@ -7,7 +7,7 @@ SNS 웹 프로젝트에서 사용자 관리는 Firebase의 Authentication과 Rea
 - [Svelte Custom Elements 개발 가이드](./sns-custom-elements.md)
 - [i18n 다국어 지원 가이드](./sns-web-i18n.md)
 - [친구 관계 관리 가이드](./sns-web-friends.md)
-- [게시판 개발 가이드](./sns-web-forum.md)
+- [게시판 개발 가이드](./sns-web-post.md)
 
 ---
 
