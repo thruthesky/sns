@@ -1,0 +1,11 @@
+# ESLint ignore 파일
+# 테스트 파일은 프로덕션 코드가 아니므로 린팅에서 제외
+
+# Test 폴더 전체 제외
+test/**
+
+# 빌드 결과물 제외
+lib/**
+
+# Node modules
+node_modules/**

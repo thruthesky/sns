@@ -18,7 +18,15 @@
   - [5.5 핵심 함수: onChatMessageCreated](#55-핵심-함수-onchatmessagecreated)
 - [6. 설계 철학](#6-설계-철학)
 - [7. 주의사항](#7-주의사항)
-- [8. 관련 문서](#8-관련-문서)
+- [8. Unit Test 가이드](#8-unit-test-가이드)
+  - [8.1 테스트 전략 개요](#81-테스트-전략-개요)
+  - [8.2 리팩토링된 프로젝트 구조](#82-리팩토링된-프로젝트-구조)
+  - [8.3 함수 로직 분리 철학](#83-함수-로직-분리-철학)
+  - [8.4 테스트 환경 설정](#84-테스트-환경-설정)
+  - [8.5 테스트 실행 방법](#85-테스트-실행-방법)
+  - [8.6 Unit Test 예제](#86-unit-test-예제)
+  - [8.7 Integration Test 예제](#87-integration-test-예제)
+- [9. 관련 문서](#9-관련-문서)
 
 ---
 
@@ -107,10 +115,24 @@
 firebase/
 ├── functions/
 │   ├── src/
-│   │   ├── index.ts              # 메인 진입점 (트리거 함수 정의)
-│   │   ├── functions.ts          # 비즈니스 로직 함수들
-│   │   ├── interfaces.ts         # TypeScript 인터페이스 정의
-│   │   └── ... (기타 모듈)
+│   │   ├── index.ts              # 메인 진입점 (이벤트 핸들러만 정의)
+│   │   ├── types/
+│   │   │   └── index.ts          # TypeScript 타입 정의 (PostData, CommentData 등)
+│   │   ├── handlers/             # 비즈니스 로직 핸들러
+│   │   │   ├── post.handler.ts   # 게시글 관련 비즈니스 로직
+│   │   │   ├── comment.handler.ts # 댓글 관련 비즈니스 로직
+│   │   │   ├── like.handler.ts   # 좋아요 관련 비즈니스 로직
+│   │   │   └── user.handler.ts   # 사용자 관련 비즈니스 로직
+│   │   └── utils/                # 순수 함수 유틸리티
+│   │       ├── like.utils.ts     # 좋아요 ID 파싱 등
+│   │       └── post.utils.ts     # 게시글 조회 유틸리티
+│   ├── test/                     # 테스트 파일
+│   │   ├── unit/                 # Unit Tests (순수 함수 테스트)
+│   │   │   └── like.utils.test.ts
+│   │   └── integration/          # Integration Tests (핸들러 테스트)
+│   │       ├── test-setup.ts     # firebase-functions-test 설정
+│   │       ├── onPostCreate.test.ts
+│   │       └── onLike.test.ts
 │   ├── package.json              # npm 의존성
 │   └── tsconfig.json             # TypeScript 설정
 ├── firebase.json                 # Firebase 프로젝트 설정
@@ -119,11 +141,14 @@ firebase/
 
 ### 파일별 역할
 
-| 파일 | 역할 | 설명 |
+| 파일/폴더 | 역할 | 설명 |
 |------|------|------|
-| `index.ts` | **트리거 정의** | 어떤 경로에서 어떤 이벤트가 발생하면 함수를 실행할지 정의 |
-| `functions.ts` | **비즈니스 로직** | 실제 데이터 처리 및 RTDB 업데이트 로직 구현 |
-| `interfaces.ts` | **타입 정의** | TypeScript 인터페이스 및 타입 선언 |
+| `index.ts` | **이벤트 핸들러** | Gen 2 트리거 함수만 정의 (5-10줄), 비즈니스 로직은 handlers/로 위임 |
+| `types/` | **타입 정의** | TypeScript 인터페이스 및 타입 선언 (PostData, CommentData 등) |
+| `handlers/` | **비즈니스 로직** | 실제 데이터 처리 및 RTDB 업데이트 로직 구현 (firebase-admin 의존) |
+| `utils/` | **순수 함수** | Firebase 의존성 없는 순수 함수 (parseLikeId 등) |
+| `test/unit/` | **Unit Tests** | 순수 함수 및 비즈니스 로직 테스트 (Emulator 불필요) |
+| `test/integration/` | **Integration Tests** | firebase-functions-test로 이벤트 핸들러 테스트 |
 
 ---
 
@@ -738,7 +763,406 @@ export const onLikeCreated = functions
 
 ---
 
-## 8. 관련 문서
+## 8. Unit Test 가이드
+
+### 8.1 테스트 전략 개요
+
+Firebase Cloud Functions의 테스트는 **두 가지 접근 방식**을 사용합니다:
+
+#### 접근 방식 1: Unit Tests (단위 테스트)
+- **대상**: 순수 함수 (`utils/`) 및 비즈니스 로직 (`handlers/`)
+- **특징**: Firebase 의존성 최소화, 빠른 실행
+- **도구**: Mocha + Chai
+- **Emulator 필요 여부**: ❌ 불필요
+
+#### 접근 방식 2: Integration Tests (통합 테스트)
+- **대상**: 이벤트 핸들러 (`index.ts`의 트리거 함수)
+- **특징**: firebase-functions-test로 이벤트 래핑
+- **도구**: firebase-functions-test + Mocha + Chai
+- **Emulator 필요 여부**: ❌ 불필요 (오프라인 모드)
+
+### 8.2 리팩토링된 프로젝트 구조
+
+#### 코드 분리 아키텍처
+
+```
+src/
+├── index.ts          # 📌 이벤트 핸들러 (Thin Wrapper)
+│                     # - Gen 2 트리거 함수만 정의
+│                     # - 5-10줄의 간단한 라우팅 로직
+│                     # - 복잡한 로직 없음
+│
+├── handlers/         # 🔧 비즈니스 로직 (Business Logic)
+│   ├── post.handler.ts
+│   ├── comment.handler.ts
+│   ├── like.handler.ts
+│   └── user.handler.ts
+│                     # - 실제 데이터 처리 로직
+│                     # - firebase-admin 의존
+│                     # - 테스트 시 모킹 필요 (선택사항)
+│
+├── utils/            # 🎯 순수 함수 (Pure Functions)
+│   ├── like.utils.ts
+│   └── post.utils.ts
+│                     # - Firebase 의존성 없음
+│                     # - 입력 → 출력 변환만 수행
+│                     # - 테스트 시 모킹 불필요
+│
+└── types/            # 📦 타입 정의
+    └── index.ts
+```
+
+#### index.ts 예제 (리팩토링 후)
+
+```typescript
+// ✅ 리팩토링 후: 이벤트 핸들러만 정의 (5-10줄)
+import { onValueCreated } from "firebase-functions/v2/database";
+import { handleLikeCreate } from "./handlers/like.handler";
+
+/**
+ * 좋아요 추가 시 게시글/댓글의 likeCount 자동 업데이트
+ */
+export const onLike = onValueCreated("/likes/{likeId}", async (event) => {
+  const likeId = event.params.likeId as string;
+
+  logger.info("좋아요 추가 감지", { likeId });
+
+  // 비즈니스 로직 핸들러 호출
+  return await handleLikeCreate(likeId);
+});
+```
+
+### 8.3 함수 로직 분리 철학
+
+#### 왜 로직을 분리하는가?
+
+**문제점 (리팩토링 전)**:
+- ❌ `index.ts`에 모든 로직이 집중 (500+ 줄)
+- ❌ 각 트리거 함수가 50-100줄씩 차지
+- ❌ 테스트하기 어려움 (Firebase Event 객체 모킹 필요)
+- ❌ 코드 재사용 불가능
+- ❌ 유지보수 어려움
+
+**해결책 (리팩토링 후)**:
+- ✅ `index.ts`는 이벤트 라우팅만 담당 (5-10줄)
+- ✅ `handlers/`에 비즈니스 로직 분리
+- ✅ `utils/`에 순수 함수 분리
+- ✅ 각 함수를 독립적으로 테스트 가능
+- ✅ 코드 재사용 가능
+- ✅ 유지보수 용이
+
+#### 분리 패턴
+
+```typescript
+// ❌ Before: 모든 로직이 index.ts에 (50+ 줄)
+export const onLike = onValueCreated("/likes/{likeId}", async (event) => {
+  const likeId = event.params.likeId as string;
+
+  // 50줄의 복잡한 로직...
+  const parsed = parseLikeId(likeId);
+  if (!parsed) return;
+
+  const { type, nodeId, uid } = parsed;
+
+  if (type === "post") {
+    const postRef = await getPostReference(nodeId);
+    await postRef.child("likeCount").set(increment(1));
+  }
+
+  const updates = {};
+  updates["stats/counters/like"] = increment(1);
+  await db.ref().update(updates);
+  // ... 더 많은 로직
+});
+```
+
+```typescript
+// ✅ After: 로직 분리 (5-10줄)
+
+// 📁 index.ts (이벤트 핸들러)
+export const onLike = onValueCreated("/likes/{likeId}", async (event) => {
+  const likeId = event.params.likeId as string;
+  return await handleLikeCreate(likeId);  // 비즈니스 로직으로 위임
+});
+
+// 📁 handlers/like.handler.ts (비즈니스 로직)
+export async function handleLikeCreate(likeId: string) {
+  const parsed = parseLikeId(likeId);  // utils에서 가져온 순수 함수
+  if (!parsed) return { success: false, error: "Invalid likeId" };
+
+  const { type, nodeId, uid } = parsed;
+
+  // 실제 데이터 처리 로직...
+  return { success: true, type, nodeId, uid };
+}
+
+// 📁 utils/like.utils.ts (순수 함수)
+export function parseLikeId(likeId: string): ParsedLikeId | null {
+  // likeId 파싱 로직 (Firebase 의존성 없음)
+  const firstDashIndex = likeId.indexOf("-");
+  // ...
+  return { type, nodeId, uid };
+}
+```
+
+### 8.4 테스트 환경 설정
+
+#### 8.4.1 의존성 설치
+
+```bash
+cd firebase/functions
+npm install --save-dev mocha chai @types/mocha @types/chai ts-node
+```
+
+**이미 설치된 패키지**:
+- `firebase-functions-test@^3.1.0` (Integration Test용)
+
+#### 8.4.2 테스트 스크립트 추가
+
+`package.json`에 다음 스크립트를 추가합니다:
+
+```json
+{
+  "scripts": {
+    "test": "mocha --require ts-node/register 'test/**/*.test.ts' --timeout 10000",
+    "test:unit": "mocha --require ts-node/register 'test/unit/**/*.test.ts' --timeout 5000",
+    "test:integration": "mocha --require ts-node/register 'test/integration/**/*.test.ts' --timeout 10000",
+    "test:watch": "mocha --require ts-node/register 'test/**/*.test.ts' --watch --watch-extensions ts"
+  }
+}
+```
+
+#### 8.4.3 테스트 폴더 구조
+
+```
+test/
+├── unit/                          # Unit Tests
+│   └── like.utils.test.ts         # parseLikeId 함수 테스트
+└── integration/                   # Integration Tests
+    ├── test-setup.ts              # firebase-functions-test 설정
+    ├── onPostCreate.test.ts       # onPostCreate 핸들러 테스트
+    └── onLike.test.ts             # onLike 핸들러 테스트
+```
+
+### 8.5 테스트 실행 방법
+
+#### 전체 테스트 실행
+
+```bash
+npm run test
+```
+
+**출력 예시**:
+```
+  parseLikeId - likeId 파싱 함수
+    ✅ 정상 케이스
+      ✓ 게시글 좋아요 ID를 올바르게 파싱한다 (단순한 형식)
+      ✓ 댓글 좋아요 ID를 올바르게 파싱한다 (단순한 형식)
+      ✓ nodeId에 하이픈(-)이 포함된 경우를 올바르게 처리한다
+      ✓ nodeId에 복잡한 하이픈(-)이 포함된 경우를 올바르게 처리한다
+      ✓ 댓글 좋아요에서도 복잡한 nodeId 하이픈 처리가 정상 작동한다
+    ❌ 에러 케이스
+      ✓ 하이픈이 없는 likeId는 null을 반환한다
+      ✓ 잘못된 type은 null을 반환한다
+      ✓ type만 있고 nodeId와 uid가 없는 경우 null을 반환한다
+      ✓ type과 nodeId만 있고 uid가 없는 경우 null을 반환한다
+      ✓ 빈 문자열은 null을 반환한다
+      ✓ type 다음에 하이픈이 하나만 있는 경우 null을 반환한다
+    🔍 경계값 테스트
+      ✓ 최소한의 유효한 likeId를 파싱한다
+      ✓ 매우 긴 nodeId와 uid를 처리한다
+
+  13 passing (11ms)
+```
+
+#### Unit Tests만 실행
+
+```bash
+npm run test:unit
+```
+
+#### Integration Tests만 실행
+
+```bash
+npm run test:integration
+```
+
+#### Watch 모드 (파일 변경 시 자동 재실행)
+
+```bash
+npm run test:watch
+```
+
+### 8.6 Unit Test 예제
+
+#### 8.6.1 순수 함수 테스트 (utils/)
+
+**파일**: `test/unit/like.utils.test.ts`
+
+```typescript
+/**
+ * Unit Test: like.utils.ts
+ * parseLikeId 함수의 순수 함수 테스트
+ *
+ * Mocking 불필요: 순수 함수로 외부 의존성이 없음
+ */
+
+import { expect } from "chai";
+import { parseLikeId } from "../../src/utils/like.utils";
+
+describe("parseLikeId - likeId 파싱 함수", () => {
+  describe("✅ 정상 케이스", () => {
+    it("게시글 좋아요 ID를 올바르게 파싱한다 (단순한 형식)", () => {
+      const likeId = "post-abc123-user456";
+      const result = parseLikeId(likeId);
+
+      expect(result).to.not.be.null;
+      expect(result?.type).to.equal("post");
+      expect(result?.nodeId).to.equal("abc123");
+      expect(result?.uid).to.equal("user456");
+    });
+
+    it("nodeId에 복잡한 하이픈(-)이 포함된 경우를 올바르게 처리한다", () => {
+      // Firebase push() 키는 하이픈을 포함할 수 있음
+      const likeId = "post-OdEWc-SaDELU2Y51FDy-zodDYjqcmfb5WHi1rVYrUJi0d2j2-user123abc456";
+      const result = parseLikeId(likeId);
+
+      expect(result).to.not.be.null;
+      expect(result?.type).to.equal("post");
+      expect(result?.nodeId).to.equal("OdEWc-SaDELU2Y51FDy-zodDYjqcmfb5WHi1rVYrUJi0d2j2");
+      expect(result?.uid).to.equal("user123abc456");
+    });
+  });
+
+  describe("❌ 에러 케이스", () => {
+    it("하이픈이 없는 likeId는 null을 반환한다", () => {
+      const likeId = "invalidlikeid";
+      const result = parseLikeId(likeId);
+
+      expect(result).to.be.null;
+    });
+
+    it("잘못된 type은 null을 반환한다", () => {
+      const likeId = "invalid-abc123-user456";
+      const result = parseLikeId(likeId);
+
+      expect(result).to.be.null;
+    });
+  });
+});
+```
+
+**테스트 실행**:
+```bash
+npm run test:unit
+```
+
+**테스트 커버리지**:
+- ✅ 정상 케이스 (5 tests)
+- ❌ 에러 케이스 (6 tests)
+- 🔍 경계값 테스트 (2 tests)
+- **총 13개 테스트, 모두 통과**
+
+### 8.7 Integration Test 예제
+
+#### 8.7.1 firebase-functions-test 설정
+
+**파일**: `test/integration/test-setup.ts`
+
+```typescript
+import * as functionsTest from "firebase-functions-test";
+import * as admin from "firebase-admin";
+
+// firebase-functions-test 초기화 (오프라인 모드)
+const testEnv = functionsTest({
+  projectId: "test-project-id",
+}, "./service-account-key.json");  // 선택사항
+
+// Firebase Admin 초기화 (테스트용)
+if (!admin.apps.length) {
+  admin.initializeApp({
+    projectId: "test-project-id",
+    databaseURL: "https://test-project-id-default-rtdb.firebaseio.com",
+  });
+}
+
+export { testEnv, admin };
+
+// 테스트 종료 시 정리
+export function cleanup() {
+  testEnv.cleanup();
+}
+```
+
+#### 8.7.2 이벤트 핸들러 테스트
+
+**파일**: `test/integration/onLike.test.ts`
+
+```typescript
+/**
+ * Integration Test: onLike 이벤트 핸들러
+ * firebase-functions-test를 사용하여 실제 이벤트 핸들러 테스트
+ */
+
+import { expect } from "chai";
+import { testEnv, cleanup } from "./test-setup";
+import * as myFunctions from "../../src/index";
+import { PostData } from "../../src/types";
+
+describe("onLike Integration Test", () => {
+  after(() => {
+    cleanup();
+  });
+
+  it("좋아요 추가 시 handleLikeCreate가 호출된다", async () => {
+    // ✅ firebase-functions-test로 핸들러 래핑
+    const wrapped = testEnv.wrap(myFunctions.onLike);
+
+    const likeId = "post-abc123-user456";
+
+    // 테스트용 DataSnapshot 생성
+    const snap = testEnv.database.makeDataSnapshot(1, `/likes/${likeId}`);
+
+    // 이벤트 핸들러 실행
+    const result = await wrapped(snap, { params: { likeId } });
+
+    // 검증
+    expect(result).to.not.be.undefined;
+    expect(result.success).to.be.true;
+    expect(result.type).to.equal("post");
+    expect(result.nodeId).to.equal("abc123");
+    expect(result.uid).to.equal("user456");
+  });
+
+  it("잘못된 likeId는 에러를 반환한다", async () => {
+    const wrapped = testEnv.wrap(myFunctions.onLike);
+
+    const likeId = "invalid-format";
+    const snap = testEnv.database.makeDataSnapshot(1, `/likes/${likeId}`);
+
+    const result = await wrapped(snap, { params: { likeId } });
+
+    expect(result.success).to.be.false;
+    expect(result.error).to.equal("Invalid likeId format");
+  });
+});
+```
+
+**테스트 실행**:
+```bash
+npm run test:integration
+```
+
+#### 8.7.3 Integration Test의 장점
+
+- ✅ **Emulator 불필요**: firebase-functions-test의 오프라인 모드 사용
+- ✅ **실제 이벤트 흐름 테스트**: index.ts → handlers/ → utils/ 전체 스택 검증
+- ✅ **빠른 실행**: 네트워크 요청 없이 로컬에서 실행
+- ✅ **모킹 최소화**: firebase-functions-test가 Event 객체 자동 생성
+
+---
+
+## 9. 관련 문서
 
 ### SNS 프로젝트 문서
 
@@ -772,20 +1196,24 @@ export const onLikeCreated = functions
 
 ## 마무리
 
-이 문서는 Firebase Cloud Functions **Gen 2**의 **메인 진입점인 index.ts** 파일을 중심으로 작성되었습니다.
+이 문서는 Firebase Cloud Functions **Gen 2**의 **메인 진입점인 index.ts** 파일과 **Unit Test 가이드**를 중심으로 작성되었습니다.
 
 **핵심 포인트**:
 - ✅ **Gen 2 필수 사용**: 모든 함수는 `firebase-functions/v2` 패키지 사용
-- ✅ **트리거 함수는 단순하게**: 라우팅과 검증만 수행
-- ✅ **비즈니스 로직은 별도 분리**: `functions.ts`에서 구현
+- ✅ **3-Tier 아키텍처**: `index.ts` (이벤트 핸들러) → `handlers/` (비즈니스 로직) → `utils/` (순수 함수)
+- ✅ **트리거 함수는 단순하게**: 이벤트 라우팅과 검증만 수행 (5-10줄)
+- ✅ **비즈니스 로직 분리**: `handlers/`에서 실제 데이터 처리 구현
+- ✅ **순수 함수 분리**: `utils/`에 Firebase 의존성 없는 유틸리티 함수
+- ✅ **테스트 가능한 구조**: Unit Tests (utils/) + Integration Tests (handlers/, index.ts)
+- ✅ **Emulator 불필요**: firebase-functions-test의 오프라인 모드 활용
 - ✅ **최상위 경로 사용**: `/{ROOT_FOLDER}/` 제거, `/posts/`, `/users/` 등 직접 사용
 - ✅ **비용 관리**: `setGlobalOptions({ maxInstances: 10 })`로 비용 통제
 - ✅ **Region 일치**: Database trigger는 database region과 일치 필수
 
-이 문서는 SNS 프로젝트의 백그라운드 처리를 담당하는 Cloud Functions 개발 가이드입니다! 🚀
+이 문서는 SNS 프로젝트의 백그라운드 처리를 담당하는 Cloud Functions 개발 및 테스트 가이드입니다! 🚀
 
 ---
 
-**Last Updated**: 2025-01-03
-**Version**: 2.0.0 (Gen 2 전환)
+**Last Updated**: 2025-01-05
+**Version**: 3.0.0 (리팩토링 및 Unit Test 추가)
 **Author**: SNS 개발팀

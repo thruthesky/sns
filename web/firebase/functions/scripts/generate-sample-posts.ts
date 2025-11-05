@@ -57,7 +57,7 @@ function initializeFirebase() {
  * 실제 테스트 계정의 UID를 사용하거나, 샘플 UID를 생성할 수 있습니다.
  *
  * @param {number} index - 사용자 인덱스
- * @return {string} 테스트 사용자 UID
+ * @returns {string} 테스트 사용자 UID
  */
 function generateTestUserId(index: number): string {
   // 테스트용 UID 패턴: test-user-1, test-user-2, ...
@@ -69,7 +69,7 @@ function generateTestUserId(index: number): string {
  * 게시글 제목을 생성합니다.
  *
  * @param {number} index - 게시글 인덱스
- * @return {string} 게시글 제목
+ * @returns {string} 게시글 제목
  */
 function generatePostTitle(index: number): string {
   const titles = [
@@ -94,7 +94,7 @@ function generatePostTitle(index: number): string {
  * 게시글 내용을 생성합니다.
  *
  * @param {number} index - 게시글 인덱스
- * @return {string} 게시글 내용
+ * @returns {string} 게시글 내용
  */
 function generatePostContent(index: number): string {
   const contents = [
@@ -117,7 +117,7 @@ function generatePostContent(index: number): string {
  * 게시글 작성자명을 생성합니다.
  *
  * @param {number} index - 작성자 인덱스
- * @return {string} 작성자 이름
+ * @returns {string} 작성자 이름
  */
 function generateAuthorName(index: number): string {
   const names = [
@@ -146,7 +146,7 @@ function generateAuthorName(index: number): string {
  * - commentCount: 댓글 개수 (Cloud Functions가 관리하므로 0으로 초기화)
  *
  * @param {number} index - 게시글 인덱스
- * @return {object} 게시글 데이터 객체
+ * @returns {object} 게시글 데이터 객체
  */
 function generatePost(index: number): {
   uid: string;

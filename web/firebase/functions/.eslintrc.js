@@ -30,5 +30,7 @@ module.exports = {
     "import/no-unresolved": 0,
     "indent": ["error", 2],
     "max-len": ["error", {"code": 120}],
+    "valid-jsdoc": "off", // TypeScript 환경에서는 JSDoc 타입 불필요
+    "require-jsdoc": "off", // JSDoc 강제 요구 비활성화
   },
 };

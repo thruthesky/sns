@@ -10,7 +10,11 @@
     "start": "npm run shell",
     "deploy": "npm run lint:fix && firebase deploy --only functions:onPostCreate,functions:onPostDelete,functions:onCommentCreate,functions:onCommentDelete,functions:onLike,functions:onCancelLike,functions:onUserCreate",
     "logs": "firebase functions:log",
-    "generate:posts": "npm run build && node lib/scripts/generate-sample-posts.js"
+    "generate:posts": "npm run build && node lib/scripts/generate-sample-posts.js",
+    "test": "mocha --require ts-node/register 'test/**/*.test.ts' --timeout 10000",
+    "test:unit": "mocha --require ts-node/register 'test/unit/**/*.test.ts' --timeout 5000",
+    "test:integration": "mocha --require ts-node/register 'test/integration/**/*.test.ts' --timeout 10000",
+    "test:watch": "mocha --require ts-node/register 'test/**/*.test.ts' --watch --watch-extensions ts"
   },
   "engines": {
     "node": "22"
@@ -21,12 +25,17 @@
     "firebase-functions": "^6.0.1"
   },
   "devDependencies": {
+    "@types/chai": "^5.2.3",
+    "@types/mocha": "^10.0.10",
     "@typescript-eslint/eslint-plugin": "^5.12.0",
     "@typescript-eslint/parser": "^5.12.0",
+    "chai": "^6.2.0",
     "eslint": "^8.9.0",
     "eslint-config-google": "^0.14.0",
     "eslint-plugin-import": "^2.25.4",
     "firebase-functions-test": "^3.1.0",
+    "mocha": "^11.7.4",
+    "ts-node": "^10.9.2",
     "typescript": "^5.7.3"
   },
   "private": true
