@@ -45,7 +45,7 @@
  */
 
 import { database } from '../utils/firebase.js';
-import { ref, get, update, increment, onValue, off, query, orderByKey, startAt, endAt } from 'firebase/database';
+import { ref, get, update, onValue, off, query, orderByKey, startAt, endAt } from 'firebase/database';
 import { handleFirebaseError } from '../utils/error-handler.js';
 import type {
   AddLikeResult,
@@ -102,13 +102,10 @@ export async function addLike(
     // 1. /likes/{type}-{cleanNodeId}-{uid} 에 값 1 저장
     updates[`likes/${type}-${cleanNodeId}-${userId}`] = 1;
 
-    // 2. /{type}s/{nodeId}/likeCount 를 +1 증가
-    // 'post' → 'posts', 'comment' → 'comments'
-    // ⚠️ 주의: Firebase 경로에는 원본 nodeId를 사용해야 합니다
-    const collectionPath = type === 'post' ? 'posts' : 'comments';
-    updates[`${collectionPath}/${nodeId}/likeCount`] = increment(1);
+    // ✅ likeCount는 Cloud Functions에서 자동으로 증가합니다
+    // 클라이언트에서는 /likes/ 경로에만 값을 쓰고, likeCount는 백엔드가 관리합니다
 
-    // 한 번의 update로 두 경로 동시 업데이트
+    // 한 번의 update로 업데이트
     await update(ref(database), updates);
 
     // ✅ 좋아요 추가 성공
@@ -167,13 +164,10 @@ export async function removeLike(
     // 1. /likes/{type}-{cleanNodeId}-{uid} 삭제 (null로 설정)
     updates[`likes/${type}-${cleanNodeId}-${userId}`] = null;
 
-    // 2. /{type}s/{nodeId}/likeCount 를 -1 감소
-    // 'post' → 'posts', 'comment' → 'comments'
-    // ⚠️ 주의: Firebase 경로에는 원본 nodeId를 사용해야 합니다
-    const collectionPath = type === 'post' ? 'posts' : 'comments';
-    updates[`${collectionPath}/${nodeId}/likeCount`] = increment(-1);
+    // ✅ likeCount는 Cloud Functions에서 자동으로 감소합니다
+    // 클라이언트에서는 /likes/ 경로만 삭제하고, likeCount는 백엔드가 관리합니다
 
-    // 한 번의 update로 두 경로 동시 업데이트
+    // 한 번의 update로 업데이트
     await update(ref(database), updates);
 
     // ✅ 좋아요 취소 성공

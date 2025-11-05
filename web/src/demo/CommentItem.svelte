@@ -134,7 +134,7 @@
 
 <div
   class="comment-item"
-  style="padding-left: {(comment.depth - 1) * 2}rem;"
+  style="padding-left: {1.5 + (comment.depth - 1) * 2}rem;"
 >
   <!-- 댓글 작성자 정보 -->
   <div class="comment-header">

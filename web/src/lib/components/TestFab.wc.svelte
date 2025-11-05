@@ -31,7 +31,7 @@
 
   import { onMount } from 'svelte';
   import { auth } from '../utils/firebase.js';
-  import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, type UserCredential } from 'firebase/auth';
+  import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, onAuthStateChanged, type User as FirebaseUser, type UserCredential } from 'firebase/auth';
   import { Settings, User, Server } from 'lucide-svelte';
 
   /**
@@ -69,6 +69,7 @@
   let isMenuOpen = $state<boolean>(false); // 메뉴 열림 상태
   let isServerInfoOpen = $state<boolean>(false); // 서버 정보 모달 열림 상태
   let isLoading = $state<boolean>(false); // 로그인 진행 중 상태
+  let currentUser = $state<FirebaseUser | null>(null); // 현재 로그인한 사용자
 
   /**
    * 빌드 버전 정보 (현재 시간 기준)
@@ -94,6 +95,17 @@
    */
   onMount(() => {
     console.log('TestFab 컴포넌트가 마운트되었습니다.');
+
+    // Firebase Auth 상태 변경 리스너 등록
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      currentUser = user;
+      console.log('Auth 상태 변경:', user ? `로그인됨 (UID: ${user.uid})` : '로그아웃됨');
+    });
+
+    // 컴포넌트 언마운트 시 리스너 해제
+    return () => {
+      unsubscribe();
+    };
   });
 
   /**
@@ -217,6 +229,15 @@
       </div>
 
       <div class="menu-divider"></div>
+
+      <!-- 현재 로그인한 사용자 UID 표시 -->
+      {#if currentUser}
+        <div class="uid-section">
+          <div class="uid-label">현재 사용자 UID</div>
+          <div class="uid-value">{currentUser.uid}</div>
+        </div>
+        <div class="menu-divider"></div>
+      {/if}
 
       <!-- 테스트 계정 로그인 섹션 -->
       <div class="menu-section">
@@ -395,6 +416,31 @@
   /* 메뉴 구분선 */
   .menu-divider {
     border-top: 1px solid #e5e7eb;
+  }
+
+  /* UID 표시 섹션 */
+  .uid-section {
+    padding: 0.75rem 1rem;
+    background-color: #f0fdf4;
+  }
+
+  .uid-label {
+    font-size: 0.75rem;
+    color: #059669;
+    margin-bottom: 0.25rem;
+    font-weight: 500;
+  }
+
+  .uid-value {
+    font-family: monospace;
+    font-size: 0.75rem;
+    color: #047857;
+    background-color: #dcfce7;
+    border: 1px solid #86efac;
+    border-radius: 0.25rem;
+    padding: 0.375rem 0.5rem;
+    word-break: break-all;
+    line-height: 1.4;
   }
 
   /* 메뉴 섹션 */

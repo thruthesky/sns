@@ -18,15 +18,18 @@
   - [5.5 핵심 함수: onChatMessageCreated](#55-핵심-함수-onchatmessagecreated)
 - [6. 설계 철학](#6-설계-철학)
 - [7. 주의사항](#7-주의사항)
-- [8. Unit Test 가이드](#8-unit-test-가이드)
-  - [8.1 테스트 전략 개요](#81-테스트-전략-개요)
-  - [8.2 리팩토링된 프로젝트 구조](#82-리팩토링된-프로젝트-구조)
-  - [8.3 함수 로직 분리 철학](#83-함수-로직-분리-철학)
-  - [8.4 테스트 환경 설정](#84-테스트-환경-설정)
-  - [8.5 테스트 실행 방법](#85-테스트-실행-방법)
-  - [8.6 Unit Test 예제](#86-unit-test-예제)
-  - [8.7 Integration Test 예제](#87-integration-test-예제)
-- [9. 관련 문서](#9-관련-문서)
+- [8. 데이터베이스 트리거 구현 예제](#8-데이터베이스-트리거-구현-예제)
+  - [8.1 전체 통계 (stats/counters) 관리](#81-전체-통계-statscounters-관리)
+  - [8.2 카테고리 통계 (categories) 관리](#82-카테고리-통계-categories-관리)
+- [9. Unit Test 가이드](#9-unit-test-가이드)
+  - [9.1 테스트 전략 개요](#91-테스트-전략-개요)
+  - [9.2 리팩토링된 프로젝트 구조](#92-리팩토링된-프로젝트-구조)
+  - [9.3 함수 로직 분리 철학](#93-함수-로직-분리-철학)
+  - [9.4 테스트 환경 설정](#94-테스트-환경-설정)
+  - [9.5 테스트 실행 방법](#95-테스트-실행-방법)
+  - [9.6 Unit Test 예제](#96-unit-test-예제)
+  - [9.7 Integration Test 예제](#97-integration-test-예제)
+- [10. 관련 문서](#10-관련-문서)
 
 ---
 
@@ -210,7 +213,11 @@ const getConfig = () => {
 #### 배포 시 프로젝트 선택
 
 ```bash
-# test5 프로젝트에 배포
+# test5 프로젝트에 배포 (권장)
+cd firebase/functions
+npm run deploy
+
+# 또는 프로젝트를 명시적으로 지정
 firebase deploy --only functions --project=test5
 ```
 
@@ -626,7 +633,24 @@ export async function updateLikeCount(postId: string) {
 
 ## 7. 주의사항
 
-### 7.1 환경 변수 설정 필수
+### 7.1 배포 방법
+
+#### 권장 배포 명령어
+
+**`npm run deploy` 명령을 사용하여 배포하는 것을 권장합니다:**
+
+```bash
+# firebase/functions 폴더에서 실행
+cd firebase/functions
+npm run deploy
+```
+
+이 명령은 다음 작업을 자동으로 수행합니다:
+1. TypeScript 빌드 (`npm run build`)
+2. ESLint 검사 (`npm run lint`)
+3. Firebase Functions 배포 (`firebase deploy --only functions`)
+
+#### 프로젝트 설정
 
 배포 시 **올바른 프로젝트 설정**이 필요합니다:
 
@@ -634,10 +658,13 @@ export async function updateLikeCount(postId: string) {
 # 프로젝트 확인
 firebase use
 
-# 프로젝트 전환
+# 프로젝트 전환 (필요시)
 firebase use test5
 
-# 배포
+# 배포 (권장)
+npm run deploy
+
+# 또는 직접 배포
 firebase deploy --only functions
 ```
 
@@ -763,9 +790,296 @@ export const onLikeCreated = functions
 
 ---
 
-## 8. Unit Test 가이드
+## 8. 데이터베이스 트리거 구현 예제
 
-### 8.1 테스트 전략 개요
+본 섹션에서는 Firebase Realtime Database의 데이터 변경 이벤트에 반응하여 자동으로 실행되는 Cloud Functions 구현 예제를 제공합니다.
+
+**중요**: 이 섹션의 모든 예제는 **sns-web-database.md**에 정의된 데이터베이스 구조를 기반으로 합니다. 데이터베이스 구조는 [SNS 데이터베이스 구조 가이드](./sns-web-database.md)를 참고하세요.
+
+### 8.1 전체 통계 (stats/counters) 관리
+
+전체 사용자, 게시글, 댓글, 좋아요의 총 개수를 자동으로 추적하는 Cloud Functions 구현 예제입니다.
+
+**데이터베이스 경로**: `/stats/counters/`
+- `user`: 전체 사용자 총 개수
+- `post`: 전체 게시글 총 개수
+- `comment`: 전체 댓글 총 개수
+- `like`: 전체 좋아요 총 개수
+
+**원칙**: 클라이언트는 이 경로를 직접 수정하지 않으며, Cloud Functions만이 업데이트합니다.
+
+#### 8.1.1 사용자 등록 시 user 카운터 증가
+
+새로운 사용자가 등록되면 `/stats/counters/user`를 1 증가시킵니다.
+
+```typescript
+// onUserCreate 함수 내 로직
+if (userData) {
+  // 📊 전체 사용자 통계 업데이트: user +1
+  const statsUpdates = {} as Record<string, unknown>;
+  statsUpdates[`stats/counters/user`] = admin.database.ServerValue.increment(1);
+  await admin.database().ref().update(statsUpdates);
+}
+```
+
+**트리거 경로**: `/users/{uid}`
+**이벤트**: onCreate
+**동작**: `/stats/counters/user` +1
+
+#### 8.1.2 게시글 생성 시 post 카운터 증가
+
+새로운 게시글이 생성되면 `/stats/counters/post`를 1 증가시킵니다.
+
+```typescript
+// onPostCreate 함수 내 로직
+if (postData.category) {
+  // 📊 전체 글 통계 업데이트: post +1
+  const statsUpdates = {} as Record<string, unknown>;
+  statsUpdates[`stats/counters/post`] = admin.database.ServerValue.increment(1);
+  await admin.database().ref().update(statsUpdates);
+}
+```
+
+**트리거 경로**: `/posts/{postId}`
+**이벤트**: onCreate
+**동작**: `/stats/counters/post` +1
+
+#### 8.1.3 게시글 삭제 시 post 카운터 감소
+
+게시글이 삭제되면 `/stats/counters/post`를 1 감소시킵니다.
+
+```typescript
+// onPostDelete 함수 내 로직
+if (postData.category) {
+  // 📊 전체 글 통계 업데이트: post -1
+  const statsUpdates = {} as Record<string, unknown>;
+  statsUpdates[`stats/counters/post`] = admin.database.ServerValue.increment(-1);
+  await admin.database().ref().update(statsUpdates);
+}
+```
+
+**트리거 경로**: `/posts/{postId}`
+**이벤트**: onDelete
+**동작**: `/stats/counters/post` -1
+
+#### 8.1.4 댓글 생성 시 comment 카운터 증가
+
+새로운 댓글이 생성되면 `/stats/counters/comment`를 1 증가시킵니다.
+
+```typescript
+// onCommentCreate 함수 내 로직
+if (postData?.category) {
+  // 📊 전체 댓글 통계 업데이트: comment +1
+  const statsUpdates = {} as Record<string, unknown>;
+  statsUpdates[`stats/counters/comment`] = admin.database.ServerValue.increment(1);
+  await admin.database().ref().update(statsUpdates);
+}
+```
+
+**트리거 경로**: `/comments/{commentId}`
+**이벤트**: onCreate
+**동작**: `/stats/counters/comment` +1
+
+#### 8.1.5 댓글 삭제 시 comment 카운터 감소
+
+댓글이 삭제되면 `/stats/counters/comment`를 1 감소시킵니다.
+
+```typescript
+// onCommentDelete 함수 내 로직
+if (postData?.category) {
+  // 📊 전체 댓글 통계 업데이트: comment -1
+  const statsUpdates = {} as Record<string, unknown>;
+  statsUpdates[`stats/counters/comment`] = admin.database.ServerValue.increment(-1);
+  await admin.database().ref().update(statsUpdates);
+}
+```
+
+**트리거 경로**: `/comments/{commentId}`
+**이벤트**: onDelete
+**동작**: `/stats/counters/comment` -1
+
+#### 8.1.6 좋아요 추가 시 like 카운터 증가
+
+사용자가 게시글 또는 댓글에 좋아요를 추가하면 `/stats/counters/like`를 1 증가시킵니다.
+
+```typescript
+// onLike 함수 내 로직
+if (type === "post" || type === "comment") {
+  // 📊 전체 좋아요 통계 업데이트: like +1
+  const statsUpdates = {} as Record<string, unknown>;
+  statsUpdates[`stats/counters/like`] = admin.database.ServerValue.increment(1);
+  await admin.database().ref().update(statsUpdates);
+}
+```
+
+**트리거 경로**: `/likes/{likeId}`
+**이벤트**: onCreate
+**동작**: `/stats/counters/like` +1
+
+#### 8.1.7 좋아요 취소 시 like 카운터 감소
+
+사용자가 좋아요를 취소하면 `/stats/counters/like`를 1 감소시킵니다.
+
+```typescript
+// onCancelLike 함수 내 로직
+if (type === "post" || type === "comment") {
+  // 📊 전체 좋아요 통계 업데이트: like -1
+  const statsUpdates = {} as Record<string, unknown>;
+  statsUpdates[`stats/counters/like`] = admin.database.ServerValue.increment(-1);
+  await admin.database().ref().update(statsUpdates);
+}
+```
+
+**트리거 경로**: `/likes/{likeId}`
+**이벤트**: onDelete
+**동작**: `/stats/counters/like` -1
+
+### 8.2 카테고리 통계 (categories) 관리
+
+게시판 카테고리별 게시글 개수와 댓글 개수를 자동으로 추적하는 Cloud Functions 구현 예제입니다.
+
+**데이터베이스 경로**: `/categories/{categoryId}/`
+- `postCount`: 해당 카테고리의 총 게시글 수
+- `commentCount`: 해당 카테고리의 총 댓글 수
+
+**원칙**: 클라이언트는 이 경로를 직접 수정하지 않으며, Cloud Functions만이 업데이트합니다.
+
+#### 8.2.1 게시글 작성 시 postCount 증가
+
+새로운 게시글이 생성되면 해당 카테고리의 `postCount`를 자동으로 1 증가시킵니다.
+
+```typescript
+/**
+ * 게시글 작성 시 카테고리 통계 업데이트
+ * /posts/{postId} 경로에 새 게시글이 생성될 때 트리거됨
+ */
+export const onPostCreate = functions.database.onCreate('/posts/{postId}', async (snapshot, context) => {
+  const post = snapshot.val();
+  const category = post.category;  // 'community', 'qna', 'news', 'market'
+
+  // 카테고리 postCount 증가
+  await admin
+    .database()
+    .ref(`categories/${category}/postCount`)
+    .transaction((currentCount) => {
+      return (currentCount || 0) + 1;
+    });
+});
+```
+
+**트리거 경로**: `/posts/{postId}`
+**이벤트**: onCreate
+**동작**: `/categories/{category}/postCount` +1
+
+#### 8.2.2 댓글 작성 시 commentCount 증가
+
+새로운 댓글이 생성되면 해당 게시글의 카테고리를 확인한 후 `commentCount`를 자동으로 1 증가시킵니다.
+
+```typescript
+/**
+ * 댓글 작성 시 카테고리 통계 업데이트
+ * /comments/{commentId} 경로에 새 댓글이 생성될 때 트리거됨
+ */
+export const onCommentCreate = functions.database.onCreate('/comments/{commentId}', async (snapshot, context) => {
+  const comment = snapshot.val();
+  const postId = comment.postId;
+
+  // 게시글 정보 조회 (카테고리 확인용)
+  const postSnapshot = await admin.database().ref(`posts/${postId}`).get();
+  const post = postSnapshot.val();
+
+  if (post) {
+    const category = post.category;
+
+    // 카테고리 commentCount 증가
+    await admin
+      .database()
+      .ref(`categories/${category}/commentCount`)
+      .transaction((currentCount) => {
+        return (currentCount || 0) + 1;
+      });
+  }
+});
+```
+
+**트리거 경로**: `/comments/{commentId}`
+**이벤트**: onCreate
+**동작**: `/categories/{category}/commentCount` +1
+
+#### 8.2.3 게시글 삭제 시 postCount 감소
+
+게시글이 삭제되면 해당 카테고리의 `postCount`를 1 감소시킵니다.
+
+```typescript
+/**
+ * 게시글 삭제 시 카테고리 통계 업데이트
+ * /posts/{postId} 경로의 게시글이 삭제될 때 트리거됨
+ */
+export const onPostDelete = functions.database.onDelete('/posts/{postId}', async (snapshot, context) => {
+  const post = snapshot.val();
+  const category = post.category;
+
+  // 카테고리 postCount 감소
+  await admin
+    .database()
+    .ref(`categories/${category}/postCount`)
+    .transaction((currentCount) => {
+      return Math.max(0, (currentCount || 0) - 1);
+    });
+});
+```
+
+**트리거 경로**: `/posts/{postId}`
+**이벤트**: onDelete
+**동작**: `/categories/{category}/postCount` -1 (음수 방지)
+
+#### 8.2.4 댓글 삭제 시 commentCount 감소
+
+댓글이 삭제되면 해당 카테고리의 `commentCount`를 1 감소시킵니다.
+
+```typescript
+/**
+ * 댓글 삭제 시 카테고리 통계 업데이트
+ * /comments/{commentId} 경로의 댓글이 삭제될 때 트리거됨
+ */
+export const onCommentDelete = functions.database.onDelete('/comments/{commentId}', async (snapshot, context) => {
+  const comment = snapshot.val();
+  const postId = comment.postId;
+
+  // 게시글 정보 조회 (카테고리 확인용)
+  const postSnapshot = await admin.database().ref(`posts/${postId}`).get();
+  const post = postSnapshot.val();
+
+  if (post) {
+    const category = post.category;
+
+    // 카테고리 commentCount 감소
+    await admin
+      .database()
+      .ref(`categories/${category}/commentCount`)
+      .transaction((currentCount) => {
+        return Math.max(0, (currentCount || 0) - 1);
+      });
+  }
+});
+```
+
+**트리거 경로**: `/comments/{commentId}`
+**이벤트**: onDelete
+**동작**: `/categories/{category}/commentCount` -1 (음수 방지)
+
+#### 8.2.5 주의사항
+
+- ✅ **transaction() 사용**: 동시성 문제 방지를 위해 `transaction()`을 사용합니다
+- ✅ **음수 방지**: 삭제 시 `Math.max(0, ...)`으로 음수 방지
+- ⚠️ **클라이언트에서 직접 수정 금지**: `categories` 노드는 Cloud Functions에 의해서만 수정됩니다
+- ⚠️ **읽기 권한만 허용**: 모든 사용자가 카테고리 통계를 조회할 수 있도록 보안 규칙 설정
+
+---
+
+## 9. Unit Test 가이드
+
+### 9.1 테스트 전략 개요
 
 Firebase Cloud Functions의 테스트는 **두 가지 접근 방식**을 사용합니다:
 
@@ -781,7 +1095,7 @@ Firebase Cloud Functions의 테스트는 **두 가지 접근 방식**을 사용�
 - **도구**: firebase-functions-test + Mocha + Chai
 - **Emulator 필요 여부**: ❌ 불필요 (오프라인 모드)
 
-### 8.2 리팩토링된 프로젝트 구조
+### 9.2 리팩토링된 프로젝트 구조
 
 #### 코드 분리 아키텍처
 
@@ -832,7 +1146,7 @@ export const onLike = onValueCreated("/likes/{likeId}", async (event) => {
 });
 ```
 
-### 8.3 함수 로직 분리 철학
+### 9.3 함수 로직 분리 철학
 
 #### 왜 로직을 분리하는가?
 
@@ -905,9 +1219,9 @@ export function parseLikeId(likeId: string): ParsedLikeId | null {
 }
 ```
 
-### 8.4 테스트 환경 설정
+### 9.4 테스트 환경 설정
 
-#### 8.4.1 의존성 설치
+#### 9.4.1 의존성 설치
 
 ```bash
 cd firebase/functions
@@ -917,7 +1231,7 @@ npm install --save-dev mocha chai @types/mocha @types/chai ts-node
 **이미 설치된 패키지**:
 - `firebase-functions-test@^3.1.0` (Integration Test용)
 
-#### 8.4.2 테스트 스크립트 추가
+#### 9.4.2 테스트 스크립트 추가
 
 `package.json`에 다음 스크립트를 추가합니다:
 
@@ -932,7 +1246,7 @@ npm install --save-dev mocha chai @types/mocha @types/chai ts-node
 }
 ```
 
-#### 8.4.3 테스트 폴더 구조
+#### 9.4.3 테스트 폴더 구조
 
 ```
 test/
@@ -944,7 +1258,7 @@ test/
     └── onLike.test.ts             # onLike 핸들러 테스트
 ```
 
-### 8.5 테스트 실행 방법
+### 9.5 테스트 실행 방법
 
 #### 전체 테스트 실행
 
@@ -993,9 +1307,9 @@ npm run test:integration
 npm run test:watch
 ```
 
-### 8.6 Unit Test 예제
+### 9.6 Unit Test 예제
 
-#### 8.6.1 순수 함수 테스트 (utils/)
+#### 9.6.1 순수 함수 테스트 (utils/)
 
 **파일**: `test/unit/like.utils.test.ts`
 
@@ -1063,9 +1377,9 @@ npm run test:unit
 - 🔍 경계값 테스트 (2 tests)
 - **총 13개 테스트, 모두 통과**
 
-### 8.7 Integration Test 예제
+### 9.7 Integration Test 예제
 
-#### 8.7.1 firebase-functions-test 설정
+#### 9.7.1 firebase-functions-test 설정
 
 **파일**: `test/integration/test-setup.ts`
 
@@ -1094,7 +1408,7 @@ export function cleanup() {
 }
 ```
 
-#### 8.7.2 이벤트 핸들러 테스트
+#### 9.7.2 이벤트 핸들러 테스트
 
 **파일**: `test/integration/onLike.test.ts`
 
@@ -1153,7 +1467,7 @@ describe("onLike Integration Test", () => {
 npm run test:integration
 ```
 
-#### 8.7.3 Integration Test의 장점
+#### 9.7.3 Integration Test의 장점
 
 - ✅ **Emulator 불필요**: firebase-functions-test의 오프라인 모드 사용
 - ✅ **실제 이벤트 흐름 테스트**: index.ts → handlers/ → utils/ 전체 스택 검증
@@ -1162,7 +1476,7 @@ npm run test:integration
 
 ---
 
-## 9. 관련 문서
+## 10. 관련 문서
 
 ### SNS 프로젝트 문서
 

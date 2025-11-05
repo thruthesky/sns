@@ -2,6 +2,15 @@ SNS 개발 지침
 - 본 문서는 SNS 개발에 관한 지침을 제공하며, 개발 할 때, 반드시 따라야 할 규칙과 예제를 포함하므로, 본 문서를 따라서 개발을 진행해야 한다.
 - 반드시 아래의 [워크플로우](#워크플로우)를 따라야 한다.
 
+## 📖 문서 구조 원칙
+
+**본 CLAUDE.md 문서는 요약 및 레퍼런스 역할을 합니다:**
+- ✅ **CLAUDE.md**: 핵심 규칙과 요약 설명만 포함, 자세한 예제는 제외
+- ✅ **docs/*.md**: 상세한 설명, 예제 코드, 사용법 포함
+- ✅ **레퍼런스 링크**: CLAUDE.md에서 docs/*.md로 연결
+
+이를 통해 CLAUDE.md는 간결하게 유지하고, 상세한 정보는 각 주제별 문서에서 확인할 수 있습니다.
+
 # 워크플로우
 - [ ] 프로젝트 루트의 docs/ 폴더에 있는 관련 문서를 먼저 참고하여, 개발자에게 어떤 문서를 참고하는지 알려준다.
 - [ ] 각 문서에 명시된 워크플로를 준수해야 한다.
@@ -33,36 +42,14 @@ SNS 개발 지침
 - **Firebase Authentication**: `photoURL` (대문자 URL) 사용
 - **Realtime Database**: `photoUrl` (camelCase url) 사용
 
-### 올바른 사용 예시
-
-```javascript
-// ✅ Firebase Auth 업데이트 시
-import { updateProfile } from 'firebase/auth';
-await updateProfile(user, {
-  photoURL: 'https://...'  // 대문자 URL 사용
-});
-
-// ✅ RTDB 업데이트 시
-import { ref, update } from 'firebase/database';
-await update(ref(database, `users/${uid}`), {
-  photoUrl: 'https://...'  // camelCase url 사용
-});
-
-// ✅ 두 곳을 모두 업데이트하는 헬퍼 함수 예시
-async function updateUserPhoto(user, photoUrl) {
-  // 1. Firebase Auth 업데이트 (photoURL)
-  await updateProfile(user, { photoURL: photoUrl });
-
-  // 2. RTDB 업데이트 (photoUrl)
-  await update(ref(database, `users/${user.uid}`), { photoUrl: photoUrl });
-}
-```
-
-### 주의사항
+### 핵심 규칙
 - ❌ **절대로 혼용하지 마세요**: Auth에 `photoUrl`이나 RTDB에 `photoURL`을 사용하면 안 됩니다
 - ✅ Firebase Auth API는 `photoURL` 대문자를 요구합니다 (Firebase SDK 스펙)
 - ✅ RTDB에는 프로젝트 네이밍 규칙에 따라 `photoUrl` camelCase를 사용합니다
-- ✅ 코드 작성 시 이 차이를 항상 인지하고 있어야 합니다
+
+### 상세 가이드
+자세한 사용 예제와 설명은 다음 문서를 참고하세요:
+- [docs/sns-web-coding-guideline.md](docs/sns-web-coding-guideline.md) - Firebase Auth vs RTDB 필드명 차이 섹션
 
 ---
 
@@ -70,77 +57,16 @@ async function updateUserPhoto(user, photoUrl) {
 
 **모든 Firebase 관련 작업 시 반드시 `error-handler.js`를 사용해야 합니다.**
 
-Firebase에서 발생하는 에러를 사용자가 **읽기 쉽고 이해하기 쉬운 메시지**로 변환하여 표시해야 합니다.
-
-### 필수 사용 규칙
-
-- ✅ **모든 Firebase 작업(Authentication, Database, Storage)에서 `handleFirebaseError()` 사용 필수**
+### 필수 규칙
+- ✅ 모든 Firebase 작업에서 `handleFirebaseError()` 사용 필수
 - ✅ 에러 메시지는 i18n 키로 반환하여 다국어 지원
 - ✅ 사용자에게는 친화적인 메시지, 개발자에게는 상세한 로그 제공
-- ❌ 절대로 `error.message`를 직접 사용자에게 표시하지 마세요
+- ❌ `error.message`를 직접 사용자에게 표시 금지
 
-### 서비스 레이어에서의 에러 처리
-
-```javascript
-// src/lib/services/forum.js 예시
-import { handleFirebaseError } from '../utils/error-handler.js';
-
-export async function createPost(category, uid, author, title, content) {
-  try {
-    // Firebase 작업
-    const newPostRef = await push(postsRef, postData);
-
-    return {
-      success: true,
-      postId: newPostRef.key
-    };
-  } catch (error) {
-    // ✅ 올바른 방법: error-handler 사용
-    const errorInfo = handleFirebaseError(error, 'createPost');
-    return {
-      success: false,
-      error: errorInfo.key,         // i18n 키 (예: 'error.db.permissionDenied')
-      errorMessage: errorInfo.message  // 원본 메시지 (디버깅용)
-    };
-  }
-}
-```
-
-### UI 컴포넌트에서의 에러 표시
-
-```javascript
-// Svelte 컴포넌트 예시
-import { showToast } from '$lib/stores/toast.js';
-import { t } from '$lib/stores/i18n.js';
-import { createPost } from '$lib/services/forum.js';
-
-async function handleSubmit() {
-  const result = await createPost(...);
-
-  if (result.success) {
-    showToast($t("게시글작성완료"), "success");
-  } else {
-    // ✅ 올바른 방법: i18n 키를 번역하여 표시
-    showToast($t(result.error), "error");
-    // 사용자에게는 "이 작업을 수행할 권한이 없습니다." 같은 친화적인 메시지 표시
-  }
-}
-```
-
-### 지원하는 에러 타입
-
-- **Authentication 에러**: `auth/invalid-email`, `auth/user-not-found`, `auth/wrong-password` 등
-- **Database 에러**: `PERMISSION_DENIED`, `network-error`, `authentication-required` 등
-- **Storage 에러**: `storage/unauthorized`, `storage/quota-exceeded` 등
-
-모든 에러는 자동으로 4개 언어(한국어, 영어, 일본어, 중국어)로 번역됩니다.
-
-### 참고 파일
-
+### 상세 가이드
+자세한 사용 예제와 에러 타입은 다음 문서를 참고하세요:
+- [docs/sns-web-coding-guideline.md](docs/sns-web-coding-guideline.md) - Firebase 에러 처리 섹션
 - [src/lib/utils/error-handler.js](src/lib/utils/error-handler.js) - 에러 처리 로직
-- [src/lib/i18n/ko.json](src/lib/i18n/ko.json) - 한국어 에러 메시지 (264-290줄)
-- [src/lib/services/forum.js](src/lib/services/forum.js) - 사용 예시 (게시판)
-- [src/lib/services/comment.js](src/lib/services/comment.js) - 사용 예시 (댓글)
 
 ---
 
@@ -148,89 +74,21 @@ async function handleSubmit() {
 
 **클라이언트와 서버 모두에서 숫자 값을 증감시킬 때는 반드시 `increment()` 함수를 사용해야 합니다.**
 
-### 🔥 강제 규칙 (매우 중요)
-
-- ✅ **모든 숫자 증/감 연산에서 `increment()` 함수 사용 필수**
-- ✅ **자식 노드 수를 세어서 `set()`으로 업데이트 절대 금지**
-- ✅ **전체 노드 수를 구할 때도 가능하면 increment() 패턴 사용**
-- ✅ Firebase Admin SDK에서는 `admin.database.ServerValue.increment(n)` 사용
+### 🔥 핵심 규칙
+- ✅ 모든 숫자 증/감 연산에서 `increment()` 함수 사용 필수
 - ✅ `increment(1)` - 1씩 증가, `increment(-1)` - 1씩 감소
 - ✅ 동시성 안전함 (서버 측 원자적 연산)
-- ❌ **절대 금지**: 모든 자식 노드를 읽어서 개수를 세고 `set()`으로 업데이트하지 말 것
+- ❌ **절대 금지**: 자식 노드 수를 세어서 `set()`으로 업데이트
 - ❌ 트랜잭션 대신 `increment()` 사용 (더 효율적)
-- ❌ `currentCount + 1`이나 `set(newCount)` 사용하지 말 것
 
-### 🚫 반드시 피해야 할 패턴
-
-```typescript
-// ❌ 아주 나쁜 예시: 모든 자식 노드를 읽음
-const likesSnapshot = await db.ref("/likes")
-  .orderByKey()
-  .startAt(prefix)
-  .endAt(`${prefix}\uf8ff`)
-  .once("value");
-const likeCount = likesSnapshot.numChildren();  // 모든 데이터 전송!
-await postRef.child("likeCount").set(likeCount);  // set() 사용!
-
-// ❌ 나쁜 예시: 현재 값을 읽어서 증가
-const snapshot = await db.ref(`posts/${postId}`).once("value");
-const currentCount = snapshot.val().likeCount || 0;
-await db.ref(`posts/${postId}/likeCount`).set(currentCount + 1);  // 동시성 문제!
-
-// ❌ 트랜잭션 사용 (효율성 낮음)
-await db.ref(`posts/${postId}/likeCount`).transaction((currentCount) => {
-  return (currentCount || 0) + 1;
-});
-```
-
-### ✅ 올바른 패턴
-
-```typescript
-// ✅ 좋은 예시: increment() 직접 사용
-const updates = {} as Record<string, unknown>;
-updates[`posts/${postId}/likeCount`] = admin.database.ServerValue.increment(1);
-await admin.database().ref().update(updates);
-
-// ✅ 감소 연산
-updates[`posts/${postId}/likeCount`] = admin.database.ServerValue.increment(-1);
-await admin.database().ref().update(updates);
-```
-
-### 서버 사이드 (Cloud Functions) 예시
-
-```typescript
-// ✅ 올바른 방법: ServerValue.increment() 사용
-const updates = {} as Record<string, unknown>;
-updates[`posts/${postId}/commentCount`] = admin.database.ServerValue.increment(1);
-await admin.database().ref().update(updates);
-
-// 감소 연산
-updates[`categories/${category}/postCount`] = admin.database.ServerValue.increment(-1);
-await admin.database().ref().update(updates);
-
-// ✅ likeCount 업데이트 예시 (좋아요 기능)
-// 모든 자식 노드를 읽지 않고 increment() 사용
-await postRef.child("likeCount").set(admin.database.ServerValue.increment(1));
-```
-
-### 클라이언트 사이드 (Svelte) 예시
-
-```javascript
-// ✅ Firebase Client SDK에서도 increment() 사용
-import { ref, update, increment } from 'firebase/database';
-
-const updates = {};
-updates[`posts/${postId}/likeCount`] = increment(1);
-await update(ref(database), updates);
-```
-
-### 동시성 안전성
-
-`increment()`는 서버 측에서 원자적(atomic) 연산으로 처리되므로:
-- 여러 사용자가 동시에 같은 필드를 업데이트해도 정확함
+### 장점
+- 여러 사용자가 동시에 업데이트해도 정확함
 - 트랜잭션보다 빠르고 안정적
-- 네트워크 오류 후에도 정확한 값 유지
-- **모든 자식 노드를 읽을 필요가 없어서 비용 절감**
+- 모든 자식 노드를 읽을 필요가 없어서 비용 절감
+
+### 상세 가이드
+자세한 사용 예제와 피해야 할 패턴은 다음 문서를 참고하세요:
+- [docs/sns-web-coding-guideline.md](docs/sns-web-coding-guideline.md) - increment 함수 사용법 섹션
 
 ---
 
@@ -622,65 +480,9 @@ sns/
 
 ---
 
-# 테스트 계정 정보
+# 테스트 가이드
 
-## e2e 테스트용 임시 로그인 계정
-
-개발 모드 및 e2e 테스트에서 사용할 수 있는 Firebase 전화번호 인증 테스트 계정입니다.
-
-**중요**: 이 계정들은 Firebase Console에서 "Authentication > Sign-in method > Phone"의 **테스트 전화번호** 섹션에 등록되어 있어야 합니다.
-
-### 테스트 계정 1
-- **국가 번호**: +1 (미국)
-- **전화번호**: 1111111111
-- **SMS 인증 코드**: 111111
-
-### 테스트 계정 2
-- **국가 번호**: +1 (미국)
-- **전화번호**: 2222222222
-- **SMS 인증 코드**: 222222
-
-### 테스트 계정 3
-- **국가 번호**: +1 (미국)
-- **전화번호**: 3333333333
-- **SMS 인증 코드**: 333333
-
-### 사용 방법
-
-1. **수동 테스트 시**:
-   - 개발 서버 실행: `npm run dev`
-   - `<phone-login>` 컴포넌트에서 위의 전화번호 중 하나를 선택
-   - 국가 번호를 +1로 설정
-   - 전화번호 입력 (예: 1111111111)
-   - "인증 코드 전송" 클릭
-   - SMS 인증 코드 입력 (예: 111111)
-   - 로그인 완료
-
-2. **e2e 테스트 시**:
-   ```javascript
-   // Playwright 예제
-   await page.locator('select#country-code').selectOption('+1');
-   await page.locator('input#phone-number').fill('1111111111');
-   await page.locator('button:has-text("인증 코드 전송")').click();
-   await page.locator('input#verification-code').fill('111111');
-   await page.locator('button:has-text("로그인")').click();
-   ```
-
-3. **Jest/Vitest 단위 테스트 시**:
-   ```javascript
-   const testAccount = {
-     countryCode: '+1',
-     phoneNumber: '1111111111',
-     verificationCode: '111111'
-   };
-   ```
-
-### 주의사항
-
-- ⚠️ **프로덕션 환경에서는 절대 사용하지 마세요**
-- ⚠️ 테스트 전화번호는 Firebase Console에서 미리 등록되어 있어야 합니다
-- ⚠️ 실제 SMS가 전송되지 않으며, reCAPTCHA 검증도 자동으로 통과됩니다
-- ⚠️ 보안상 실제 사용자가 이 번호로 로그인할 수 없도록 Firebase 보안 규칙을 설정해야 합니다
+테스트 계정 정보 및 테스트 방법은 [docs/sns-web-test.md](docs/sns-web-test.md) 문서를 참고하세요.
 
 
 ## 경로

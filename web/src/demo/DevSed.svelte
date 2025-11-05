@@ -348,6 +348,125 @@ Current Score: 42</code
                       </li>
                     </ul>
                   </li>
+                  <li>
+                    <strong>함수 명세 (Function Specification):</strong>
+                    <ul class="sub-list">
+                      <li>
+                        SED 명세는 <strong
+                          >모든 함수의 이름, 역할, 파라미터, 사용 위치를 명확히
+                          정의하는 것이 원칙</strong
+                        >이므로, AI가 임의로 함수명을 추론하거나 설계하지 않도록
+                        스펙에 직접 작성한다.
+                      </li>
+                      <li>
+                        <strong>함수 이름:</strong> 정확한 함수명을 제공한다. 예:
+                        <code>handleLikeCreate()</code>,
+                        <code>parseLikeId()</code>,
+                        <code>updatePostLikeCount()</code>
+                      </li>
+                      <li>
+                        <strong>함수 역할:</strong> 함수가 수행하는 작업과
+                        책임을 명확히 기술한다. 예: "좋아요 추가 시 likeCount
+                        증가 및 통계 업데이트", "likeId 파싱하여 type, nodeId,
+                        uid 추출"
+                      </li>
+                      <li>
+                        <strong>함수 파라미터:</strong> 모든 매개변수의 이름,
+                        타입, 필수 여부를 명시한다. 예:
+                        <ul class="sub-list">
+                          <li>
+                            <code>handleLikeCreate(likeId: string)</code> -
+                            likeId는 필수, 형식: "post-{'{'}postId{'}'}-{'{'}uid{'}'}"
+                          </li>
+                          <li>
+                            <code
+                              >updateProfile(userId: UserId, data:
+                              Partial&lt;UserProfile&gt;)</code
+                            >
+                            - userId 필수, data는 부분 업데이트 객체
+                          </li>
+                        </ul>
+                      </li>
+                      <li>
+                        <strong>반환 값:</strong> 함수가 반환하는 값의 타입과
+                        구조를 정의한다. 예:
+                        <code
+                          >Promise&lt;{'{'}success: boolean; type?: string;
+                          error?: string{'}'}&gt;</code
+                        >
+                      </li>
+                      <li>
+                        <strong>함수 위치:</strong> 함수가 작성되어야 할 파일
+                        경로를 명시한다. 예:
+                        <ul class="sub-list">
+                          <li>
+                            <code>handleLikeCreate()</code> →
+                            <code
+                              >/firebase/functions/src/handlers/like.handler.ts</code
+                            >
+                          </li>
+                          <li>
+                            <code>parseLikeId()</code> →
+                            <code
+                              >/firebase/functions/src/utils/like.utils.ts</code
+                            >
+                          </li>
+                          <li>
+                            <code>toggleLike()</code> →
+                            <code>/web/src/lib/services/like.ts</code>
+                          </li>
+                        </ul>
+                      </li>
+                      <li>
+                        <strong>함수 호출 위치:</strong> 함수가 어디서 언제
+                        호출되어야 하는지 명시한다. 예:
+                        <ul class="sub-list">
+                          <li>
+                            <code>handleLikeCreate()</code>는 Firebase Cloud
+                            Functions의 <code>/likes/{'{'}likeId{'}'}</code> onCreate
+                            트리거에서 자동 실행
+                          </li>
+                          <li>
+                            <code>toggleLike()</code>는 클라이언트의 PostItem
+                            컴포넌트에서 좋아요 버튼 클릭 시 호출
+                          </li>
+                          <li>
+                            <code>parseLikeId()</code>는
+                            <code>handleLikeCreate()</code> 내부에서 likeId
+                            검증 시 호출
+                          </li>
+                        </ul>
+                      </li>
+                      <li>
+                        <strong>함수 명세 예시:</strong>
+                        <pre
+                          style="background: #f5f5f5; padding: 12px; border-radius: 4px; overflow-x: auto; font-size: 13px; margin-top: 8px;">
+함수명: handleLikeCreate
+역할: 좋아요 추가 시 likeCount 증가 및 통계 업데이트
+파라미터:
+  - likeId: string (필수)
+    형식: "post-{'{'}postId{'}'}-{'{'}uid{'}'}" 또는 "comment-{'{'}commentId{'}'}-{'{'}uid{'}'}"
+반환값: Promise&lt;{'{'}success: boolean; type?: string; nodeId?: string; uid?: string; error?: string{'}'}&gt;
+위치: /firebase/functions/src/handlers/like.handler.ts
+호출: Firebase Cloud Functions onCreate 트리거 (/likes/{'{'}likeId{'}'})
+수행 작업:
+  1. likeId 파싱 (parseLikeId 함수 사용)
+  2. type이 'post'인 경우 해당 게시글의 likeCount +1
+  3. type이 'comment'인 경우 해당 댓글의 likeCount +1
+  4. /stats/counters/like 전역 통계 +1
+에러 처리:
+  - likeId 파싱 실패 시 {'{'}success: false, error: "Invalid likeId format"{'}'}
+  - 게시글/댓글을 찾을 수 없는 경우 {'{'}success: false, error: "Post/Comment not found"{'}'}
+                        </pre>
+                      </li>
+                      <li>
+                        <strong>주의사항:</strong> 함수 명세는 개발자가 코드를
+                        작성하지 않고도 AI가 정확히 구현할 수 있을 만큼 상세해야
+                        한다. 함수명, 파라미터, 위치, 호출 시점 등 어느 하나도
+                        모호하게 남겨서는 안 된다.
+                      </li>
+                    </ul>
+                  </li>
                 </ul>
               </li>
               <li>

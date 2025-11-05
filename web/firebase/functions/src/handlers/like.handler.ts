@@ -6,6 +6,7 @@ import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
 import {parseLikeId} from "../utils/like.utils";
 import {getPostReference} from "../utils/post.utils";
+import {getCommentReference} from "../utils/comment.utils";
 
 /**
  * 좋아요 추가 시 likeCount 증가 및 통계 업데이트
@@ -71,25 +72,23 @@ export async function handleLikeCreate(
     } else if (type === "comment") {
       logger.debug("댓글 좋아요 처리 시작", {nodeId, uid});
 
-      const commentRef = db.ref(`/comments/${nodeId}`);
-      const commentSnapshot = await commentRef.once("value");
-
-      if (!commentSnapshot.exists()) {
+      const commentInfo = await getCommentReference(nodeId);
+      if (!commentInfo) {
         logger.error("❌ 좋아요 대상 댓글을 찾을 수 없습니다.", {
           nodeId,
           likeId,
-          searchPath: `/comments/${nodeId}`,
+          searchPath: `/comments/-${nodeId}`,
         });
         return {success: false, error: "Comment not found", likeId};
       }
 
       logger.info("✅ 댓글 찾음, likeCount 업데이트 시작", {
         nodeId,
-        commentData: commentSnapshot.val(),
+        commentData: commentInfo.snapshot.val(),
       });
 
       // 🚀 increment()를 사용하여 likeCount 1 증가 (동시성 안전)
-      await commentRef
+      await commentInfo.ref
         .child("likeCount")
         .set(admin.database.ServerValue.increment(1));
 
@@ -206,25 +205,23 @@ export async function handleLikeCancel(
     } else if (type === "comment") {
       logger.debug("댓글 좋아요 취소 처리 시작", {nodeId, uid});
 
-      const commentRef = db.ref(`/comments/${nodeId}`);
-      const commentSnapshot = await commentRef.once("value");
-
-      if (!commentSnapshot.exists()) {
+      const commentInfo = await getCommentReference(nodeId);
+      if (!commentInfo) {
         logger.error("❌ 좋아요 대상 댓글을 찾을 수 없습니다.", {
           nodeId,
           likeId,
-          searchPath: `/comments/${nodeId}`,
+          searchPath: `/comments/-${nodeId}`,
         });
         return {success: false, error: "Comment not found", likeId};
       }
 
       logger.info("✅ 댓글 찾음, likeCount 업데이트 시작", {
         nodeId,
-        commentData: commentSnapshot.val(),
+        commentData: commentInfo.snapshot.val(),
       });
 
       // 🚀 increment(-1)을 사용하여 likeCount 1 감소 (동시성 안전)
-      await commentRef
+      await commentInfo.ref
         .child("likeCount")
         .set(admin.database.ServerValue.increment(-1));
 
