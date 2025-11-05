@@ -32,6 +32,14 @@ dependencies: []
 
 ---
 
+## 게시글과의 연동 규칙
+
+- 댓글 수(`commentCount`)가 0 또는 null인 경우에만 게시글 수정/삭제가 가능하다는 게시글 사양을 준수해야 합니다.
+- Cloud Functions 또는 애플리케이션 로직에서 댓글이 추가·삭제될 때 `commentCount`가 정확히 동기화되는지 확인합니다.
+- 게시글 수정/삭제 기능에 대한 UX 메시지는 댓글 정책과 동일하게 유지합니다.
+
+---
+
 ## 목차
 
 - [댓글 개발 가이드](#댓글-개발-가이드)
@@ -53,7 +61,11 @@ dependencies: []
     - [1. 첫 번째 레벨 댓글 작성](#1-첫-번째-레벨-댓글-작성)
     - [2. 자식 댓글(대댓글) 작성](#2-자식-댓글대댓글-작성)
     - [3. 댓글 목록 조회 (실시간 구독)](#3-댓글-목록-조회-실시간-구독)
+    - [4. 댓글 수정](#4-댓글-수정)
+    - [5. 댓글 삭제](#5-댓글-삭제)
   - [댓글 작성자 정보 조회](#댓글-작성자-정보-조회)
+  - [댓글 수정/삭제 제한 규칙](#댓글-수정삭제-제한-규칙)
+  - [Firebase Cloud Functions - commentCount 자동 관리](#firebase-cloud-functions---commentcount-자동-관리)
   - [댓글 좋아요 (comment-props)](#댓글-좋아요-comment-props)
     - [댓글 좋아요 데이터 구조](#댓글-좋아요-데이터-구조)
   - [Firebase 보안 규칙](#firebase-보안-규칙)
@@ -99,6 +111,8 @@ dependencies: []
     depth: 1                 # 댓글 깊이 (1부터 시작, 최대 12)
     order: "abc123-00001,0000,000,000,000,000,000,000,000,000,000,000"
     parentId: null           # 부모 댓글 ID (첫 번째 레벨은 null)
+    commentCount: 0          # 자식 댓글(대댓글) 개수 (Cloud Functions에서 자동 관리)
+    likeCount: 0             # 좋아요 개수 (Cloud Functions에서 자동 관리)
     createdAt: 1234567890    # Unix timestamp (밀리초)
     updatedAt: 1234567890    # Unix timestamp (밀리초)
 ```
@@ -113,6 +127,8 @@ dependencies: []
 | `depth` | number | ✅ | 댓글 깊이 (1~12, 1부터 시작) |
 | `order` | string | ✅ | 정렬 문자열 (트리 구조 정렬용) |
 | `parentId` | string | ❌ | 부모 댓글 ID (첫 번째 레벨은 null) |
+| `commentCount` | number | ✅ | 자식 댓글(대댓글) 개수 (Cloud Functions에서 자동 관리) |
+| `likeCount` | number | ✅ | 좋아요 개수 (Cloud Functions에서 자동 관리) |
 | `createdAt` | number | ✅ | 작성 시간 (Unix timestamp 밀리초) |
 | `updatedAt` | number | ✅ | 수정 시간 (Unix timestamp 밀리초) |
 
@@ -505,6 +521,127 @@ function listenToComments(postId, callback) {
 }
 ```
 
+### 4. 댓글 수정
+
+```javascript
+import { ref, get, update } from 'firebase/database';
+
+/**
+ * 댓글 수정
+ *
+ * 주의사항:
+ * - 자식 댓글(대댓글)이 있는 경우 수정 불가 (commentCount > 0)
+ * - 작성자 본인만 수정 가능
+ *
+ * @param {string} commentId - 댓글 ID
+ * @param {Object} updates - 수정할 내용 { content: string }
+ * @returns {Promise<Object>} { success, commentId?, error?, errorMessage? }
+ */
+async function updateComment(commentId, updates) {
+  try {
+    // 1. 댓글 정보 조회 (commentCount 확인)
+    const commentRef = ref(database, `comments/${commentId}`);
+    const commentSnapshot = await get(commentRef);
+
+    if (!commentSnapshot.exists()) {
+      return {
+        success: false,
+        error: "error.comment.notFound",
+        errorMessage: "Comment not found",
+      };
+    }
+
+    const commentData = commentSnapshot.val();
+    const commentCount = commentData.commentCount || 0;
+
+    // 2. commentCount 체크 (자식 댓글이 있으면 수정 불가)
+    if (commentCount > 0) {
+      return {
+        success: false,
+        error: "댓글이달려있어수정불가",
+        errorMessage: "Cannot update comment with child comments",
+      };
+    }
+
+    // 3. 댓글 수정
+    const now = Date.now();
+    const updateData = {};
+    updateData[`comments/${commentId}/content`] = updates.content;
+    updateData[`comments/${commentId}/updatedAt`] = now;
+
+    await update(ref(database), updateData);
+
+    return {
+      success: true,
+      commentId,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: "error.unknown",
+      errorMessage: error.message,
+    };
+  }
+}
+```
+
+### 5. 댓글 삭제
+
+```javascript
+import { ref, get, remove } from 'firebase/database';
+
+/**
+ * 댓글 삭제
+ *
+ * 주의사항:
+ * - 자식 댓글(대댓글)이 있는 경우 삭제 불가 (commentCount > 0)
+ * - 작성자 본인만 삭제 가능
+ *
+ * @param {string} commentId - 댓글 ID
+ * @returns {Promise<Object>} { success, error?, errorMessage? }
+ */
+async function deleteComment(commentId) {
+  try {
+    // 1. 댓글 정보 조회 (commentCount 확인)
+    const commentRef = ref(database, `comments/${commentId}`);
+    const commentSnapshot = await get(commentRef);
+
+    if (!commentSnapshot.exists()) {
+      return {
+        success: false,
+        error: "error.comment.notFound",
+        errorMessage: "Comment not found",
+      };
+    }
+
+    const commentData = commentSnapshot.val();
+    const commentCount = commentData.commentCount || 0;
+
+    // 2. commentCount 체크 (자식 댓글이 있으면 삭제 불가)
+    if (commentCount > 0) {
+      return {
+        success: false,
+        error: "댓글이달려있어삭제불가",
+        errorMessage: "Cannot delete comment with child comments",
+      };
+    }
+
+    // 3. 댓글 삭제
+    await remove(commentRef);
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: "error.unknown",
+      errorMessage: error.message,
+    };
+  }
+}
+```
+
 ---
 
 ## 댓글 작성자 정보 조회
@@ -533,6 +670,129 @@ function listenToAuthorInfo(uid, callback) {
   return unsubscribe;
 }
 ```
+
+---
+
+## 댓글 수정/삭제 제한 규칙
+
+댓글은 게시글과 마찬가지로 **자식 댓글(대댓글)이 있는 경우 수정/삭제가 불가능**합니다.
+
+### 규칙
+
+1. **수정 제한**
+   - `commentCount > 0`인 경우 수정 불가
+   - 자식 댓글이 있으면 먼저 자식 댓글을 모두 삭제해야 수정 가능
+   - 에러 메시지: `댓글이달려있어수정불가`
+
+2. **삭제 제한**
+   - `commentCount > 0`인 경우 삭제 불가
+   - 자식 댓글이 있으면 먼저 자식 댓글을 모두 삭제해야 삭제 가능
+   - 에러 메시지: `댓글이달려있어삭제불가`
+
+3. **권한 확인**
+   - 작성자 본인만 수정/삭제 가능
+   - `userId === comment.uid` 체크
+
+### UI 구현
+
+CommentItem.svelte 컴포넌트에서 다음과 같이 구현합니다:
+
+1. **수정/삭제 버튼 표시**
+   - 작성자 본인(`userId === comment.uid`)에게만 표시
+   - lucide-svelte 아이콘 사용 (Pencil, Trash2)
+
+2. **수정 시도 시**
+   - `commentCount > 0`이면 경고 알림창 표시
+   - 그렇지 않으면 수정 모달 열기
+
+3. **삭제 시도 시**
+   - `commentCount > 0`이면 경고 알림창 표시
+   - 그렇지 않으면 삭제 확인 후 삭제 진행
+
+4. **경고 알림창**
+   - `<alert-dialog>` 커스텀 엘리먼트 사용
+   - 메시지: `$t("댓글이달려있어수정불가")` 또는 `$t("댓글이달려있어삭제불가")`
+
+---
+
+## Firebase Cloud Functions - commentCount 자동 관리
+
+`commentCount` 필드는 **서버 측(Firebase Cloud Functions)**에서 자동으로 관리되어 데이터 일관성을 보장합니다.
+
+### 동작 원리
+
+#### 1. 댓글 생성 시 (handleCommentCreate)
+
+자식 댓글(대댓글)이 생성되면 부모 댓글의 `commentCount`를 자동으로 1 증가시킵니다.
+
+```javascript
+// firebase/functions/src/handlers/comment.handler.ts
+
+export async function handleCommentCreate(commentId: string, commentData: CommentData) {
+  const db = admin.database();
+
+  // 📝 부모 댓글의 commentCount를 1 증가 (대댓글인 경우)
+  if (commentData.parentId) {
+    const parentUpdates = {} as Record<string, unknown>;
+    parentUpdates[`comments/${commentData.parentId}/commentCount`] =
+      admin.database.ServerValue.increment(1);
+    await db.ref().update(parentUpdates);
+
+    logger.info("부모 댓글의 commentCount 증가 완료", {
+      parentId: commentData.parentId,
+      commentId,
+    });
+  }
+
+  return { success: true, commentId };
+}
+```
+
+#### 2. 댓글 삭제 시 (handleCommentDelete)
+
+자식 댓글(대댓글)이 삭제되면 부모 댓글의 `commentCount`를 자동으로 1 감소시킵니다.
+
+```javascript
+// firebase/functions/src/handlers/comment.handler.ts
+
+export async function handleCommentDelete(commentData: CommentData) {
+  const db = admin.database();
+
+  // 📝 부모 댓글의 commentCount를 1 감소 (대댓글인 경우)
+  if (commentData.parentId) {
+    const parentUpdates = {} as Record<string, unknown>;
+    parentUpdates[`comments/${commentData.parentId}/commentCount`] =
+      admin.database.ServerValue.increment(-1);
+    await db.ref().update(parentUpdates);
+
+    logger.info("부모 댓글의 commentCount 감소 완료", {
+      parentId: commentData.parentId,
+    });
+  }
+
+  return { success: true };
+}
+```
+
+### 핵심 포인트
+
+1. **ServerValue.increment() 사용**
+   - 동시성 안전한 원자적 연산
+   - 트랜잭션 없이도 정확한 카운트 보장
+   - 여러 사용자가 동시에 댓글을 작성/삭제해도 문제없음
+
+2. **서버 측 자동 관리**
+   - 클라이언트는 `commentCount`를 직접 수정하지 않음
+   - Cloud Functions가 자동으로 업데이트
+   - 데이터 일관성 보장
+
+3. **parentId 체크**
+   - `parentId`가 있는 경우(대댓글)에만 부모의 `commentCount` 업데이트
+   - 첫 번째 레벨 댓글(`parentId === null`)은 업데이트하지 않음
+
+4. **게시글의 commentCount도 함께 업데이트**
+   - 댓글이 생성/삭제되면 게시글의 `commentCount`도 자동 업데이트됨
+   - 모든 레벨의 댓글이 게시글의 총 댓글 수에 포함됨
 
 ---
 
@@ -667,3 +927,369 @@ function listenToAuthorInfo(uid, callback) {
 - [게시판 개발 가이드](./sns-web-post.md)
 - [데이터베이스 구조 가이드](./sns-web-database.md)
 - [Svelte Custom Elements 개발 가이드](./sns-custom-elements.md)
+
+## 댓글 개발 가이드
+
+본 섹션은 게시판에 댓글 기능을 구현하는 방법을 상세하게 설명합니다.
+
+### 댓글 데이터베이스 구조
+
+댓글 데이터베이스 구조는 별도 문서에서 관리됩니다.
+
+**📖 참고 문서**: [데이터베이스 구조 가이드 - 댓글 섹션](./sns-web-database.md#댓글-comments)
+
+주요 내용:
+- `/comments/<comment-id>` 경로 구조 (flat style)
+- `postId` 필드로 소속 게시글 추적
+- 트리 구조 지원 (최대 깊이 12단계)
+- `order` 필드를 사용한 계층적 정렬
+- 댓글 필드: postId, uid, content, depth, order, parentId, createdAt, updatedAt
+
+### order 생성 로직
+
+댓글의 트리 구조를 평탄화하여 정렬하기 위해 `order` 필드를 생성하는 함수입니다.
+
+#### 1. 첫 번째 레벨 댓글 order 생성
+
+```javascript
+/**
+ * 첫 번째 레벨 댓글의 order 생성
+ * @param {number} noOfComments - 현재 게시글의 총 댓글 수
+ * @returns {string} order 문자열
+ */
+function createFirstLevelOrder(noOfComments) {
+  // 기본 order 문자열 생성 (모두 0으로 초기화)
+  // L0: 5자리, L1: 4자리, L2~L11: 3자리
+  const parts = ['00000', '0000', '000', '000', '000', '000', '000', '000', '000', '000', '000', '000'];
+
+  // depth 0 (첫 번째 레벨)에 noOfComments 값 추가
+  const computed = 0 + noOfComments;
+  parts[0] = String(computed).padStart(5, '0');  // 5자리로 패딩
+
+  return parts.join(',');
+}
+
+// 예시
+const order1 = createFirstLevelOrder(1);
+// 결과: "00001,0000,000,000,000,000,000,000,000,000,000,000"
+
+const order2 = createFirstLevelOrder(2);
+// 결과: "00002,0000,000,000,000,000,000,000,000,000,000,000"
+```
+
+#### 2. 자식 댓글 order 생성
+
+```javascript
+/**
+ * 자식 댓글의 order 생성
+ * @param {string} parentOrder - 부모 댓글의 order 문자열
+ * @param {number} parentDepth - 부모 댓글의 depth (1부터 시작)
+ * @param {number} noOfComments - 현재 게시글의 총 댓글 수
+ * @returns {string} order 문자열
+ */
+function createChildOrder(parentOrder, parentDepth, noOfComments) {
+  // depth가 12 이상이면 부모 order를 그대로 반환
+  if (parentDepth >= 12) {
+    return parentOrder;
+  }
+
+  // order 문자열을 배열로 분리
+  const parts = parentOrder.split(',');
+
+  // 자식의 depth는 부모 depth와 동일한 인덱스 사용
+  // (depth는 1부터 시작하지만, 배열 인덱스는 0부터 시작하므로)
+  const childDepth = parentDepth;  // 배열 인덱스로 사용
+
+  // 현재 depth의 값에 noOfComments 추가
+  const currentValue = parseInt(parts[childDepth]);
+  const computed = currentValue + noOfComments;
+
+  // depth에 따라 패딩 자릿수 결정
+  // L1 (두 번째 레벨): 4자리, L2 이후: 3자리
+  let padding = 3;  // 기본값: 3자리
+  if (childDepth === 1) {
+    padding = 4;  // 두 번째 레벨은 4자리
+  }
+
+  parts[childDepth] = String(computed).padStart(padding, '0');
+
+  return parts.join(',');
+}
+
+// 예시
+const parentOrder = "00001,0000,000,000,000,000,000,000,000,000,000,000";
+const childOrder1 = createChildOrder(parentOrder, 1, 6);
+// 결과: "00001,0006,000,000,000,000,000,000,000,000,000,000"
+
+const childOrder2 = createChildOrder(childOrder1, 2, 10);
+// 결과: "00001,0006,010,000,000,000,000,000,000,000,000,000"
+```
+
+### 댓글 작성 API 함수
+
+#### 1. 첫 번째 레벨 댓글 작성
+
+```javascript
+/**
+ * 첫 번째 레벨 댓글 작성
+ * @param {string} postId - 게시글 ID
+ * @param {string} userId - 작성자 UID
+ * @param {string} content - 댓글 내용
+ */
+async function createTopLevelComment(postId, userId, content) {
+  // 1. 해당 게시글의 첫 번째 레벨 댓글 수 조회 (parentId가 null인 댓글들)
+  const commentsRef = ref(database, 'comments');
+  const commentsQuery = query(
+    commentsRef,
+    orderByChild('postId'),
+    equalTo(postId)
+  );
+  const commentsSnapshot = await get(commentsQuery);
+
+  let topLevelCommentCount = 0;
+  if (commentsSnapshot.exists()) {
+    commentsSnapshot.forEach((childSnapshot) => {
+      const comment = childSnapshot.val();
+      if (comment.parentId === null || comment.parentId === undefined) {
+        topLevelCommentCount++;
+      }
+    });
+  }
+
+  const newTopLevelNumber = topLevelCommentCount + 1;
+  const newCommentRef = push(commentsRef);
+  const order = createFirstLevelOrder(newTopLevelNumber);
+
+  const commentData = {
+    postId: postId,  // 소속 게시글 ID
+    uid: userId,
+    content: content,
+    depth: 1,
+    order: order,
+    parentId: null,
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  };
+
+  await set(newCommentRef, commentData);
+  return { success: true, commentId: newCommentRef.key };
+}
+```
+
+#### 2. 자식 댓글 (대댓글) 작성
+
+```javascript
+/**
+ * 자식 댓글 작성
+ * @param {string} parentCommentId - 부모 댓글 ID
+ * @param {string} userId - 작성자 UID
+ * @param {string} content - 댓글 내용
+ */
+async function createChildComment(parentCommentId, userId, content) {
+  // 1. 부모 댓글 정보 가져오기 (flat style: commentId로 직접 접근)
+  const parentRef = ref(database, `comments/${parentCommentId}`);
+  const parentSnapshot = await get(parentRef);
+  const parentComment = parentSnapshot.val();
+
+  if (!parentComment) {
+    throw new Error('부모 댓글을 찾을 수 없습니다.');
+  }
+
+  // 2. 같은 부모를 가진 형제 댓글들의 수 조회
+  const commentsRef = ref(database, 'comments');
+  const siblingsQuery = query(
+    commentsRef,
+    orderByChild('parentId'),
+    equalTo(parentCommentId)
+  );
+  const siblingsSnapshot = await get(siblingsQuery);
+
+  let siblingCount = 0;
+  if (siblingsSnapshot.exists()) {
+    siblingCount = siblingsSnapshot.size;
+  }
+
+  const newSiblingNumber = siblingCount + 1;
+  const newCommentRef = push(commentsRef);
+  const order = createChildOrder(parentComment.order, parentComment.depth, newSiblingNumber);
+
+  const commentData = {
+    postId: parentComment.postId,  // 부모 댓글의 postId 상속
+    uid: userId,
+    content: content,
+    depth: parentComment.depth + 1,
+    order: order,
+    parentId: parentCommentId,
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  };
+
+  if (commentData.depth > 12) {
+    throw new Error('댓글 깊이는 최대 12단계까지만 지원됩니다.');
+  }
+
+  await set(newCommentRef, commentData);
+  return { success: true, commentId: newCommentRef.key };
+}
+```
+
+### 댓글 조회 API 함수
+
+#### 1. 댓글 목록 조회
+
+```javascript
+/**
+ * 게시글의 모든 댓글 조회 (order 순으로 정렬)
+ * @param {string} postId - 게시글 ID
+ */
+async function getComments(postId) {
+  const commentsRef = ref(database, 'comments');
+  const commentsQuery = query(
+    commentsRef,
+    orderByChild('postId'),
+    equalTo(postId)
+  );
+
+  const snapshot = await get(commentsQuery);
+  const comments = [];
+
+  snapshot.forEach((childSnapshot) => {
+    comments.push({
+      id: childSnapshot.key,
+      ...childSnapshot.val()
+    });
+  });
+
+  // order 필드로 정렬 (클라이언트 측)
+  comments.sort((a, b) => a.order.localeCompare(b.order));
+
+  return comments;
+}
+```
+
+#### 2. 실시간 댓글 리스너
+
+```javascript
+/**
+ * 실시간 댓글 업데이트 구독
+ * @param {string} postId - 게시글 ID
+ * @param {function} callback - 댓글 목록을 받는 콜백 함수
+ */
+function listenToComments(postId, callback) {
+  const commentsRef = ref(database, 'comments');
+  const commentsQuery = query(
+    commentsRef,
+    orderByChild('postId'),
+    equalTo(postId)
+  );
+
+  return onValue(commentsQuery, (snapshot) => {
+    const comments = [];
+    snapshot.forEach((childSnapshot) => {
+      comments.push({
+        id: childSnapshot.key,
+        ...childSnapshot.val()
+      });
+    });
+
+    // order 필드로 정렬 (클라이언트 측)
+    comments.sort((a, b) => a.order.localeCompare(b.order));
+
+    callback(comments);
+  });
+}
+```
+
+### 댓글 UI 구현 예시
+
+댓글을 트리 구조로 표시할 때 `depth` 필드를 사용하여 들여쓰기를 적용합니다.
+
+**중요**: 댓글에는 `author` 필드가 저장되지 않으므로, 작성자 정보(displayName, photoUrl)는 `/users/{uid}/` 경로에서 실시간으로 가져와야 합니다.
+
+```svelte
+<script>
+  import { createRealtimeStore } from '../lib/stores/database.js';
+
+  let comments = $state([]);
+
+  // depth에 따라 들여쓰기 계산 (20px씩)
+  function getIndent(depth) {
+    return (depth - 1) * 20;
+  }
+</script>
+
+<div class="comments-list">
+  {#each comments as comment (comment.id)}
+    {#snippet CommentItem()}
+      <!-- 작성자 정보를 /users/{uid}/ 에서 실시간으로 가져오기 -->
+      {@const userStore = createRealtimeStore(`users/${comment.uid}`)}
+      {@const userData = $userStore.data}
+
+      <div
+        class="comment-item"
+        style="margin-left: {getIndent(comment.depth)}px"
+      >
+        <div class="comment-header">
+          {#if userData?.photoUrl}
+            <img src={userData.photoUrl} alt="프로필" class="author-avatar" />
+          {/if}
+          <span class="comment-author">{userData?.displayName || '익명'}</span>
+        </div>
+        <div class="comment-content">{comment.content}</div>
+        <div class="comment-meta">
+          <span>Depth: {comment.depth}</span>
+          <button onclick={() => replyToComment(comment.id)}>답글</button>
+        </div>
+      </div>
+    {/snippet}
+
+    {@render CommentItem()}
+  {/each}
+</div>
+
+<style>
+  .comment-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .author-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+  }
+
+  .comment-author {
+    font-weight: 600;
+  }
+</style>
+```
+
+### 댓글 구현 시 주의사항
+
+#### 1. 동기화 필수
+- 게시글의 `commentCount`와 실제 댓글 개수는 항상 동기화되어야 함
+- 댓글 추가/삭제 시 Firebase 트랜잭션 사용 권장
+
+#### 2. order 생성 주의
+- `noOfComments`는 항상 **게시글의 총 댓글 수**를 전달해야 함
+- 댓글 작성 시마다 `commentCount`를 1씩 증가시켜 order에 반영
+
+#### 3. depth 제한
+- 최대 깊이는 12단계
+- 13단계 이상은 order 정렬이 제대로 작동하지 않을 수 있음
+- UI에서 depth 제한을 명시하는 것을 권장 (예: "더 이상 답글을 작성할 수 없습니다")
+
+#### 4. 삭제 처리
+- 댓글 삭제 시 자식 댓글도 함께 삭제하거나
+- 또는 "삭제된 댓글입니다" 메시지로 대체 (자식 댓글 유지)
+- 삭제 시 `commentCount` 감소 필수
+
+#### 5. Cloud Functions 사용 권장
+- 서버 측에서 `order` 생성 및 `commentCount` 동기화를 처리하는 것이 더 안전함
+- 클라이언트에서 직접 처리 시 동시성 문제 발생 가능
+
+---
+

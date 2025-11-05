@@ -11,8 +11,9 @@ import {CommentData, PostData} from "../types";
  *
  * 수행 작업:
  * 1. 게시글의 commentCount 업데이트
- * 2. 카테고리 통계 업데이트: /categories/{category}/commentCount +1
- * 3. 전체 댓글 통계 업데이트: /stats/counters/comment +1
+ * 2. 부모 댓글의 commentCount 업데이트 (대댓글인 경우)
+ * 3. 카테고리 통계 업데이트: /categories/{category}/commentCount +1
+ * 4. 전체 댓글 통계 업데이트: /stats/counters/comment +1
  *
  * @param {string} commentId - 댓글 ID
  * @param {CommentData} commentData - 댓글 데이터
@@ -26,6 +27,7 @@ export async function handleCommentCreate(
     commentId,
     postId: commentData.postId ?? null,
     uid: commentData.uid ?? null,
+    parentId: commentData.parentId ?? null,
   });
 
   // postId 필수 확인
@@ -51,6 +53,21 @@ export async function handleCommentCreate(
     postId,
     commentId,
   });
+
+  // 📝 부모 댓글의 commentCount를 1 증가 (대댓글인 경우)
+  // - parentId가 null이 아닌 경우에만 실행
+  // - ServerValue.increment()를 사용하여 동시성 안전하게 1 증가
+  if (commentData.parentId) {
+    const parentUpdates = {} as Record<string, unknown>;
+    parentUpdates[`comments/${commentData.parentId}/commentCount`] =
+      admin.database.ServerValue.increment(1);
+    await db.ref().update(parentUpdates);
+
+    logger.info("부모 댓글의 commentCount 증가 완료", {
+      parentId: commentData.parentId,
+      commentId,
+    });
+  }
 
   // 📊 카테고리 통계 업데이트: commentCount +1
   // ServerValue.increment()를 사용하여 동시성 안전하게 1 증가
@@ -84,8 +101,9 @@ export async function handleCommentCreate(
  *
  * 수행 작업:
  * 1. 게시글의 commentCount 감소
- * 2. 카테고리 통계 업데이트: /categories/{category}/commentCount -1
- * 3. 전체 댓글 통계 업데이트: /stats/counters/comment -1
+ * 2. 부모 댓글의 commentCount 감소 (대댓글인 경우)
+ * 3. 카테고리 통계 업데이트: /categories/{category}/commentCount -1
+ * 4. 전체 댓글 통계 업데이트: /stats/counters/comment -1
  *
  * @param {CommentData} commentData - 삭제된 댓글 데이터
  * @returns {Promise<{success: boolean}>} 처리 결과
@@ -95,6 +113,7 @@ export async function handleCommentDelete(
 ): Promise<{success: boolean}> {
   logger.info("댓글 삭제 처리 시작 (Flat Style)", {
     postId: commentData.postId ?? null,
+    parentId: commentData.parentId ?? null,
   });
 
   const db = admin.database();
@@ -105,6 +124,20 @@ export async function handleCommentDelete(
     updates[`posts/${commentData.postId}/commentCount`] =
       admin.database.ServerValue.increment(-1);
     await db.ref().update(updates);
+  }
+
+  // 📝 부모 댓글의 commentCount를 1 감소 (대댓글인 경우)
+  // - parentId가 null이 아닌 경우에만 실행
+  // - ServerValue.increment(-1)를 사용하여 동시성 안전하게 1 감소
+  if (commentData.parentId) {
+    const parentUpdates = {} as Record<string, unknown>;
+    parentUpdates[`comments/${commentData.parentId}/commentCount`] =
+      admin.database.ServerValue.increment(-1);
+    await db.ref().update(parentUpdates);
+
+    logger.info("부모 댓글의 commentCount 감소 완료", {
+      parentId: commentData.parentId,
+    });
   }
 
   // 📊 카테고리 통계 업데이트: commentCount -1

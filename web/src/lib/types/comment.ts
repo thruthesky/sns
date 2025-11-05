@@ -18,6 +18,7 @@ export interface Comment {
   order: string; // 계층적 정렬을 위한 필드
   parentId: FirebaseKey | null; // 부모 댓글 ID (최상위는 null)
   likeCount: number; // 좋아요 개수 (Cloud Functions에서 자동 관리)
+  commentCount: number; // 자식 댓글(대댓글) 개수 (Cloud Functions에서 자동 관리)
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }

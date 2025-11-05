@@ -61,6 +61,8 @@ export interface CommentData {
   updatedAt?: number;
   /** 좋아요 개수 (Cloud Functions에서 자동 관리) */
   likeCount?: number;
+  /** 자식 댓글(대댓글) 개수 (Cloud Functions에서 자동 관리) */
+  commentCount?: number;
 }
 
 /**

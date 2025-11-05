@@ -4,12 +4,14 @@
    *
    * 각 댓글을 표시하며, 실시간 사용자 정보를 조회합니다.
    * 답글 작성 기능 및 좋아요 기능을 제공합니다.
+   * 수정/삭제 기능을 제공합니다 (작성자 본인만 가능).
    */
   import { rtdb, createRealtimeStore } from "../lib/stores/database.js";
   import { t } from "../lib/stores/i18n.ts";
-  import { createChildComment } from "../lib/services/comment.js";
+  import { createChildComment, updateComment, deleteComment } from "../lib/services/comment.js";
   import { toggleLike } from "../lib/services/like.js";
   import { showToast } from "../lib/stores/toast.ts";
+  import { Pencil, Trash2 } from "lucide-svelte";
 
   // Props
   let {
@@ -35,6 +37,15 @@
   let isReplyDialogOpen = $state(false);
   let replyContent = $state('');
   let isSubmitting = $state(false);
+
+  // 댓글 수정 모달 상태 관리
+  let isEditDialogOpen = $state(false);
+  let editContent = $state('');
+  let isEditSubmitting = $state(false);
+
+  // 경고 알림 다이얼로그 상태 관리
+  let isAlertDialogOpen = $state(false);
+  let alertMessage = $state('');
 
   /**
    * 좋아요 버튼 클릭 핸들러 (토글 방식)
@@ -130,6 +141,100 @@
     isReplyDialogOpen = false;
     replyContent = '';
   }
+
+  /**
+   * 댓글 수정 버튼 클릭 핸들러
+   */
+  function handleEditClick() {
+    // 1. commentCount 체크 (자식 댓글이 있으면 수정 불가)
+    if ((comment.commentCount || 0) > 0) {
+      alertMessage = $t("댓글이달려있어수정불가");
+      isAlertDialogOpen = true;
+      return;
+    }
+
+    // 2. 수정 모달 열기 (현재 내용으로 초기화)
+    editContent = comment.content;
+    isEditDialogOpen = true;
+  }
+
+  /**
+   * 댓글 수정 제출 핸들러
+   */
+  async function handleEditSubmit() {
+    // 1. 수정 내용 검증
+    if (!editContent.trim()) {
+      showToast($t("댓글내용입력필요"), "error");
+      return;
+    }
+
+    // 2. 댓글 수정 시작
+    isEditSubmitting = true;
+
+    try {
+      // 3. Firebase에 댓글 업데이트
+      const result = await updateComment(comment.commentId, {
+        content: editContent
+      });
+
+      // 4. 결과 처리
+      if (result.success) {
+        showToast($t("댓글이수정되었습니다"), "success");
+        isEditDialogOpen = false;
+        editContent = '';
+      } else {
+        // result.error는 i18n 키
+        showToast($t(result.error), "error");
+      }
+    } catch (error) {
+      console.error('댓글 수정 오류:', error);
+      showToast($t("error.unknown"), "error");
+    } finally {
+      isEditSubmitting = false;
+    }
+  }
+
+  /**
+   * 댓글 수정 취소 핸들러
+   */
+  function handleEditCancel() {
+    isEditDialogOpen = false;
+    editContent = '';
+  }
+
+  /**
+   * 댓글 삭제 버튼 클릭 핸들러
+   */
+  async function handleDeleteClick() {
+    // 1. commentCount 체크 (자식 댓글이 있으면 삭제 불가)
+    if ((comment.commentCount || 0) > 0) {
+      alertMessage = $t("댓글이달려있어삭제불가");
+      isAlertDialogOpen = true;
+      return;
+    }
+
+    // 2. 삭제 확인
+    if (!confirm($t("댓글삭제확인"))) {
+      return;
+    }
+
+    try {
+      // 3. Firebase에서 댓글 삭제
+      const result = await deleteComment(comment.commentId);
+
+      // 4. 결과 처리
+      if (result.success) {
+        showToast($t("댓글이삭제되었습니다"), "success");
+        // 리스트는 Firebase 실시간 구독으로 자동 업데이트됨
+      } else {
+        // result.error는 i18n 키
+        showToast($t(result.error), "error");
+      }
+    } catch (error) {
+      console.error('댓글 삭제 오류:', error);
+      showToast($t("error.unknown"), "error");
+    }
+  }
 </script>
 
 <div
@@ -190,6 +295,22 @@
         💬 {$t("답글")}
       </button>
     {/if}
+
+    <!-- 수정 버튼 (작성자만 표시) -->
+    {#if userId && userId === comment.uid}
+      <button class="action-button edit-button" onclick={handleEditClick} title={$t("수정")}>
+        <Pencil size={14} />
+        {$t("수정")}
+      </button>
+    {/if}
+
+    <!-- 삭제 버튼 (작성자만 표시) -->
+    {#if userId && userId === comment.uid}
+      <button class="action-button delete-button" onclick={handleDeleteClick} title={$t("삭제")}>
+        <Trash2 size={14} />
+        {$t("삭제")}
+      </button>
+    {/if}
   </div>
 </div>
 
@@ -228,6 +349,51 @@
       </div>
     </div>
   </div>
+{/if}
+
+<!-- 댓글 수정 모달 다이얼로그 -->
+{#if isEditDialogOpen}
+  <div class="modal-backdrop" onclick={handleEditCancel}>
+    <div class="modal" onclick={(e) => e.stopPropagation()}>
+      <!-- 모달 헤더 -->
+      <div class="modal-header">
+        <h2>{$t("댓글수정")}</h2>
+        <button class="btn-close" onclick={handleEditCancel}>×</button>
+      </div>
+
+      <!-- 모달 내용 -->
+      <div class="modal-content">
+        <textarea
+          bind:value={editContent}
+          placeholder={$t("댓글내용입력")}
+          rows="5"
+          autofocus
+        ></textarea>
+      </div>
+
+      <!-- 모달 푸터 -->
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick={handleEditCancel}>
+          {$t("취소")}
+        </button>
+        <button
+          class="btn-submit"
+          onclick={handleEditSubmit}
+          disabled={isEditSubmitting}
+        >
+          {isEditSubmitting ? $t("수정중") : $t("수정")}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- 경고 알림 다이얼로그 (commentCount > 0일 때 표시) -->
+{#if isAlertDialogOpen}
+  <alert-dialog
+    message={alertMessage}
+    onclose={() => { isAlertDialogOpen = false; }}
+  />
 {/if}
 
 <style>
@@ -364,6 +530,30 @@
     background-color: #dbeafe;
     border-color: #3b82f6;
     color: #2563eb;
+  }
+
+  /* 수정 버튼 */
+  .edit-button {
+    color: #10b981;
+    border-color: #6ee7b7;
+  }
+
+  .edit-button:hover {
+    background-color: #d1fae5;
+    border-color: #10b981;
+    color: #059669;
+  }
+
+  /* 삭제 버튼 */
+  .delete-button {
+    color: #ef4444;
+    border-color: #fca5a5;
+  }
+
+  .delete-button:hover {
+    background-color: #fee2e2;
+    border-color: #ef4444;
+    color: #dc2626;
   }
 
   /* 개수 표시 */

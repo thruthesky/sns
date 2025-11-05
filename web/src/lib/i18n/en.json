@@ -307,5 +307,14 @@
   "댓글이달려있어삭제불가": "Cannot delete post with comments.",
   "제목과내용을입력하세요": "Please enter title and content.",
   "수정불가": "Cannot Edit",
-  "댓글이달려있어수정불가메시지": "Cannot edit the post because there are comments.\nPlease delete the comments first before editing."
+  "댓글이달려있어수정불가메시지": "Cannot edit the post because there are comments.\nPlease delete the comments first before editing.",
+  "답글": "Reply",
+  "답글작성": "Write Reply",
+  "좋아요를하였습니다": "You liked this.",
+  "좋아요를취소했습니다": "You unliked this.",
+  "댓글수정": "Edit Comment",
+  "수정중": "Updating...",
+  "댓글이수정되었습니다": "Comment has been updated.",
+  "댓글삭제확인": "Are you sure you want to delete this comment?",
+  "댓글이삭제되었습니다": "Comment has been deleted."
 }

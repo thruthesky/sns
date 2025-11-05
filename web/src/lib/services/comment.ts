@@ -496,3 +496,155 @@ export function listenToComments(
     };
   }
 }
+
+/**
+ * 댓글을 수정합니다.
+ *
+ * @param commentId - 댓글 ID
+ * @param updates - 수정할 필드들 { content }
+ * @returns 수정 결과 (success, error)
+ *
+ * 주의사항:
+ * - commentCount가 0보다 크면 수정 불가 (자식 댓글이 있는 경우)
+ * - 수정 시 updatedAt 필드를 자동으로 갱신
+ *
+ * 사용 예시:
+ * ```typescript
+ * const result = await updateComment('comment-abc123', {
+ *   content: '수정된 댓글 내용'
+ * });
+ *
+ * if (result.success) {
+ *   console.log('댓글 수정 완료');
+ * } else {
+ *   console.error('수정 실패:', result.error);
+ * }
+ * ```
+ */
+export async function updateComment(
+  commentId: FirebaseKey,
+  updates: { content: string }
+): Promise<CreateCommentResult> {
+  try {
+    // 1. 댓글 정보 조회 (commentCount 확인)
+    const commentRef = ref(database, `comments/${commentId}`);
+    const commentSnapshot = await get(commentRef);
+
+    if (!commentSnapshot.exists()) {
+      return {
+        success: false,
+        error: "error.comment.notFound",
+        errorMessage: "Comment not found",
+      };
+    }
+
+    const commentData = commentSnapshot.val();
+    const commentCount = commentData.commentCount || 0;
+
+    // 2. commentCount 체크 (자식 댓글이 있으면 수정 불가)
+    if (commentCount > 0) {
+      return {
+        success: false,
+        error: "댓글이달려있어수정불가",
+        errorMessage: "Cannot update comment with child comments",
+      };
+    }
+
+    // 3. 댓글 수정
+    const now = Date.now();
+    const updateData: Record<string, any> = {};
+    updateData[`comments/${commentId}/content`] = updates.content;
+    updateData[`comments/${commentId}/updatedAt`] = now;
+
+    await update(ref(database), updateData);
+
+    // ✅ 댓글 수정 성공
+    return {
+      success: true,
+      commentId,
+    };
+  } catch (error) {
+    // ❌ 댓글 수정 실패
+    const errorInfo = handleFirebaseError(error, "updateComment");
+    return {
+      success: false,
+      error: errorInfo.key, // i18n 키 반환
+      errorMessage: errorInfo.message, // 원본 메시지 (디버깅용)
+    };
+  }
+}
+
+/**
+ * 댓글을 삭제합니다.
+ *
+ * @param commentId - 댓글 ID
+ * @returns 삭제 결과 (success, error)
+ *
+ * 주의사항:
+ * - commentCount가 0보다 크면 삭제 불가 (자식 댓글이 있는 경우)
+ * - 삭제 시 게시글의 commentCount, 부모 댓글의 commentCount, 카테고리 통계, 전체 통계는 Cloud Functions에서 자동으로 감소됨
+ *
+ * 사용 예시:
+ * ```typescript
+ * const result = await deleteComment('comment-abc123');
+ *
+ * if (result.success) {
+ *   console.log('댓글 삭제 완료');
+ * } else {
+ *   console.error('삭제 실패:', result.error);
+ * }
+ * ```
+ */
+export async function deleteComment(
+  commentId: FirebaseKey
+): Promise<CreateCommentResult> {
+  try {
+    // 1. 댓글 정보 조회 (commentCount 확인)
+    const commentRef = ref(database, `comments/${commentId}`);
+    const commentSnapshot = await get(commentRef);
+
+    if (!commentSnapshot.exists()) {
+      return {
+        success: false,
+        error: "error.comment.notFound",
+        errorMessage: "Comment not found",
+      };
+    }
+
+    const commentData = commentSnapshot.val();
+    const commentCount = commentData.commentCount || 0;
+
+    // 2. commentCount 체크 (자식 댓글이 있으면 삭제 불가)
+    if (commentCount > 0) {
+      return {
+        success: false,
+        error: "댓글이달려있어삭제불가",
+        errorMessage: "Cannot delete comment with child comments",
+      };
+    }
+
+    // 3. 댓글 삭제
+    // ⚠️ commentCount 감소는 Cloud Functions에서 자동으로 처리됨
+    // - 게시글의 commentCount -1 (onCommentDelete)
+    // - 부모 댓글의 commentCount -1 (parentId가 있는 경우)
+    // - 카테고리 통계 업데이트
+    // - 전체 통계 업데이트
+    await update(ref(database), {
+      [`comments/${commentId}`]: null,
+    });
+
+    // ✅ 댓글 삭제 성공
+    return {
+      success: true,
+      commentId,
+    };
+  } catch (error) {
+    // ❌ 댓글 삭제 실패
+    const errorInfo = handleFirebaseError(error, "deleteComment");
+    return {
+      success: false,
+      error: errorInfo.key, // i18n 키 반환
+      errorMessage: errorInfo.message, // 원본 메시지 (디버깅용)
+    };
+  }
+}
