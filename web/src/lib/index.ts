@@ -135,13 +135,16 @@ export {
   removeLike,
   checkLikeStatus,
   listenToLikeStatus,
-  getPostLikes,
+  getLikes,      // 새로운 함수 (통합 좋아요 - 게시글/댓글 모두 지원)
+  getPostLikes,  // deprecated: getLikes('post', postId)를 사용하세요
   toggleLike
 } from './services/like.js';
 
 // 좋아요 관련 타입 내보내기
 export type {
-  PostLike,
+  LikeType,     // 좋아요 타입: 'post' | 'comment'
+  Like,         // 좋아요 항목 데이터 구조
+  PostLike,     // deprecated: Like를 사용하세요
   AddLikeResult,
   RemoveLikeResult,
   ToggleLikeResult,

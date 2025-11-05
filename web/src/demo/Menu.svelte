@@ -7,6 +7,7 @@
   import { onMount } from 'svelte';
   import { t } from '../lib/stores/i18n.ts';
   import { setPageTitle } from '../lib/stores/pageTitle.ts';
+  import { navigate } from '../lib/utils/navigation.ts';
 
   /**
    * 컴포넌트 마운트 시 페이지 제목 설정
@@ -14,15 +15,6 @@
   onMount(() => {
     setPageTitle($t('메뉴'));
   });
-
-  /**
-   * 경로로 이동
-   * @param {string} path - 이동할 경로
-   */
-  function navigate(path) {
-    window.history.pushState({}, '', path);
-    window.dispatchEvent(new PopStateEvent('popstate'));
-  }
 
   // 메뉴 항목 목록 - 반응형으로 선언하여 언어 변경 시 자동 업데이트
   let menuItems = $derived([
@@ -38,6 +30,8 @@
     { label: $t('이용약관'), path: '/terms' },
     { label: $t('개인정보'), path: '/privacy' },
     { label: $t('문의하기'), path: '/contact' },
+    { label: $t('개발일지'), path: '/dev/history' },
+    { label: $t('바이브코딩SED'), path: '/dev/sed' },
     { label: $t('테스트게시글생성'), path: '/dev/generate-posts' }
   ]);
 </script>

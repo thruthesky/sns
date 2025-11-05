@@ -84,7 +84,7 @@ export interface ReadDataResult<T> extends DataOperationResult {
  * // $posts는 { data: Post[] | null, loading: boolean, error: Error | null }
  *
  * // 기본값 사용 (노드가 없으면 0 반환)
- * const likeCount = createRealtimeStore<number>('post-likes/post-123-uid-456', 0);
+ * const likeCount = createRealtimeStore<number>('likes/post-post-123-uid-456', 0);
  * // $likeCount.data는 노드가 없으면 0, 있으면 해당 값
  *
  * {#if $posts.loading}
@@ -163,7 +163,7 @@ export function createRealtimeStore<T = any>(path: string, defaultValue?: T): Re
  * const posts = rtdb<Post[]>('posts');
  *
  * // 기본값과 함께 사용
- * const likeStore = rtdb<number>('post-likes/post-123-uid-456', 0);
+ * const likeStore = rtdb<number>('likes/post-post-123-uid-456', 0);
  * // 노드가 없으면 0, 있으면 해당 값 반환
  *
  * // createRealtimeStore() 사용 (명시적 이름)

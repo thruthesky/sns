@@ -10,8 +10,8 @@
  */
 
 // Gen 2 API imports
-import { setGlobalOptions } from "firebase-functions/v2";
-import { onValueCreated, onValueDeleted } from "firebase-functions/v2/database";
+import {setGlobalOptions} from "firebase-functions/v2";
+import {onValueCreated, onValueDeleted} from "firebase-functions/v2/database";
 import * as logger from "firebase-functions/logger";
 import * as admin from "firebase-admin";
 
@@ -56,6 +56,8 @@ interface UserData {
 /**
  * 게시글 참조를 가져옵니다 (Flat Style).
  * - 직접 /posts/{postId} 경로에 접근합니다.
+ * - postId가 '-'로 시작하지 않으면 자동으로 '-'를 붙입니다.
+ * - '-'를 붙인 경로가 없으면 원본 postId로도 시도합니다.
  *
  * @param {string} postId - 게시글 ID
  * @return {Promise} 게시글 참조 또는 null
@@ -65,12 +67,66 @@ async function getPostReference(postId: string): Promise<{
   snapshot: admin.database.DataSnapshot;
 } | null> {
   const db = admin.database();
-  const postRef = db.ref(`/posts/${postId}`);
-  const snapshot = await postRef.once("value");
+
+  logger.info("🔍 게시글 참조 조회 시작", {
+    originalPostId: postId,
+    startsWithDash: postId.startsWith("-"),
+    postIdLength: postId.length,
+  });
+
+  // 시도 1: postId가 '-'로 시작하지 않으면 앞에 '-'를 붙임
+  // Firebase의 push() 키는 '-'로 시작하는 형식입니다
+  // 예: 'OdEWc-SaDELU2Y51FDy' → '-OdEWc-SaDELU2Y51FDy'
+  const normalizedPostId = postId.startsWith("-") ? postId : `-${postId}`;
+
+  logger.debug("시도 1: 정규화된 postId로 조회", {
+    normalizedPostId,
+    path: `/posts/${normalizedPostId}`,
+  });
+
+  let postRef = db.ref(`/posts/${normalizedPostId}`);
+  let snapshot = await postRef.once("value");
 
   if (snapshot.exists()) {
-    return { ref: postRef, snapshot };
+    logger.info("✅ 게시글 찾음 (정규화된 경로)", {
+      normalizedPostId,
+      path: `/posts/${normalizedPostId}`,
+      postData: snapshot.val(),
+    });
+    return {ref: postRef, snapshot};
   }
+
+  logger.warn("⚠️ 정규화된 경로에서 게시글을 찾을 수 없음", {
+    normalizedPostId,
+    pathChecked: `/posts/${normalizedPostId}`,
+  });
+
+  // 시도 2: 원본 postId 그대로 조회 (정규화하지 않음)
+  logger.debug("시도 2: 원본 postId로 조회", {
+    originalPostId: postId,
+    path: `/posts/${postId}`,
+  });
+
+  postRef = db.ref(`/posts/${postId}`);
+  snapshot = await postRef.once("value");
+
+  if (snapshot.exists()) {
+    logger.info("✅ 게시글 찾음 (원본 경로)", {
+      originalPostId: postId,
+      path: `/posts/${postId}`,
+      postData: snapshot.val(),
+    });
+    return {ref: postRef, snapshot};
+  }
+
+  logger.error("❌ 게시글을 찾을 수 없음 (모든 시도 실패)", {
+    originalPostId: postId,
+    normalizedPostId,
+    pathsChecked: [
+      `/posts/${normalizedPostId}`,
+      `/posts/${postId}`,
+    ],
+  });
 
   return null;
 }
@@ -122,7 +178,7 @@ export const onPostCreate = onValueCreated("/posts/{postId}", async (event) => {
 
   if (Object.keys(updates).length > 0) {
     await admin.database().ref().update(updates);
-    logger.info("게시글 필드 초기화 완료", { postId });
+    logger.info("게시글 필드 초기화 완료", {postId});
   }
 
   // 📊 카테고리 통계 업데이트: postCount +1
@@ -139,7 +195,7 @@ export const onPostCreate = onValueCreated("/posts/{postId}", async (event) => {
   const statsUpdates = {} as Record<string, unknown>;
   statsUpdates["stats/counters/post"] = admin.database.ServerValue.increment(1);
   await admin.database().ref().update(statsUpdates);
-  logger.info("전체 글 통계 업데이트 완료 (post +1)", { postId });
+  logger.info("전체 글 통계 업데이트 완료 (post +1)", {postId});
 
   return {
     success: true,
@@ -175,7 +231,7 @@ export const onCommentCreate = onValueCreated(
       logger.error("댓글 데이터에 postId 필드가 없습니다.", {
         commentId,
       });
-      return { success: false, error: "Missing postId in comment data" };
+      return {success: false, error: "Missing postId in comment data"};
     }
 
     const db = admin.database();
@@ -212,7 +268,7 @@ export const onCommentCreate = onValueCreated(
     statsUpdates["stats/counters/comment"] =
       admin.database.ServerValue.increment(1);
     await db.ref().update(statsUpdates);
-    logger.info("전체 댓글 통계 업데이트 완료 (comment +1)", { commentId });
+    logger.info("전체 댓글 통계 업데이트 완료 (comment +1)", {commentId});
 
     return {
       success: true,
@@ -250,7 +306,7 @@ export const onPostDelete = onValueDeleted("/posts/{postId}", async (event) => {
     admin.database.ServerValue.increment(-1);
   await admin.database().ref().update(statsUpdates);
 
-  return { success: true };
+  return {success: true};
 });
 
 /**
@@ -291,7 +347,7 @@ export const onCommentDelete = onValueDeleted(
       admin.database.ServerValue.increment(-1);
     await admin.database().ref().update(statsUpdates);
 
-    return { success: true };
+    return {success: true};
   }
 );
 
@@ -308,23 +364,68 @@ interface ParsedLikeId {
 /**
  * likeId를 파싱하여 type, nodeId, uid를 추출합니다.
  *
- * @param {string} likeId - 파싱할 likeId (예: "post-postId-uid")
+ * likeId 형식: "{type}-{nodeId}-{uid}"
+ * - 문제: nodeId와 uid에 하이픈(-)이 포함될 수 있음
+ * - 해결: 마지막 하이픈을 기준으로 uid를 분리하고, 나머지를 nodeId로 간주
+ *
+ * 예시:
+ * - "post-OdEWc-SaDELU2Y51FDy-zodDYjqcmfb5WHi1rVYrUJi0d2j2-user123"
+ * - type: "post"
+ * - nodeId: "OdEWc-SaDELU2Y51FDy-zodDYjqcmfb5WHi1rVYrUJi0d2j2"
+ * - uid: "user123"
+ *
+ * @param {string} likeId - 파싱할 likeId
  * @return {ParsedLikeId | null} 파싱 결과 또는 null (파싱 실패 시)
  */
 function parseLikeId(likeId: string): ParsedLikeId | null {
-  const parts = likeId.split("-");
+  logger.debug("🔍 parseLikeId 시작", {likeId, likeIdLength: likeId.length});
 
-  // 최소 3개 부분 필요 (type-nodeId-uid)
-  if (parts.length < 3) return null;
+  // 1단계: type 추출 (첫 번째 하이픈 이전)
+  const firstDashIndex = likeId.indexOf("-");
+  if (firstDashIndex === -1) {
+    logger.error("❌ likeId에 하이픈이 없음", {likeId});
+    return null;
+  }
 
-  const type = parts[0];
-  if (type !== "post" && type !== "comment") return null;
+  const type = likeId.substring(0, firstDashIndex);
+  logger.debug("1단계: type 추출 완료", {type, firstDashIndex});
 
-  // nodeId는 두 번째 부분, uid는 세 번째 부분
-  const nodeId = parts[1];
-  const uid = parts[2];
+  if (type !== "post" && type !== "comment") {
+    logger.error("❌ 잘못된 type", {type, likeId});
+    return null;
+  }
 
-  if (!nodeId || !uid) return null;
+  // 2단계: nodeId와 uid 분리
+  // type 이후의 문자열을 추출: "post-ABC-DEF-user123" -> "ABC-DEF-user123"
+  const remainder = likeId.substring(firstDashIndex + 1);
+  logger.debug("2단계: remainder 추출 완료", {
+    remainder,
+    remainderLength: remainder.length,
+  });
+
+  // 마지막 하이픈을 기준으로 uid 분리
+  // "ABC-DEF-user123" -> nodeId: "ABC-DEF", uid: "user123"
+  const lastDashIndex = remainder.lastIndexOf("-");
+  if (lastDashIndex === -1) {
+    logger.error("❌ remainder에 하이픈이 없음", {remainder, likeId});
+    return null;
+  }
+
+  const nodeId = remainder.substring(0, lastDashIndex);
+  const uid = remainder.substring(lastDashIndex + 1);
+
+  logger.debug("3단계: nodeId와 uid 분리 완료", {
+    nodeId,
+    uid,
+    lastDashIndex,
+  });
+
+  if (!nodeId || !uid) {
+    logger.error("❌ nodeId 또는 uid가 비어있음", {nodeId, uid, likeId});
+    return null;
+  }
+
+  logger.info("✅ parseLikeId 성공", {type, nodeId, uid, likeId});
 
   return {
     type: type as "post" | "comment",
@@ -352,71 +453,121 @@ function parseLikeId(likeId: string): ParsedLikeId | null {
 export const onLike = onValueCreated("/likes/{likeId}", async (event) => {
   const likeId = event.params.likeId as string;
 
-  logger.info(`좋아요 추가 감지 (통합 좋아요): likeId=${likeId}`);
+  logger.info(`🎉 좋아요 추가 감지 (통합 좋아요): likeId=${likeId}`);
 
   try {
-    // likeId 파싱
+    // ===== 1️⃣ likeId 파싱 =====
+    logger.debug("likeId 파싱 시작", {likeId});
     const parsed = parseLikeId(likeId);
+
     if (!parsed) {
-      logger.error("likeId 파싱 실패 (형식 오류)", { likeId });
-      return { success: false, error: "Invalid likeId format" };
+      logger.error("❌ likeId 파싱 실패 (형식 오류)", {likeId});
+      return {success: false, error: "Invalid likeId format"};
     }
 
-    const { type, nodeId, uid } = parsed;
+    const {type, nodeId, uid} = parsed;
+    logger.info("✅ likeId 파싱 성공", {likeId, type, nodeId, uid});
+
     const db = admin.database();
 
-    // 📊 게시글/댓글의 likeCount 1 증가
-    // increment()를 사용하여 모든 자식 노드를 읽지 않고도 동시성 안전하게 증가
+    // ===== 2️⃣ 게시글/댓글 좋아요 카운트 증가 =====
     if (type === "post") {
+      logger.debug("게시글 좋아요 처리 시작", {nodeId, uid});
+
       const postInfo = await getPostReference(nodeId);
       if (!postInfo) {
-        logger.error("좋아요 대상 게시글을 찾을 수 없습니다.", {
+        logger.error("❌ 좋아요 대상 게시글을 찾을 수 없습니다.", {
           nodeId,
           likeId,
+          searchPath: `/posts/-${nodeId}`,
         });
-        return { success: false, error: "Post not found" };
+        return {success: false, error: "Post not found"};
       }
+
+      logger.info("✅ 게시글 찾음, likeCount 업데이트 시작", {
+        nodeId,
+        postData: postInfo.snapshot.val(),
+      });
 
       // 🚀 increment()를 사용하여 likeCount 1 증가 (동시성 안전)
       await postInfo.ref
         .child("likeCount")
         .set(admin.database.ServerValue.increment(1));
 
-      logger.info(
-        `게시글 좋아요 개수 증가 완료: /posts/${nodeId}/likeCount +1`
-      );
+      logger.info("✅ 게시글 좋아요 개수 증가 완료", {
+        path: `/posts/${nodeId}/likeCount`,
+        operation: "increment(+1)",
+      });
     } else if (type === "comment") {
+      logger.debug("댓글 좋아요 처리 시작", {nodeId, uid});
+
       const commentRef = db.ref(`/comments/${nodeId}`);
       const commentSnapshot = await commentRef.once("value");
 
       if (!commentSnapshot.exists()) {
-        logger.error("좋아요 대상 댓글을 찾을 수 없습니다.", {
+        logger.error("❌ 좋아요 대상 댓글을 찾을 수 없습니다.", {
           nodeId,
           likeId,
+          searchPath: `/comments/${nodeId}`,
         });
-        return { success: false, error: "Comment not found" };
+        return {success: false, error: "Comment not found"};
       }
+
+      logger.info("✅ 댓글 찾음, likeCount 업데이트 시작", {
+        nodeId,
+        commentData: commentSnapshot.val(),
+      });
 
       // 🚀 increment()를 사용하여 likeCount 1 증가 (동시성 안전)
       await commentRef
         .child("likeCount")
         .set(admin.database.ServerValue.increment(1));
 
-      logger.info(
-        `댓글 좋아요 개수 증가 완료: /comments/${nodeId}/likeCount +1`
-      );
+      logger.info("✅ 댓글 좋아요 개수 증가 완료", {
+        path: `/comments/${nodeId}/likeCount`,
+        operation: "increment(+1)",
+      });
     }
 
-    // 📊 전체 좋아요 통계 업데이트: /stats/counters/like +1
-    // ServerValue.increment()를 사용하여 동시성 안전하게 1 증가
+    // ===== 3️⃣ 전체 좋아요 통계 업데이트 =====
+    logger.debug("전체 좋아요 통계 업데이트 준비", {
+      path: "stats/counters/like",
+      operation: "increment(+1)",
+    });
+
     const statsUpdates = {} as Record<string, unknown>;
     statsUpdates["stats/counters/like"] = admin.database.ServerValue.increment(1);
-    await db.ref().update(statsUpdates);
-    logger.info("전체 좋아요 통계 업데이트 완료 (like +1)", { likeId });
 
-    return { success: true, type, nodeId, uid, likeId };
+    logger.debug("DB 업데이트 시작", {
+      updatePath: "stats/counters/like",
+      updates: statsUpdates,
+    });
+
+    await db.ref().update(statsUpdates);
+
+    logger.info("✅ 전체 좋아요 통계 업데이트 완료", {
+      path: "stats/counters/like",
+      operation: "increment(+1)",
+      likeId,
+    });
+
+    logger.info("🎉 좋아요 처리 완료", {
+      success: true,
+      type,
+      nodeId,
+      uid,
+      likeId,
+      timestamp: new Date().toISOString(),
+    });
+
+    return {success: true, type, nodeId, uid, likeId};
   } catch (error) {
-    logger.error("좋아요 개수 업데이트 중 오류:", error);
+    logger.error("❌ 좋아요 개수 업데이트 중 오류 발생", {
+      error,
+      likeId,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      errorStack: error instanceof Error ? error.stack : undefined,
+    });
     throw error;
   }
 });
@@ -440,71 +591,121 @@ export const onLike = onValueCreated("/likes/{likeId}", async (event) => {
 export const onCancelLike = onValueDeleted("/likes/{likeId}", async (event) => {
   const likeId = event.params.likeId as string;
 
-  logger.info(`좋아요 취소 감지 (통합 좋아요): likeId=${likeId}`);
+  logger.info(`💔 좋아요 취소 감지 (통합 좋아요): likeId=${likeId}`);
 
   try {
-    // likeId 파싱
+    // ===== 1️⃣ likeId 파싱 =====
+    logger.debug("likeId 파싱 시작", {likeId});
     const parsed = parseLikeId(likeId);
+
     if (!parsed) {
-      logger.error("likeId 파싱 실패 (형식 오류)", { likeId });
-      return { success: false, error: "Invalid likeId format" };
+      logger.error("❌ likeId 파싱 실패 (형식 오류)", {likeId});
+      return {success: false, error: "Invalid likeId format"};
     }
 
-    const { type, nodeId, uid } = parsed;
+    const {type, nodeId, uid} = parsed;
+    logger.info("✅ likeId 파싱 성공", {likeId, type, nodeId, uid});
+
     const db = admin.database();
 
-    // 📊 게시글/댓글의 likeCount 1 감소
-    // increment()를 사용하여 모든 자식 노드를 읽지 않고도 동시성 안전하게 감소
+    // ===== 2️⃣ 게시글/댓글 좋아요 카운트 감소 =====
     if (type === "post") {
+      logger.debug("게시글 좋아요 취소 처리 시작", {nodeId, uid});
+
       const postInfo = await getPostReference(nodeId);
       if (!postInfo) {
-        logger.error("좋아요 대상 게시글을 찾을 수 없습니다.", {
+        logger.error("❌ 좋아요 대상 게시글을 찾을 수 없습니다.", {
           nodeId,
           likeId,
+          searchPath: `/posts/-${nodeId}`,
         });
-        return { success: false, error: "Post not found" };
+        return {success: false, error: "Post not found"};
       }
+
+      logger.info("✅ 게시글 찾음, likeCount 업데이트 시작", {
+        nodeId,
+        postData: postInfo.snapshot.val(),
+      });
 
       // 🚀 increment(-1)을 사용하여 likeCount 1 감소 (동시성 안전)
       await postInfo.ref
         .child("likeCount")
         .set(admin.database.ServerValue.increment(-1));
 
-      logger.info(
-        `게시글 좋아요 개수 감소 완료: /posts/${nodeId}/likeCount -1`
-      );
+      logger.info("✅ 게시글 좋아요 개수 감소 완료", {
+        path: `/posts/${nodeId}/likeCount`,
+        operation: "increment(-1)",
+      });
     } else if (type === "comment") {
+      logger.debug("댓글 좋아요 취소 처리 시작", {nodeId, uid});
+
       const commentRef = db.ref(`/comments/${nodeId}`);
       const commentSnapshot = await commentRef.once("value");
 
       if (!commentSnapshot.exists()) {
-        logger.error("좋아요 대상 댓글을 찾을 수 없습니다.", {
+        logger.error("❌ 좋아요 대상 댓글을 찾을 수 없습니다.", {
           nodeId,
           likeId,
+          searchPath: `/comments/${nodeId}`,
         });
-        return { success: false, error: "Comment not found" };
+        return {success: false, error: "Comment not found"};
       }
+
+      logger.info("✅ 댓글 찾음, likeCount 업데이트 시작", {
+        nodeId,
+        commentData: commentSnapshot.val(),
+      });
 
       // 🚀 increment(-1)을 사용하여 likeCount 1 감소 (동시성 안전)
       await commentRef
         .child("likeCount")
         .set(admin.database.ServerValue.increment(-1));
 
-      logger.info(
-        `댓글 좋아요 개수 감소 완료: /comments/${nodeId}/likeCount -1`
-      );
+      logger.info("✅ 댓글 좋아요 개수 감소 완료", {
+        path: `/comments/${nodeId}/likeCount`,
+        operation: "increment(-1)",
+      });
     }
 
-    // 📊 전체 좋아요 통계 업데이트: /stats/counters/like -1
-    // ServerValue.increment(-1)을 사용하여 동시성 안전하게 1 감소
+    // ===== 3️⃣ 전체 좋아요 통계 업데이트 =====
+    logger.debug("전체 좋아요 통계 업데이트 준비", {
+      path: "stats/counters/like",
+      operation: "increment(-1)",
+    });
+
     const statsUpdates = {} as Record<string, unknown>;
     statsUpdates["stats/counters/like"] = admin.database.ServerValue.increment(-1);
-    await db.ref().update(statsUpdates);
-    logger.info("전체 좋아요 통계 업데이트 완료 (like -1)", { likeId });
 
-    return { success: true, type, nodeId, uid, likeId };
+    logger.debug("DB 업데이트 시작", {
+      updatePath: "stats/counters/like",
+      updates: statsUpdates,
+    });
+
+    await db.ref().update(statsUpdates);
+
+    logger.info("✅ 전체 좋아요 통계 업데이트 완료", {
+      path: "stats/counters/like",
+      operation: "increment(-1)",
+      likeId,
+    });
+
+    logger.info("💔 좋아요 취소 처리 완료", {
+      success: true,
+      type,
+      nodeId,
+      uid,
+      likeId,
+      timestamp: new Date().toISOString(),
+    });
+
+    return {success: true, type, nodeId, uid, likeId};
   } catch (error) {
-    logger.error("좋아요 개수 업데이트 중 오류:", error);
+    logger.error("❌ 좋아요 개수 업데이트 중 오류 발생", {
+      error,
+      likeId,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      errorStack: error instanceof Error ? error.stack : undefined,
+    });
     throw error;
   }
 });
@@ -524,7 +725,7 @@ export const onCancelLike = onValueDeleted("/likes/{likeId}", async (event) => {
  * @param {string} uid - 사용자 UID
  * @param {UserData} userData - 사용자 데이터
  * @param {number} createdAt - 사용자 생성 시간 (onUserCreate에서 전달)
- * @returns {Promise<void>} 업데이트 완료 후 resolve
+ * @return {Promise<void>} 업데이트 완료 후 resolve
  */
 async function updateUserProps(
   uid: string,
@@ -551,9 +752,9 @@ async function updateUserProps(
   }
 
   // displayNameLowerCase 저장 (대소문자 구분 없는 검색용)
-  const displayNameLowerCase = userData.displayName
-    ? userData.displayName.toLowerCase()
-    : undefined;
+  const displayNameLowerCase = userData.displayName ?
+    userData.displayName.toLowerCase() :
+    undefined;
   if (displayNameLowerCase) {
     updates[`users/${uid}/displayNameLowerCase`] = displayNameLowerCase;
   }
@@ -653,7 +854,7 @@ export const onUserCreate = onValueCreated("/users/{uid}", async (event) => {
   // /users/{uid}/createdAt 직접 저장 (없는 경우만)
   if (userData.createdAt === undefined || userData.createdAt === null) {
     await admin.database().ref(`users/${uid}/createdAt`).set(createdAt);
-    logger.info("createdAt 저장 완료", { uid, createdAt });
+    logger.info("createdAt 저장 완료", {uid, createdAt});
   }
 
   // updateUserProps() 함수를 통해 나머지 처리 수행 (createdAt 전달)

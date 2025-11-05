@@ -2,19 +2,33 @@
  * 좋아요 타입 정의
  *
  * Firebase Realtime Database의 좋아요 데이터 구조를 정의합니다.
- * 데이터 구조 (Flat Style): /post-likes/{postId}-{uid}
+ * 데이터 구조 (Flat Style - 통합 좋아요):
+ * /likes/
+ *   post-<post-id>-<uid>: 1      # 게시글 좋아요
+ *   comment-<comment-id>-<uid>: 1 # 댓글 좋아요
  */
 
 import type { UserId, FirebaseKey, ApiResult } from './common';
 
 /**
- * 좋아요 항목 데이터 구조
- * getPostLikes()에서 반환하는 개별 좋아요 항목
+ * 좋아요 타입
+ * 'post': 게시글 좋아요, 'comment': 댓글 좋아요
  */
-export interface PostLike {
+export type LikeType = 'post' | 'comment';
+
+/**
+ * 좋아요 항목 데이터 구조
+ * getLikes()에서 반환하는 개별 좋아요 항목
+ */
+export interface Like {
   uid: UserId;
   value: number; // 항상 1 (좋아요 표시)
 }
+
+/**
+ * @deprecated PostLike는 Like로 이름이 변경되었습니다. Like를 사용하세요.
+ */
+export type PostLike = Like;
 
 /**
  * 좋아요 추가 결과

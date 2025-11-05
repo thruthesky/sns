@@ -24,6 +24,8 @@
   import Privacy from "./Privacy.svelte";
   import Contact from "./Contact.svelte";
   import GenerateTestPosts from "./GenerateTestPosts.svelte";
+  import DevHistory from "./DevHistory.svelte";
+  import DevSed from "./DevSed.svelte";
   import Toast from "../lib/components/Toast.svelte";
   import RightSidebar from "./RightSidebar.svelte";
 
@@ -89,6 +91,12 @@
     {:else if currentPath === "/dev/generate-posts"}
       <!-- 테스트 게시글 생성 페이지 (개발자 도구) -->
       <GenerateTestPosts />
+    {:else if currentPath === "/dev/history"}
+      <!-- 개발일지 페이지 -->
+      <DevHistory />
+    {:else if currentPath === "/dev/sed"}
+      <!-- Spec-Exact Development (SED) 페이지 -->
+      <DevSed />
     {:else}
       <!-- 홈 페이지 (기본값) -->
       <Home />

@@ -17,6 +17,7 @@ export interface Comment {
   depth: number; // 댓글 깊이 (1~12)
   order: string; // 계층적 정렬을 위한 필드
   parentId: FirebaseKey | null; // 부모 댓글 ID (최상위는 null)
+  likeCount: number; // 좋아요 개수 (Cloud Functions에서 자동 관리)
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }

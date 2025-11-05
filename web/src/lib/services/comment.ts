@@ -31,38 +31,97 @@
  * });
  */
 
-import { database } from '../utils/firebase.js';
-import { ref, push, get, update, increment, query, orderByChild, equalTo, onValue, off } from 'firebase/database';
-import { handleFirebaseError } from '../utils/error-handler.js';
+import { database } from "../utils/firebase.js";
+import {
+  ref,
+  push,
+  get,
+  update,
+  query,
+  orderByChild,
+  startAt,
+  endAt,
+  onValue,
+  off,
+} from "firebase/database";
+import { handleFirebaseError } from "../utils/error-handler.js";
 import type {
   CreateTopLevelCommentParams,
   CreateChildCommentParams,
   CreateCommentResult,
-  CommentsCallback
-} from '../types/comment';
-import type { FirebaseKey } from '../types/common';
+  CommentsCallback,
+} from "../types/comment";
+import type { FirebaseKey } from "../types/common";
 
 /**
- * 랜덤 알파벳 3자리 문자열을 생성합니다.
- * 계층적 정렬을 위한 order 문자열 생성에 사용됩니다.
+ * order 문자열을 파싱하여 각 레벨의 인덱스 배열로 변환합니다.
+ * postId 접두사가 있는 경우 제거하고 숫자 부분만 파싱합니다.
  *
- * @returns 랜덤 알파벳 3자리 문자열 (예: 'abc', 'xyz')
- *
- * 기능:
- * - a-z 소문자 알파벳 26글자 중 3개를 랜덤 선택
- * - order 필드의 각 세그먼트로 사용됨
+ * @param orderString - 쉼표로 구분된 order 문자열 (예: "post-abc123-00001,0002,003" 또는 "00001,0002,003")
+ * @returns 각 레벨의 인덱스 배열 (예: [1, 2, 3])
  *
  * 예시:
- * - getRandomSegment() → 'mno'
- * - getRandomSegment() → 'def'
+ * - parseOrder("post-abc123-00001,0000,000") → [1, 0, 0]
+ * - parseOrder("00003,0005,002") → [3, 5, 2] (하위 호환)
  */
-function getRandomSegment(): string {
-  const chars = 'abcdefghijklmnopqrstuvwxyz';
-  let result = '';
-  for (let i = 0; i < 3; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+function parseOrder(orderString: string): number[] {
+  // postId 접두사가 있는 경우 제거 (형식: "<post-id>-00001,0000,000,...")
+  // 마지막 하이픈 이후의 숫자 부분만 추출
+  let numberPart = orderString;
+  const lastDashIndex = orderString.lastIndexOf("-");
+  if (lastDashIndex !== -1 && lastDashIndex < orderString.length - 1) {
+    // 하이픈 다음에 숫자가 있는 경우 (postId 접두사로 판단)
+    const afterDash = orderString.substring(lastDashIndex + 1);
+    if (/^\d/.test(afterDash)) {
+      // 하이픈 다음이 숫자로 시작하면 postId 접두사가 있는 것으로 판단
+      numberPart = afterDash;
+    }
   }
-  return result;
+
+  return numberPart.split(",").map((segment) => parseInt(segment, 10));
+}
+
+/**
+ * 인덱스 배열을 order 문자열로 변환합니다.
+ * 각 레벨에 맞는 자릿수로 패딩하고, postId 접두사를 추가합니다.
+ *
+ * @param postId - 게시글 ID (접두사로 사용)
+ * @param indices - 각 레벨의 인덱스 배열 (예: [1, 2, 3])
+ * @returns postId 접두사가 포함된 order 문자열 (예: "post-abc123-00001,0002,003")
+ *
+ * 기능:
+ * - postId를 접두사로 추가 (하이픈으로 구분)
+ * - 0번 인덱스(L0): 5자리 (00001)
+ * - 1번 인덱스(L1): 4자리 (0001)
+ * - 2번 이상(L2+): 3자리 (001)
+ *
+ * 예시:
+ * - formatOrder("post-abc123", [1, 0, 0]) → "post-abc123-00001,0000,000"
+ * - formatOrder("xyz", [3, 5, 2]) → "xyz-00003,0005,002"
+ */
+function formatOrder(postId: string, indices: number[]): string {
+  const numberPart = indices
+    .map((index, level) => {
+      if (level === 0) return String(index).padStart(5, "0"); // L0: 5자리
+      if (level === 1) return String(index).padStart(4, "0"); // L1: 4자리
+      return String(index).padStart(3, "0"); // L2+: 3자리
+    })
+    .join(",");
+
+  return `${postId}-${numberPart}`;
+}
+
+/**
+ * 초기 order 배열을 생성합니다.
+ * 전체 12레벨까지 0으로 초기화합니다.
+ *
+ * @returns 12개의 0으로 초기화된 배열 [0, 0, 0, ..., 0]
+ *
+ * 예시:
+ * - createInitialOrder() → [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+ */
+function createInitialOrder(): number[] {
+  return Array(12).fill(0);
 }
 
 /**
@@ -101,28 +160,61 @@ export async function createTopLevelComment(
     // 현재 시간 (Unix timestamp 밀리초)
     const now = Date.now();
 
-    // 랜덤 order 생성 (3자리: 'abc')
-    const orderSegment = getRandomSegment();
+    // 1. 같은 게시글의 댓글들을 order 필드로 조회하여 최대 L0 인덱스 찾기
+    // order 형식: "<post-id>-00001,0000,000,..."
+    const commentsRef = ref(database, "comments");
+    const topLevelQuery = query(
+      commentsRef,
+      orderByChild("order"),
+      startAt(`${postId}-`),
+      endAt(`${postId}-z`)
+    );
+    const snapshot = await get(topLevelQuery);
+
+    let maxL0Index = 0;
+    if (snapshot.exists()) {
+      // 모든 댓글을 순회하며 depth=1인 댓글의 L0 인덱스 찾기
+      snapshot.forEach((childSnapshot) => {
+        const comment = childSnapshot.val();
+        if (comment.depth === 1 && comment.order) {
+          const indices = parseOrder(comment.order);
+          const l0Index = indices[0];
+          if (l0Index !== undefined && l0Index > maxL0Index) {
+            maxL0Index = l0Index;
+          }
+        }
+      });
+    }
+
+    // 2. 다음 L0 인덱스 계산
+    const nextL0Index = maxL0Index + 1;
+
+    // 3. order 배열 생성 (L0에만 nextL0Index, 나머지는 0)
+    const orderIndices = createInitialOrder();
+    orderIndices[0] = nextL0Index;
+
+    // 4. order 문자열 생성 (postId 접두사 포함)
+    // 예: "post-abc123-00001,0000,000,000,000,000,000,000,000,000,000,000"
+    const orderString = formatOrder(postId, orderIndices);
 
     // 댓글 객체 생성
     const commentData = {
       postId: postId,
       uid: userId,
       content: content,
-      depth: 1,  // 최상위 댓글
-      order: orderSegment,  // 'abc'
-      parentId: null,  // 부모 없음
+      depth: 1, // 최상위 댓글
+      order: orderString, // "00001,0000,000,000,000,000,000,000,000,000,000,000"
+      parentId: null, // 부모 없음
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
     };
 
-    // 1. 새 댓글 생성 (push key 미리 생성)
-    const commentsRef = ref(database, 'comments');
+    // 5. 새 댓글 생성 (push key 미리 생성)
     const newCommentRef = push(commentsRef);
     const commentId = newCommentRef.key;
 
     if (!commentId) {
-      throw new Error('Failed to generate comment ID');
+      throw new Error("Failed to generate comment ID");
     }
 
     // 2. 업데이트할 경로와 값 준비
@@ -131,24 +223,25 @@ export async function createTopLevelComment(
     // 댓글 데이터 저장
     updates[`comments/${commentId}`] = commentData;
 
-    // 게시글 댓글 개수 증가
-    updates[`posts/${postId}/commentCount`] = increment(1);
+    // ⚠️ commentCount 증가는 Cloud Functions에서 처리 (onCommentCreate)
+    // Firebase Cloud Functions가 aggregate 연산의 단일 진실 공급원(Single Source of Truth)이므로
+    // 클라이언트에서는 commentCount를 증가시키지 않습니다.
 
-    // 3. 한 번의 update로 두 경로 동시 업데이트
+    // 3. 한 번의 update로 업데이트 실행
     await update(ref(database), updates);
 
     // ✅ 댓글 생성 성공
     return {
       success: true,
-      commentId: commentId
+      commentId: commentId,
     };
   } catch (error) {
     // ❌ 댓글 생성 실패
-    const errorInfo = handleFirebaseError(error, 'createTopLevelComment');
+    const errorInfo = handleFirebaseError(error, "createTopLevelComment");
     return {
       success: false,
-      error: errorInfo.key,  // i18n 키 반환
-      errorMessage: errorInfo.message  // 원본 메시지 (디버깅용)
+      error: errorInfo.key, // i18n 키 반환
+      errorMessage: errorInfo.message, // 원본 메시지 (디버깅용)
     };
   }
 }
@@ -194,14 +287,14 @@ export async function createChildComment(
       // 부모 댓글이 존재하지 않음
       return {
         success: false,
-        error: 'error.comment.parentNotFound',
-        errorMessage: 'Parent comment not found'
+        error: "error.comment.parentNotFound",
+        errorMessage: "Parent comment not found",
       };
     }
 
     const parentComment = parentSnapshot.val();
     const parentDepth = parentComment.depth || 1;
-    const parentOrder = parentComment.order || '';
+    const parentOrder = parentComment.order || "";
     const postId = parentComment.postId;
 
     // 2. depth 검증 (최대 12까지)
@@ -210,37 +303,74 @@ export async function createChildComment(
       // 최대 깊이 초과
       return {
         success: false,
-        error: 'error.comment.maxDepthExceeded',
-        errorMessage: 'Maximum comment depth exceeded (12)'
+        error: "error.comment.maxDepthExceeded",
+        errorMessage: "Maximum comment depth exceeded (12)",
       };
     }
 
-    // 3. 현재 시간
+    // 3. 부모의 order를 파싱하여 인덱스 배열로 변환
+    const parentIndices = parseOrder(parentOrder);
+
+    // 4. 같은 게시글의 댓글들을 order 필드로 조회하여 형제 댓글의 최대 인덱스 찾기
+    // order 형식: "<post-id>-00001,0000,000,..."
+    const commentsRef = ref(database, "comments");
+    const siblingsQuery = query(
+      commentsRef,
+      orderByChild("order"),
+      startAt(`${postId}-`),
+      endAt(`${postId}-z`)
+    );
+    const siblingsSnapshot = await get(siblingsQuery);
+
+    let maxCurrentDepthIndex = 0;
+    if (siblingsSnapshot.exists()) {
+      // 형제 댓글들을 순회하며 현재 depth에서의 최대 인덱스 찾기
+      siblingsSnapshot.forEach((childSnapshot) => {
+        const sibling = childSnapshot.val();
+        // 같은 부모를 가진 댓글들만 확인
+        if (sibling.parentId === parentCommentId && sibling.order) {
+          const siblingIndices = parseOrder(sibling.order);
+          // newDepth는 1부터 시작하므로, 배열 인덱스는 newDepth - 1
+          const currentDepthIndex = siblingIndices[newDepth - 1];
+          if (currentDepthIndex !== undefined && currentDepthIndex > maxCurrentDepthIndex) {
+            maxCurrentDepthIndex = currentDepthIndex;
+          }
+        }
+      });
+    }
+
+    // 5. 다음 인덱스 계산
+    const nextIndex = maxCurrentDepthIndex + 1;
+
+    // 6. 새로운 order 배열 생성
+    const newIndices = [...parentIndices];
+    newIndices[newDepth - 1] = nextIndex;
+
+    // 7. order 문자열 생성 (postId 접두사 포함)
+    // 예: "post-abc123-00001,0002,003,..."
+    const newOrder = formatOrder(postId, newIndices);
+
+    // 8. 현재 시간
     const now = Date.now();
 
-    // 4. 랜덤 order 생성
-    const orderSegment = getRandomSegment();
-    const newOrder = `${parentOrder}-${orderSegment}`;
-
-    // 5. 댓글 객체 생성
+    // 9. 댓글 객체 생성
     const commentData = {
       postId: postId,
       uid: userId,
       content: content,
       depth: newDepth,
-      order: newOrder,  // 부모 order + '-' + 랜덤 3자리
+      order: newOrder, // 올바른 계층적 정렬 문자열
       parentId: parentCommentId,
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
     };
 
-    // 6. 새 댓글 생성 (push key 미리 생성)
-    const commentsRef = ref(database, 'comments');
+    // 10. 새 댓글 생성 (push key 미리 생성, commentsRef 재사용)
     const newCommentRef = push(commentsRef);
     const commentId = newCommentRef.key;
 
     if (!commentId) {
-      throw new Error('Failed to generate comment ID');
+      throw new Error("Failed to generate comment ID");
     }
 
     // 7. 업데이트할 경로와 값 준비
@@ -249,24 +379,25 @@ export async function createChildComment(
     // 댓글 데이터 저장
     updates[`comments/${commentId}`] = commentData;
 
-    // 게시글 댓글 개수 증가
-    updates[`posts/${postId}/commentCount`] = increment(1);
+    // ⚠️ commentCount 증가는 Cloud Functions에서 처리 (onCommentCreate)
+    // Firebase Cloud Functions가 aggregate 연산의 단일 진실 공급원(Single Source of Truth)이므로
+    // 클라이언트에서는 commentCount를 증가시키지 않습니다.
 
-    // 8. 한 번의 update로 두 경로 동시 업데이트
+    // 8. 한 번의 update로 업데이트 실행
     await update(ref(database), updates);
 
     // ✅ 대댓글 생성 성공
     return {
       success: true,
-      commentId: commentId
+      commentId: commentId,
     };
   } catch (error) {
     // ❌ 대댓글 생성 실패
-    const errorInfo = handleFirebaseError(error, 'createChildComment');
+    const errorInfo = handleFirebaseError(error, "createChildComment");
     return {
       success: false,
-      error: errorInfo.key,  // i18n 키 반환
-      errorMessage: errorInfo.message  // 원본 메시지 (디버깅용)
+      error: errorInfo.key, // i18n 키 반환
+      errorMessage: errorInfo.message, // 원본 메시지 (디버깅용)
     };
   }
 }
@@ -281,8 +412,8 @@ export async function createChildComment(
  *
  * 기능:
  * - 특정 게시글의 댓글을 실시간으로 감시 (flat style)
- * - orderByChild('postId') + equalTo 쿼리로 게시글별 필터링
- * - order 필드로 계층적 정렬 (부모 → 자식 순서)
+ * - orderByChild('order') + startAt/endAt으로 postId 기반 범위 쿼리
+ * - Firebase가 order 필드로 자동 정렬하여 반환 (계층적 순서 유지)
  * - 데이터 변경 시 자동으로 callback 호출
  * - Unsubscribe 함수 반환 (메모리 누수 방지)
  *
@@ -311,13 +442,16 @@ export function listenToComments(
 ): () => void {
   try {
     // Firebase 경로: /comments/ (flat style)
-    const commentsRef = ref(database, 'comments');
+    const commentsRef = ref(database, "comments");
 
-    // 쿼리 생성: postId로 필터링
+    // 쿼리 생성: order 필드로 postId 범위 쿼리
+    // order 형식: "<post-id>-00001,0000,000,..."
+    // startAt과 endAt으로 특정 postId로 시작하는 댓글들만 조회
     const commentsQuery = query(
       commentsRef,
-      orderByChild('postId'),
-      equalTo(postId)
+      orderByChild("order"),
+      startAt(`${postId}-`),
+      endAt(`${postId}-z`)
     );
 
     // 실시간 리스너 등록
@@ -328,16 +462,15 @@ export function listenToComments(
         snapshot.forEach((childSnapshot) => {
           commentsData.push({
             commentId: childSnapshot.key,
-            ...childSnapshot.val()
+            ...childSnapshot.val(),
           });
         });
 
-        // order 필드로 정렬 (계층적 순서: 'abc', 'abc-def', 'abc-def-ghi', 'abc-xyz', 'mno')
-        commentsData.sort((a, b) => {
-          const orderA = a.order || '';
-          const orderB = b.order || '';
-          return orderA.localeCompare(orderB);
-        });
+        // Firebase가 이미 order로 정렬된 결과를 반환하므로 추가 정렬 불필요
+        // 계층적 순서가 자동으로 유지됨:
+        // "post-abc123-00001,0000,000,..." (첫 번째 댓글)
+        // "post-abc123-00001,0001,000,..." (첫 번째 댓글의 첫 번째 답글)
+        // "post-abc123-00002,0000,000,..." (두 번째 댓글)
 
         // 콜백 호출
         callback(commentsData);
@@ -354,7 +487,7 @@ export function listenToComments(
     };
   } catch (error) {
     // ❌ 리스너 등록 실패
-    console.error('댓글 조회 실패:', error);
+    console.error("댓글 조회 실패:", error);
     callback([]);
 
     // 해제 함수 반환 (에러 발생 시에도)

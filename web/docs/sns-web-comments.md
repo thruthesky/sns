@@ -5,6 +5,33 @@
 
 ---
 
+## 목차
+
+- [댓글 트리 구조 개념](#댓글-트리-구조-개념)
+  - [용어 정의](#용어-정의)
+  - [트리 구조 특징](#트리-구조-특징)
+- [댓글 데이터 구조](#댓글-데이터-구조)
+  - [댓글 필드 설명](#댓글-필드-설명)
+  - [Flat Style 구조의 장점](#flat-style-구조의-장점)
+- [order 필드 상세 설명](#order-필드-상세-설명)
+  - [order 문자열 형식](#order-문자열-형식)
+  - [order 기반 정렬 예시](#order-기반-정렬-예시)
+  - [postId 접두사의 이점](#postid-접두사의-이점)
+- [댓글 데이터 예시](#댓글-데이터-예시)
+  - [게시글과 댓글 전체 구조](#게시글과-댓글-전체-구조)
+  - [댓글 표시 순서](#댓글-표시-순서-order-정렬-후)
+- [댓글 API 함수 구현](#댓글-api-함수-구현)
+  - [1. 첫 번째 레벨 댓글 작성](#1-첫-번째-레벨-댓글-작성)
+  - [2. 자식 댓글(대댓글) 작성](#2-자식-댓글대댓글-작성)
+  - [3. 댓글 목록 조회 (실시간 구독)](#3-댓글-목록-조회-실시간-구독)
+- [댓글 작성자 정보 조회](#댓글-작성자-정보-조회)
+- [댓글 좋아요 (comment-props)](#댓글-좋아요-comment-props)
+- [Firebase 보안 규칙](#firebase-보안-규칙)
+- [주요 주의사항](#주요-주의사항)
+- [참고 문서](#참고-문서)
+
+---
+
 ## 댓글 트리 구조 개념
 
 ### 용어 정의
@@ -35,7 +62,7 @@
     uid: "사용자 UID"
     content: "댓글 내용"
     depth: 1                 # 댓글 깊이 (1부터 시작, 최대 12)
-    order: "00001,0000,000,000,000,000,000,000,000,000,000,000"
+    order: "abc123-00001,0000,000,000,000,000,000,000,000,000,000,000"
     parentId: null           # 부모 댓글 ID (첫 번째 레벨은 null)
     createdAt: 1234567890    # Unix timestamp (밀리초)
     updatedAt: 1234567890    # Unix timestamp (밀리초)
@@ -69,29 +96,52 @@
 ### order 문자열 형식
 
 ```
-"00001,0000,000,000,000,000,000,000,000,000,000,000"
- ^^^^^  ^^^^  ^^^  ^^^  ^^^  ^^^  ^^^  ^^^  ^^^  ^^^  ^^^  ^^^
-  L0    L1    L2   L3   L4   L5   L6   L7   L8   L9   L10  L11
+"<post-id>-00001,0000,000,000,000,000,000,000,000,000,000,000"
+ ^^^^^^^^^  ^^^^^  ^^^^  ^^^  ^^^  ^^^  ^^^  ^^^  ^^^  ^^^  ^^^  ^^^  ^^^
+ postId     L0    L1    L2   L3   L4   L5   L6   L7   L8   L9   L10  L11
 ```
 
+- **postId**: 게시글 ID (접두사)
+- **구분자 (postId와 레벨 사이)**: 하이픈(-)
 - **L0 (첫 번째 레벨)**: 5자리 숫자 (00000~99999)
 - **L1 (두 번째 레벨)**: 4자리 숫자 (0000~9999)
 - **L2~L11 (세 번째 레벨 이후)**: 3자리 숫자 (000~999)
-- **구분자**: 콤마(,)로 각 레벨 구분
-- **최대 길이**: 52자 (5 + 4 + 10×3 + 11개의 콤마 = 50)
+- **구분자 (레벨 간)**: 콤마(,)로 각 레벨 구분
 
 ### order 기반 정렬 예시
 
 Firebase에서 댓글을 조회할 때 `order` 필드로 정렬하면 트리 구조가 유지된 채로 평탄화된 목록을 얻을 수 있습니다.
 
+**예시 (post-abc123 게시글의 댓글들):**
+
 ```
-00001,0000,000,... → 첫 번째 댓글
-00001,0001,000,... → 첫 번째 댓글의 첫 번째 자식
-00001,0001,001,... → 첫 번째 댓글의 첫 번째 자식의 첫 번째 자식
-00001,0002,000,... → 첫 번째 댓글의 두 번째 자식
-00002,0000,000,... → 두 번째 댓글
-00002,0001,000,... → 두 번째 댓글의 첫 번째 자식
+post-abc123-00001,0000,000,... → 첫 번째 댓글
+post-abc123-00001,0001,000,... → 첫 번째 댓글의 첫 번째 자식
+post-abc123-00001,0001,001,... → 첫 번째 댓글의 첫 번째 자식의 첫 번째 자식
+post-abc123-00001,0002,000,... → 첫 번째 댓글의 두 번째 자식
+post-abc123-00002,0000,000,... → 두 번째 댓글
+post-abc123-00002,0001,000,... → 두 번째 댓글의 첫 번째 자식
 ```
+
+### postId 접두사의 이점
+
+order 필드에 postId를 접두사로 포함하면 다음과 같은 이점이 있습니다:
+
+1. **단일 인덱스로 효율적인 쿼리**
+   - `orderBy('order').startAt('<post-id>-').endAt('<post-id>-z')` 형태로 특정 게시글의 모든 댓글을 한 번에 조회
+   - `parentId` 같은 추가 인덱스가 필요 없음
+
+2. **Firebase 비용 절감**
+   - 별도의 `parentId` 인덱스가 불필요하여 데이터베이스 인덱싱 비용 감소
+   - 단일 쿼리로 모든 댓글을 가져와 네트워크 비용 절감
+
+3. **정렬 자동 보장**
+   - Firebase가 order 필드로 자동 정렬하므로 클라이언트 측 정렬이 불필요
+   - 트리 구조가 유지된 순서대로 댓글이 반환됨
+
+4. **확장성**
+   - 여러 게시글의 댓글이 같은 `/comments/` 노드에 저장되어도 postId로 구분 가능
+   - 댓글 수가 증가해도 쿼리 성능 유지
 
 ---
 
@@ -107,7 +157,7 @@ Firebase에서 댓글을 조회할 때 `order` 필드로 정렬하면 트리 구
       "uid": "user-2",
       "content": "첫 번째 댓글",
       "depth": 1,
-      "order": "00001,0000,000,000,000,000,000,000,000,000,000,000",
+      "order": "post-abc123-00001,0000,000,000,000,000,000,000,000,000,000,000",
       "parentId": null,
       "createdAt": 1698474000000,
       "updatedAt": 1698474000000
@@ -117,7 +167,7 @@ Firebase에서 댓글을 조회할 때 `order` 필드로 정렬하면 트리 구
       "uid": "user-3",
       "content": "첫 번째 댓글의 답글",
       "depth": 2,
-      "order": "00001,0002,000,000,000,000,000,000,000,000,000,000",
+      "order": "post-abc123-00001,0002,000,000,000,000,000,000,000,000,000,000",
       "parentId": "comment-001",
       "createdAt": 1698475000000,
       "updatedAt": 1698475000000
@@ -127,7 +177,7 @@ Firebase에서 댓글을 조회할 때 `order` 필드로 정렬하면 트리 구
       "uid": "user-4",
       "content": "첫 번째 댓글의 답글의 답글",
       "depth": 3,
-      "order": "00001,0002,003,000,000,000,000,000,000,000,000,000",
+      "order": "post-abc123-00001,0002,003,000,000,000,000,000,000,000,000,000",
       "parentId": "comment-002",
       "createdAt": 1698476000000,
       "updatedAt": 1698476000000
@@ -137,7 +187,7 @@ Firebase에서 댓글을 조회할 때 `order` 필드로 정렬하면 트리 구
       "uid": "user-5",
       "content": "첫 번째 댓글의 두 번째 답글",
       "depth": 2,
-      "order": "00001,0004,000,000,000,000,000,000,000,000,000,000",
+      "order": "post-abc123-00001,0004,000,000,000,000,000,000,000,000,000,000",
       "parentId": "comment-001",
       "createdAt": 1698477000000,
       "updatedAt": 1698477000000
@@ -147,7 +197,7 @@ Firebase에서 댓글을 조회할 때 `order` 필드로 정렬하면 트리 구
       "uid": "user-6",
       "content": "두 번째 댓글",
       "depth": 1,
-      "order": "00005,0000,000,000,000,000,000,000,000,000,000,000",
+      "order": "post-abc123-00005,0000,000,000,000,000,000,000,000,000,000,000",
       "parentId": null,
       "createdAt": 1698478000000,
       "updatedAt": 1698478000000
@@ -157,7 +207,7 @@ Firebase에서 댓글을 조회할 때 `order` 필드로 정렬하면 트리 구
       "uid": "user-7",
       "content": "두 번째 댓글의 답글",
       "depth": 2,
-      "order": "00005,0006,000,000,000,000,000,000,000,000,000,000",
+      "order": "post-abc123-00005,0006,000,000,000,000,000,000,000,000,000,000",
       "parentId": "comment-005",
       "createdAt": 1698479000000,
       "updatedAt": 1698479000000
@@ -169,12 +219,12 @@ Firebase에서 댓글을 조회할 때 `order` 필드로 정렬하면 트리 구
 ### 댓글 표시 순서 (order 정렬 후)
 
 ```
-1. comment-001 (00001,0000,000,...) - 첫 번째 댓글
-2. comment-002 (00001,0002,000,...) - └─ 첫 번째 댓글의 답글
-3. comment-003 (00001,0002,003,...) -    └─ 답글의 답글
-4. comment-004 (00001,0004,000,...) - └─ 첫 번째 댓글의 두 번째 답글
-5. comment-005 (00005,0000,000,...) - 두 번째 댓글
-6. comment-006 (00005,0006,000,...) - └─ 두 번째 댓글의 답글
+1. comment-001 (post-abc123-00001,0000,000,...) - 첫 번째 댓글
+2. comment-002 (post-abc123-00001,0002,000,...) - └─ 첫 번째 댓글의 답글
+3. comment-003 (post-abc123-00001,0002,003,...) -    └─ 답글의 답글
+4. comment-004 (post-abc123-00001,0004,000,...) - └─ 첫 번째 댓글의 두 번째 답글
+5. comment-005 (post-abc123-00005,0000,000,...) - 두 번째 댓글
+6. comment-006 (post-abc123-00005,0006,000,...) - └─ 두 번째 댓글의 답글
 ```
 
 ---
@@ -197,25 +247,36 @@ import { database } from '../utils/firebase.js';
  */
 async function createTopLevelComment(postId, uid, content) {
   try {
-    // 1. 현재 댓글 수 확인 (order의 첫 번째 레벨 번호로 사용)
+    // 1. 같은 게시글의 댓글들을 조회하여 최대 L0 인덱스 찾기
     const commentsRef = ref(database, 'comments');
-    const snapshot = await get(commentsRef);
+    const q = query(
+      commentsRef,
+      orderByChild('order'),
+      startAt(`${postId}-`),
+      endAt(`${postId}-z`)
+    );
+    const snapshot = await get(q);
 
     // 첫 번째 레벨 댓글의 다음 순번 결정
     let nextIndex = 1;
     if (snapshot.exists()) {
-      const comments = snapshot.val();
-      // 기존 댓글들 중 depth가 1인 것만 확인하여 최대 인덱스 구하기
-      for (const commentId in comments) {
-        if (comments[commentId].depth === 1) {
-          const depth1Index = parseInt(comments[commentId].order.split(',')[0]);
-          nextIndex = Math.max(nextIndex, depth1Index + 1);
+      snapshot.forEach((childSnapshot) => {
+        const comment = childSnapshot.val();
+        // depth가 1인 댓글들만 확인하여 최대 L0 인덱스 구하기
+        if (comment.depth === 1 && comment.order) {
+          // order 형식: "post-abc123-00001,0000,000,..."
+          // postId 이후의 숫자 부분만 추출
+          const orderWithoutPostId = comment.order.split('-').slice(1).join('-');
+          const l0Index = parseInt(orderWithoutPostId.split(',')[0], 10);
+          if (!isNaN(l0Index)) {
+            nextIndex = Math.max(nextIndex, l0Index + 1);
+          }
         }
-      }
+      });
     }
 
-    // 2. order 문자열 생성
-    const orderStr = String(nextIndex).padStart(5, '0') + ',0000,000,000,000,000,000,000,000,000,000,000';
+    // 2. order 문자열 생성 (postId 접두사 포함)
+    const orderStr = `${postId}-${String(nextIndex).padStart(5, '0')},0000,000,000,000,000,000,000,000,000,000,000`;
 
     // 3. 댓글 데이터 작성
     const timestamp = Date.now();
@@ -285,38 +346,55 @@ async function createChildComment(postId, parentCommentId, uid, content) {
       };
     }
 
-    // 2. 같은 부모의 자식 댓글들 조회
+    // 2. 부모의 order에서 postId 추출
+    // order 형식: "post-abc123-00001,0000,000,..."
+    const parentOrder = parentComment.order;
+    const orderParts = parentOrder.split('-');
+    const extractedPostId = orderParts.slice(0, -1).join('-'); // postId 추출
+    const parentOrderNumbers = orderParts[orderParts.length - 1]; // 숫자 부분
+
+    // 3. 같은 부모의 자식 댓글들을 조회하여 최대 인덱스 찾기
     const commentsRef = ref(database, 'comments');
-    const snapshot = await get(commentsRef);
+    const q = query(
+      commentsRef,
+      orderByChild('order'),
+      startAt(`${extractedPostId}-`),
+      endAt(`${extractedPostId}-z`)
+    );
+    const snapshot = await get(q);
 
     let nextChildIndex = 0;
     if (snapshot.exists()) {
-      const comments = snapshot.val();
-      for (const commentId in comments) {
-        const comment = comments[commentId];
-        // 같은 부모의 같은 깊이 자식들 확인
-        if (comment.parentId === parentCommentId && comment.depth === parentDepth + 1) {
-          const orderParts = comment.order.split(',');
-          const childIndex = parseInt(orderParts[parentDepth]);
-          nextChildIndex = Math.max(nextChildIndex, childIndex + 1);
+      snapshot.forEach((childSnapshot) => {
+        const comment = childSnapshot.val();
+        // 같은 부모의 자식 댓글들만 확인
+        if (comment.parentId === parentCommentId && comment.depth === parentDepth + 1 && comment.order) {
+          // order에서 숫자 부분만 추출
+          const orderNumPart = comment.order.split('-').slice(-1)[0];
+          const orderParts = orderNumPart.split(',');
+          const childIndex = parseInt(orderParts[parentDepth], 10);
+          if (!isNaN(childIndex)) {
+            nextChildIndex = Math.max(nextChildIndex, childIndex + 1);
+          }
         }
-      }
+      });
     }
 
-    // 3. 부모의 order를 기반으로 자식 order 생성
-    const parentOrderParts = parentComment.order.split(',');
+    // 4. 부모의 order를 기반으로 자식 order 생성
+    const parentOrderParts = parentOrderNumbers.split(',');
     const newOrderParts = [...parentOrderParts];
 
-    // 자식의 인덱스 결정 (첫 번째 자식은 기본 4자리, 나머지는 3자리)
+    // 자식의 인덱스 결정 (L1: 4자리, L2+: 3자리)
     if (parentDepth === 1) {
       newOrderParts[1] = String(nextChildIndex).padStart(4, '0');
     } else {
       newOrderParts[parentDepth] = String(nextChildIndex).padStart(3, '0');
     }
 
-    const orderStr = newOrderParts.join(',');
+    // postId 접두사를 포함한 최종 order 문자열 생성
+    const orderStr = `${extractedPostId}-${newOrderParts.join(',')}`;
 
-    // 4. 자식 댓글 데이터 작성
+    // 5. 자식 댓글 데이터 작성
     const timestamp = Date.now();
     const newComment = {
       postId,
@@ -329,7 +407,7 @@ async function createChildComment(postId, parentCommentId, uid, content) {
       updatedAt: timestamp
     };
 
-    // 5. Firebase에 저장
+    // 6. Firebase에 저장
     const newCommentRef = await push(commentsRef, newComment);
 
     return {
@@ -349,7 +427,7 @@ async function createChildComment(postId, parentCommentId, uid, content) {
 ### 3. 댓글 목록 조회 (실시간 구독)
 
 ```javascript
-import { ref, query, orderByChild, orderByKey, onValue } from 'firebase/database';
+import { ref, query, orderByChild, startAt, endAt, onValue } from 'firebase/database';
 
 /**
  * 특정 게시글의 모든 댓글을 order 순서로 조회 (실시간)
@@ -361,14 +439,17 @@ import { ref, query, orderByChild, orderByKey, onValue } from 'firebase/database
 function listenToComments(postId, callback) {
   const commentsRef = ref(database, 'comments');
 
-  // postId로 필터링하고 order로 정렬
+  // order 필드로 postId 범위 쿼리 및 자동 정렬
+  // order 형식: "post-abc123-00001,0000,000,..."
+  // startAt과 endAt으로 특정 postId로 시작하는 댓글들만 조회
   const q = query(
     commentsRef,
-    orderByChild('postId'),
-    equalTo(postId)
+    orderByChild('order'),
+    startAt(`${postId}-`),
+    endAt(`${postId}-z`)
   );
 
-  // 먼저 postId로 필터링한 후, 클라이언트에서 order로 정렬
+  // Firebase가 order 필드로 자동 정렬하므로 클라이언트 측 정렬 불필요
   const unsubscribe = onValue(q, (snapshot) => {
     const comments = [];
 
@@ -381,9 +462,7 @@ function listenToComments(postId, callback) {
       });
     }
 
-    // order 필드로 정렬 (문자열 비교)
-    comments.sort((a, b) => a.order.localeCompare(b.order));
-
+    // Firebase가 이미 order로 정렬된 결과를 반환하므로 추가 정렬 불필요
     callback(comments);
   });
 

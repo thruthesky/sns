@@ -18,10 +18,12 @@
     FileText,
     ExternalLink,
     BookOpen,
-    LogIn
+    LogIn,
+    Zap
   } from 'lucide-svelte';
   import { user } from '../stores/auth.js';
   import { t, locale, setLocale, SUPPORTED_LOCALES } from '../stores/i18n.ts';
+  import { navigate } from '../utils/navigation.ts';
 
   /**
    * 언어 옵션 목록
@@ -37,34 +39,34 @@
     <h2 class="section-title">{$t('퀵메뉴')}</h2>
     <nav class="menu">
       <!-- 홈 -->
-      <a href="/" class="menu-item">
+      <button type="button" class="menu-item" onclick={() => navigate('/')}>
         <Home size={20} />
         <span>{$t('홈')}</span>
-      </a>
+      </button>
 
       <!-- 채팅 -->
-      <a href="/chat/room" class="menu-item">
+      <button type="button" class="menu-item" onclick={() => navigate('/chat/room')}>
         <MessageCircle size={20} />
         <span>{$t('채팅')}</span>
-      </a>
+      </button>
 
       <!-- 사용자 목록 -->
-      <a href="/user/list" class="menu-item">
+      <button type="button" class="menu-item" onclick={() => navigate('/user/list')}>
         <Users size={20} />
         <span>{$t('사용자목록')}</span>
-      </a>
+      </button>
 
       <!-- 프로필 -->
-      <a href="/user/profile" class="menu-item">
+      <button type="button" class="menu-item" onclick={() => navigate('/user/profile')}>
         <User size={20} />
         <span>{$t('내프로필')}</span>
-      </a>
+      </button>
 
       <!-- 게시판 -->
-      <a href="/post/list" class="menu-item">
+      <button type="button" class="menu-item" onclick={() => navigate('/post/list')}>
         <FileText size={20} />
         <span>{$t('게시판')}</span>
-      </a>
+      </button>
     </nav>
 
     <!-- 구분선 -->
@@ -76,20 +78,20 @@
       <div class="menu">
         {#if $user}
           <!-- 로그인한 사용자 - 프로필 수정 링크 -->
-          <a href="/user/profile" class="menu-item-small">
+          <button type="button" class="menu-item-small" onclick={() => navigate('/user/profile')}>
             <User size={16} />
             <span>{$t('회원정보수정')}</span>
-          </a>
+          </button>
         {:else}
           <!-- 로그인하지 않은 사용자 - 로그인/회원가입 링크 -->
-          <a href="/auth/login" class="menu-item-small">
+          <button type="button" class="menu-item-small" onclick={() => navigate('/auth/login')}>
             <LogIn size={16} />
             <span>{$t('로그인')}</span>
-          </a>
-          <a href="/auth/signup" class="menu-item-small">
+          </button>
+          <button type="button" class="menu-item-small" onclick={() => navigate('/auth/signup')}>
             <User size={16} />
             <span>{$t('회원가입')}</span>
-          </a>
+          </button>
         {/if}
       </div>
     </div>
@@ -100,10 +102,10 @@
     <!-- 링크 섹션 -->
     <div class="menu">
       <!-- 회원 목록 -->
-      <a href="/user/list" class="menu-item-small">
+      <button type="button" class="menu-item-small" onclick={() => navigate('/user/list')}>
         <Users size={16} />
         <span>{$t('회원목록')}</span>
-      </a>
+      </button>
 
       <!-- 프로젝트 GitHub -->
       <a
@@ -141,10 +143,16 @@
       </a>
 
       <!-- 개발일지 -->
-      <a href="/dev/history" class="menu-item-small">
+      <button type="button" class="menu-item-small" onclick={() => navigate('/dev/history')}>
         <BookOpen size={16} />
         <span>{$t('개발일지')}</span>
-      </a>
+      </button>
+
+      <!-- 바이브 코딩 - SED -->
+      <button type="button" class="menu-item-small" onclick={() => navigate('/dev/sed')}>
+        <Zap size={16} />
+        <span>{$t('바이브코딩SED')}</span>
+      </button>
     </div>
 
     <!-- 언어 설정 섹션 -->
@@ -156,7 +164,7 @@
           id="language-select"
           class="language-select"
           value={$locale}
-          on:change={(e) => setLocale(e.currentTarget.value)}
+          onchange={(e) => setLocale(e.currentTarget.value)}
         >
           {#each LANGUAGE_OPTIONS as option}
             <option value={option.code}>
@@ -245,6 +253,13 @@
     text-decoration: none;
     transition: all 0.2s;
     cursor: pointer;
+    /* button 기본 스타일 리셋 */
+    border: none;
+    background: none;
+    font-family: inherit;
+    font-size: inherit;
+    text-align: left;
+    width: 100%;
   }
 
   .menu-item:hover {
@@ -270,6 +285,12 @@
     font-size: 0.875rem;
     font-weight: 500;
     cursor: pointer;
+    /* button 기본 스타일 리셋 */
+    border: none;
+    background: none;
+    font-family: inherit;
+    text-align: left;
+    width: 100%;
   }
 
   .menu-item-small:hover {

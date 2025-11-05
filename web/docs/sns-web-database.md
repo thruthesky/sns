@@ -298,23 +298,52 @@ export const POST_CATEGORIES = [
     ├── uid: "작성자 UID"
     ├── content: "댓글 내용"
     ├── depth: 1  # 댓글 깊이 (1~12)
-    ├── order: "00001,0000,000,..."  # 정렬용 문자열
+    ├── order: "<post-id>-00001,0000,000,..."  # postId 접두사가 포함된 정렬용 문자열
     ├── parentId: null  # 부모 댓글 ID (첫 레벨은 null)
+    ├── likeCount: 0  # 좋아요 개수 (Cloud Functions로 관리)
     ├── createdAt: 1698473000000
     └── updatedAt: 1698473000000
 ```
 
 ### order 필드 형식
 
+order 필드는 postId를 접두사로 포함하여, 특정 게시글의 댓글만을 효율적으로 조회할 수 있습니다.
+
 ```
-"00001,0000,000,000,000,000,000,000,000,000,000,000"
- ^^^^^  ^^^^  ^^^  ^^^  ^^^  ^^^  ^^^  ^^^  ^^^  ^^^  ^^^  ^^^
-  L0    L1    L2   L3   L4   L5   L6   L7   L8   L9   L10  L11
+"<post-id>-00001,0000,000,000,000,000,000,000,000,000,000,000"
+ ^^^^^^^^^  ^^^^^  ^^^^  ^^^  ^^^  ^^^  ^^^  ^^^  ^^^  ^^^  ^^^  ^^^  ^^^
+ postId     L0    L1    L2   L3   L4   L5   L6   L7   L8   L9   L10  L11
 ```
 
+- **postId**: 게시글 ID (접두사)
+- **구분자**: 하이픈(-)으로 postId와 레벨 구분
 - **L0**: 5자리 (첫 번째 레벨 댓글)
 - **L1**: 4자리 (두 번째 레벨)
 - **L2~L11**: 3자리 (세 번째 레벨 이후)
+
+**예시 (post-abc123 게시글의 댓글):**
+```
+post-abc123-00001,0000,000,...  # 첫 번째 댓글
+post-abc123-00001,0001,000,...  # 첫 번째 댓글의 첫 번째 답글
+post-abc123-00002,0000,000,...  # 두 번째 댓글
+```
+
+**쿼리 방법:**
+```javascript
+// order 필드로 특정 게시글의 모든 댓글을 조회
+const q = query(
+  commentsRef,
+  orderByChild('order'),
+  startAt(`${postId}-`),
+  endAt(`${postId}-z`)
+);
+```
+
+**이점:**
+- 단일 인덱스(`order`)만으로 효율적인 범위 쿼리 가능
+- `parentId` 같은 추가 인덱스가 불필요
+- Firebase가 자동으로 order 순서대로 정렬하여 반환
+- 여러 게시글의 댓글이 같은 `/comments/` 노드에 저장되어도 postId로 구분 가능
 
 ### 관련 가이드
 
@@ -680,7 +709,7 @@ export const onCommentDelete = functions.database.onDelete('/comments/{commentId
 ### 2. 속성 분리
 
 - 특정 속성에 대한 대량 조회가 필요한 경우 별도 경로에서 관리
-- 예: `user-props/displayName`, `comment-props/likes`
+- 예: `user-props/displayName`
 - 네트워크 최적화 및 쿼리 성능 향상
 
 ### 3. Cloud Functions 활용

@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   /**
    * 홈 화면 컴포넌트
    *
@@ -8,6 +8,7 @@
 
   import { t } from "../lib/stores/i18n.ts";
   import { ChevronDown, CheckCircle2, Circle } from "lucide-svelte";
+  import { navigate } from "../lib/utils/navigation.ts";
 
   // 현재 열려있는 아코디언 아이템
   let openAccordionItem = $state(null);
@@ -127,31 +128,48 @@
 </script>
 
 <div class="home">
-  <!-- Vibe 배너 -->
-  <div class="vibe-banner">
-    <span class="vibe-text">✨ {$t("home.vibeBanner")}</span>
-  </div>
-
-  <!-- 메인 타이틀 -->
-  <div class="hero-section">
-    <h1 class="hero-title">{$t("home.title")}</h1>
-    <p class="hero-description">
-      {$t("home.description.part1")}
-      <a
-        href="https://open.kakao.com/o/gdj4M4Tg"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="hero-link"
-      >
-        {$t("home.description.linkText")}
+  <!-- 메인 히어로 카드 -->
+  <div class="hero-card">
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+      <a class="hero-badge-link" href="/dev/history">
+        <span class="hero-badge">✨ {$t("home.vibeBanner")}</span>
+        <span class="hero-badge-text">{$t("home.overview.badge3")}</span>
       </a>
-      {$t("home.description.part2")}
-    </p>
+      <h1 class="hero-title">{$t("home.title")}</h1>
+      <p class="hero-description">
+        {$t("home.description.part1")}
+        <a
+          href="https://open.kakao.com/o/gdj4M4Tg"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="hero-link"
+        >
+          {$t("home.description.linkText")}
+        </a>
+        {$t("home.description.part2")}
+      </p>
+      <div class="hero-actions">
+        <a
+          class="hero-button primary"
+          href="https://open.kakao.com/o/gdj4M4Tg"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          🚀 단톡방 참여하기
+        </a>
+        <a class="hero-button ghost" href="/help">
+          📚 프로젝트 가이드 보기
+        </a>
+        <a class="hero-button ghost" href="/dev/sed">
+          🧠 신개념 바이브코딩 - SED
+        </a>
+      </div>
+    </div>
   </div>
 
   <!-- 기술 스택 -->
-  <section class="section techstack-section">
-    <h2 class="section-title">{$t("home.techStack.title")}</h2>
+  <section class="techstack-section">
     <div class="techstack-grid">
       <!-- Svelte -->
       <div class="techstack-item">
@@ -316,31 +334,172 @@
     padding: 0;
   }
 
-  /* Vibe 배너 */
-  .vibe-banner {
-    display: inline-block;
-    margin-bottom: 1.5rem;
-    padding: 0.5rem 1rem;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  /* 히어로 카드 */
+  .hero-card {
+    position: relative;
+    overflow: hidden;
+    display: grid;
+    gap: 1.75rem;
+    max-width: 54rem;
+    margin: 0 auto 2.5rem;
+    padding: 2.25rem 2.5rem;
+    background: linear-gradient(135deg, #f5f3ff 0%, #e0f2fe 100%);
+    border-radius: 1.75rem;
+    border: 1px solid rgba(99, 102, 241, 0.15);
+    box-shadow: 0 25px 50px -12px rgba(59, 130, 246, 0.25);
+  }
+
+  .hero-card::before,
+  .hero-card::after {
+    content: "";
+    position: absolute;
     border-radius: 9999px;
-    box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);
+    filter: blur(45px);
+    opacity: 0.45;
+    z-index: 0;
   }
 
-  .vibe-text {
-    color: white;
-    font-size: 0.875rem;
-    font-weight: 500;
+  .hero-card::before {
+    width: 280px;
+    height: 280px;
+    top: -120px;
+    right: -80px;
+    background: radial-gradient(
+      circle,
+      rgba(59, 130, 246, 0.5) 0%,
+      rgba(59, 130, 246, 0) 70%
+    );
   }
 
-  /* 히어로 섹션 */
-  .hero-section {
-    margin-bottom: 3rem;
+  .hero-card::after {
+    width: 220px;
+    height: 220px;
+    bottom: -120px;
+    left: -60px;
+    background: radial-gradient(
+      circle,
+      rgba(14, 165, 233, 0.5) 0%,
+      rgba(14, 165, 233, 0) 70%
+    );
+  }
+
+  .hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.55) 0%,
+      rgba(255, 255, 255, 0) 45%
+    );
+    backdrop-filter: blur(6px);
+    z-index: 0;
+  }
+
+  .hero-content {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    gap: 0.9rem;
+  }
+
+  .hero-badge-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: fit-content;
+    padding: 0.35rem 0.85rem 0.35rem 0.45rem;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.72);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+    border: 1px solid rgba(99, 102, 241, 0.15);
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.25s ease;
+  }
+
+  .hero-badge-link:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 20px rgba(59, 130, 246, 0.15);
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 32px;
+    border-radius: 9999px;
+    background: linear-gradient(135deg, #4338ca 0%, #6366f1 100%);
+    color: #ffffff;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+
+  .hero-badge-text {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #3730a3;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 0.6rem;
+  }
+
+  .hero-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 9999px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition:
+      transform 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+
+  .hero-button.primary {
+    color: #ffffff;
+    background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+    box-shadow: 0 15px 30px -10px rgba(79, 70, 229, 0.45);
+  }
+
+  .hero-button.primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 32px -12px rgba(99, 102, 241, 0.55);
+  }
+
+  .hero-button.ghost {
+    color: #4338ca;
+    background: rgba(255, 255, 255, 0.75);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    box-shadow: 0 12px 25px -14px rgba(59, 130, 246, 0.45);
+  }
+
+  .hero-button.ghost:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.92);
   }
 
   /* 기술 스택 섹션 */
   .techstack-section {
     background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
     border: 1px solid #d1d5db;
+    padding: 1.25rem;
+    margin-bottom: 3rem;
+    border-radius: 1rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+  }
+
+  .techstack-section:hover {
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
   }
 
   .techstack-grid {
@@ -355,14 +514,14 @@
     flex-direction: column;
     align-items: center;
     text-align: center;
-    padding: 0.75rem 0.875rem;
+    padding: 0.625rem 0.75rem;
     background: white;
     border-radius: 0.5rem;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
     transition: all 0.2s ease;
     border: 1px solid #f0f0f0;
     flex: 0 1 auto;
-    min-width: 170px;
+    min-width: 145px;
     text-decoration: none;
     color: inherit;
   }
@@ -374,13 +533,13 @@
   }
 
   .techstack-icon {
-    font-size: 1.75rem;
-    margin-bottom: 0.375rem;
+    font-size: 1.5rem;
+    margin-bottom: 0.3rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 42px;
-    height: 42px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
   }
@@ -402,45 +561,80 @@
   }
 
   .techstack-name {
-    font-size: 0.9rem;
+    font-size: 0.825rem;
     font-weight: 700;
     color: #111827;
-    margin: 0 0 0.125rem 0;
+    margin: 0 0 0.1rem 0;
   }
 
   .techstack-description {
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     color: #6b7280;
-    line-height: 1.35;
+    line-height: 1.3;
     margin: 0;
   }
 
   .hero-title {
-    font-size: 2.5rem;
+    font-size: 2rem;
     font-weight: 800;
-    margin: 0 0 1rem 0;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    line-height: 1.2;
+    margin: 0;
+    color: #1e1b4b;
+    line-height: 1.3;
   }
 
   .hero-description {
-    font-size: 1.125rem;
-    color: #6b7280;
-    line-height: 1.7;
+    font-size: 0.95rem;
+    color: #475569;
+    line-height: 1.6;
     margin: 0;
   }
 
   .hero-link {
-    color: #3b82f6;
-    text-decoration: underline;
-    font-weight: 500;
+    color: #2563eb;
+    text-decoration: none;
+    font-weight: 600;
   }
 
   .hero-link:hover {
-    color: #2563eb;
+    color: #1d4ed8;
+    text-decoration: underline;
+  }
+
+  @media (max-width: 640px) {
+    .hero-card {
+      max-width: 100%;
+      margin: 0 0 2rem;
+      padding: 1.75rem 1.4rem;
+      gap: 1.5rem;
+    }
+
+    .hero-content {
+      gap: 0.75rem;
+    }
+
+    .hero-badge-text {
+      display: none;
+    }
+
+    .hero-title {
+      font-size: 1.7rem;
+      line-height: 1.35;
+    }
+
+    .hero-description {
+      font-size: 0.95rem;
+    }
+
+    .hero-actions {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .hero-button {
+      justify-content: center;
+      width: 100%;
+    }
+
   }
 
   /* 섹션 */
@@ -801,23 +995,23 @@
     }
 
     .techstack-item {
-      min-width: 150px;
-      padding: 0.6rem 0.75rem;
+      min-width: 130px;
+      padding: 0.5rem 0.625rem;
     }
 
     .techstack-icon {
-      width: 38px;
-      height: 38px;
-      font-size: 1.5rem;
-      margin-bottom: 0.25rem;
+      width: 32px;
+      height: 32px;
+      font-size: 1.35rem;
+      margin-bottom: 0.2rem;
     }
 
     .techstack-name {
-      font-size: 0.825rem;
+      font-size: 0.75rem;
     }
 
     .techstack-description {
-      font-size: 0.65rem;
+      font-size: 0.6rem;
     }
   }
 

@@ -3,11 +3,12 @@
    * 댓글 아이템 컴포넌트
    *
    * 각 댓글을 표시하며, 실시간 사용자 정보를 조회합니다.
-   * 답글 작성 기능을 제공합니다.
+   * 답글 작성 기능 및 좋아요 기능을 제공합니다.
    */
-  import { createRealtimeStore } from "../lib/stores/database.js";
+  import { rtdb, createRealtimeStore } from "../lib/stores/database.js";
   import { t } from "../lib/stores/i18n.ts";
   import { createChildComment } from "../lib/services/comment.js";
+  import { toggleLike } from "../lib/services/like.js";
   import { showToast } from "../lib/stores/toast.ts";
 
   // Props
@@ -19,10 +20,53 @@
   // 댓글 작성자 정보를 실시간으로 구독
   const userStore = createRealtimeStore(`users/${comment.uid}`);
 
+  // 내 좋아요 상태를 실시간으로 구독
+  // 통합 좋아요 구조: /likes/comment-{commentId}-{uid}
+  // 노드가 없으면 0(좋아요 안 누름)을 기본값으로 사용
+  // ⚠️ commentId가 '-'로 시작하면 제거 (Firebase 오래된 push 키 형식 대응)
+  const cleanCommentId = comment.commentId.startsWith('-')
+    ? comment.commentId.substring(1)
+    : comment.commentId;
+  const myLikeStore = userId
+    ? rtdb(`likes/comment-${cleanCommentId}-${userId}`, 0)
+    : null;
+
   // 답글 작성 모달 상태 관리
   let isReplyDialogOpen = $state(false);
   let replyContent = $state('');
   let isSubmitting = $state(false);
+
+  /**
+   * 좋아요 버튼 클릭 핸들러 (토글 방식)
+   */
+  async function handleLike() {
+    // 1. 로그인 확인
+    if (!userId) {
+      alert($t("로그인필요"));
+      window.location.href = "/user/login";
+      return;
+    }
+
+    try {
+      // 2. 좋아요 토글 (추가 또는 취소)
+      const result = await toggleLike('comment', comment.commentId, userId);
+
+      // 3. 결과 처리
+      if (result.success) {
+        if (result.isLiked) {
+          showToast($t("좋아요를하였습니다"), "success");
+        } else {
+          showToast($t("좋아요를취소했습니다"), "info");
+        }
+      } else {
+        // result.error는 i18n 키
+        showToast($t(result.error), "error");
+      }
+    } catch (error) {
+      console.error("좋아요 오류:", error);
+      showToast($t("error.unknown"), "error");
+    }
+  }
 
   /**
    * 답글 버튼 클릭 핸들러
@@ -123,12 +167,30 @@
   <!-- 댓글 내용 -->
   <p class="comment-content">{comment.content}</p>
 
-  <!-- 답글 버튼 -->
-  {#if userId && comment.depth < 12}
-    <button class="reply-button" onclick={handleReplyClick}>
-      💬 {$t("답글")}
-    </button>
-  {/if}
+  <!-- 댓글 액션 버튼 영역 -->
+  <div class="comment-actions">
+    <!-- 좋아요 버튼 -->
+    {#if userId}
+      <button
+        class="action-button like-button {($myLikeStore?.data ?? 0) >= 1 ? 'liked' : ''}"
+        onclick={handleLike}
+        title={$t("좋아요")}
+      >
+        {($myLikeStore?.data ?? 0) >= 1 ? "❤️" : "🤍"}
+        {$t("좋아요")}
+        {#if comment.likeCount > 0}
+          <span class="count">{comment.likeCount}</span>
+        {/if}
+      </button>
+    {/if}
+
+    <!-- 답글 버튼 -->
+    {#if userId && comment.depth < 12}
+      <button class="action-button reply-button" onclick={handleReplyClick}>
+        💬 {$t("답글")}
+      </button>
+    {/if}
+  </div>
 </div>
 
 <!-- 답글 작성 모달 다이얼로그 -->
@@ -243,22 +305,71 @@
     word-break: break-word;
   }
 
-  /* 답글 버튼 */
-  .reply-button {
+  /* 댓글 액션 버튼 영역 */
+  .comment-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     margin-top: 0.5rem;
+  }
+
+  /* 액션 버튼 공통 스타일 */
+  .action-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
     padding: 0.375rem 0.75rem;
     font-size: 0.75rem;
-    color: #3b82f6;
     background-color: transparent;
-    border: 1px solid #3b82f6;
+    border: 1px solid;
     border-radius: 0.375rem;
     cursor: pointer;
     transition: all 0.2s ease;
+    font-weight: 500;
+  }
+
+  /* 좋아요 버튼 */
+  .like-button {
+    color: #6b7280;
+    border-color: #d1d5db;
+  }
+
+  .like-button:hover {
+    background-color: #fee2e2;
+    border-color: #fca5a5;
+    color: #dc2626;
+  }
+
+  /* 좋아요 한 버튼 강조 표시 */
+  .like-button.liked {
+    background-color: #fee2e2;
+    border-color: #dc2626;
+    color: #dc2626;
+    font-weight: 600;
+  }
+
+  .like-button.liked:hover {
+    background-color: #fecaca;
+    border-color: #b91c1c;
+    color: #b91c1c;
+  }
+
+  /* 답글 버튼 */
+  .reply-button {
+    color: #3b82f6;
+    border-color: #93c5fd;
   }
 
   .reply-button:hover {
-    background-color: #3b82f6;
-    color: #ffffff;
+    background-color: #dbeafe;
+    border-color: #3b82f6;
+    color: #2563eb;
+  }
+
+  /* 개수 표시 */
+  .count {
+    font-weight: 600;
+    font-size: 0.7rem;
   }
 
   /* 모달 배경 (backdrop) */

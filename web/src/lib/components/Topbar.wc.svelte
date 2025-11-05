@@ -16,12 +16,23 @@
   import { login } from '../utils/firebase-login-user.svelte.ts';
   import { t } from '../stores/i18n.ts';
   import { pageTitle } from '../stores/pageTitle.ts';
+  import { navigate as navigateTo } from '../utils/navigation.ts';
   import { onMount } from 'svelte';
 
   /**
    * 반응형 상태: 드롭다운 메뉴 열림/닫힘 상태
    */
   let dropdownOpen = $state<boolean>(false);
+
+  /**
+   * SPA 방식으로 경로 이동하고 드롭다운 메뉴 닫기
+   * 네비게이션 유틸리티 함수를 사용하며, 추가로 드롭다운 메뉴를 자동으로 닫습니다.
+   * @param {string} path - 이동할 경로
+   */
+  function navigate(path: string): void {
+    navigateTo(path);
+    dropdownOpen = false; // 네비게이션 시 드롭다운 닫기
+  }
 
   /**
    * 로그아웃 핸들러
@@ -100,9 +111,9 @@
     <!-- 왼쪽: 로고 + 페이지 제목 -->
     <div class="logo-section">
       <!-- 로고 이미지 -->
-      <a href="/" class="logo-link">
+      <button type="button" class="logo-link" onclick={() => navigate('/')}>
         <img src="/logo.png" alt="로고" class="logo-img" />
-      </a>
+      </button>
 
       <!-- 페이지 제목 -->
       {#if $pageTitle}
@@ -118,22 +129,22 @@
         <!-- 데스크톱 메뉴 -->
         <div class="desktop-menu">
           <!-- 게시판 버튼 -->
-          <a href="/post/list" class="nav-button">
+          <button type="button" class="nav-button" onclick={() => navigate('/post/list')}>
             <LayoutGrid size={16} />
             <span>{$t('게시판')}</span>
-          </a>
+          </button>
 
           <!-- 채팅 버튼 -->
-          <a href="/chat/list" class="nav-button">
+          <button type="button" class="nav-button" onclick={() => navigate('/chat/list')}>
             <MessageCircle size={16} />
             <span>{$t('채팅')}</span>
-          </a>
+          </button>
 
           <!-- 사용자 찾기 버튼 -->
-          <a href="/user/list" class="nav-button">
+          <button type="button" class="nav-button" onclick={() => navigate('/user/list')}>
             <Users size={16} />
             <span>{$t('사용자찾기')}</span>
-          </a>
+          </button>
 
           <!-- 프로필 드롭다운 -->
           <div class="dropdown">
@@ -160,10 +171,10 @@
               <div class="dropdown-menu">
                 <div class="dropdown-label">{$t('내계정')}</div>
                 <div class="dropdown-divider"></div>
-                <a href="/user/profile" class="dropdown-item">
+                <button type="button" class="dropdown-item" onclick={() => navigate('/user/profile')}>
                   <User size={16} />
                   <span>{$t('프로필수정')}</span>
-                </a>
+                </button>
                 <div class="dropdown-divider"></div>
                 <button class="dropdown-item" onclick={handleLogout} type="button">
                   <LogOut size={16} />
@@ -174,23 +185,23 @@
           </div>
 
           <!-- 메뉴 아이콘 -->
-          <a href="/menu" class="icon-button" title={$t('메뉴')}>
+          <button type="button" class="icon-button" title={$t('메뉴')} onclick={() => navigate('/menu')}>
             <Menu size={24} />
-          </a>
+          </button>
         </div>
 
         <!-- 모바일 메뉴 -->
         <div class="mobile-menu">
-          <a href="/post/list" class="icon-button" title={$t('게시판')}>
+          <button type="button" class="icon-button" title={$t('게시판')} onclick={() => navigate('/post/list')}>
             <LayoutGrid size={20} />
-          </a>
-          <a href="/user/list" class="icon-button" title={$t('사용자찾기')}>
+          </button>
+          <button type="button" class="icon-button" title={$t('사용자찾기')} onclick={() => navigate('/user/list')}>
             <Users size={20} />
-          </a>
-          <a href="/chat/list" class="icon-button" title={$t('채팅')}>
+          </button>
+          <button type="button" class="icon-button" title={$t('채팅')} onclick={() => navigate('/chat/list')}>
             <MessageCircle size={20} />
-          </a>
-          <a href="/user/profile" class="icon-button" title={$t('프로필')}>
+          </button>
+          <button type="button" class="icon-button" title={$t('프로필')} onclick={() => navigate('/user/profile')}>
             <div class="avatar avatar-small">
               {#if login.data?.photoUrl}
                 <!-- Firebase Realtime Database에서 실시간 동기화되는 프로필 사진 -->
@@ -204,57 +215,57 @@
                 <div class="avatar-fallback avatar-fallback-small">{getUserInitial()}</div>
               {/if}
             </div>
-          </a>
-          <a href="/menu" class="icon-button" title={$t('메뉴')}>
+          </button>
+          <button type="button" class="icon-button" title={$t('메뉴')} onclick={() => navigate('/menu')}>
             <Menu size={24} />
-          </a>
+          </button>
         </div>
       {:else}
         <!-- 로그인하지 않은 경우 -->
         <!-- 데스크톱 메뉴 -->
         <div class="desktop-menu">
           <!-- 게시판 버튼 -->
-          <a href="/post/list" class="nav-button">
+          <button type="button" class="nav-button" onclick={() => navigate('/post/list')}>
             <LayoutGrid size={16} />
             <span>{$t('게시판')}</span>
-          </a>
+          </button>
 
           <!-- 채팅 버튼 -->
-          <a href="/chat/list" class="nav-button">
+          <button type="button" class="nav-button" onclick={() => navigate('/chat/list')}>
             <MessageCircle size={16} />
             <span>{$t('채팅')}</span>
-          </a>
+          </button>
 
           <!-- 로그인 버튼 -->
-          <a href="/user/login" class="nav-button">{$t('로그인')}</a>
+          <button type="button" class="nav-button" onclick={() => navigate('/user/login')}>{$t('로그인')}</button>
 
           <!-- 메뉴 아이콘 -->
-          <a href="/menu" class="icon-button" title={$t('메뉴')}>
+          <button type="button" class="icon-button" title={$t('메뉴')} onclick={() => navigate('/menu')}>
             <Menu size={20} />
-          </a>
+          </button>
         </div>
 
         <!-- 모바일 메뉴 -->
         <div class="mobile-menu">
           <!-- 게시판 아이콘 -->
-          <a href="/post/list" class="icon-button" title={$t('게시판')}>
+          <button type="button" class="icon-button" title={$t('게시판')} onclick={() => navigate('/post/list')}>
             <LayoutGrid size={20} />
-          </a>
+          </button>
 
           <!-- 채팅 아이콘 -->
-          <a href="/chat/list" class="icon-button" title={$t('채팅')}>
+          <button type="button" class="icon-button" title={$t('채팅')} onclick={() => navigate('/chat/list')}>
             <MessageCircle size={20} />
-          </a>
+          </button>
 
           <!-- 로그인 아이콘 -->
-          <a href="/user/login" class="icon-button" title={$t('로그인')}>
+          <button type="button" class="icon-button" title={$t('로그인')} onclick={() => navigate('/user/login')}>
             <User size={20} />
-          </a>
+          </button>
 
           <!-- 메뉴 아이콘 -->
-          <a href="/menu" class="icon-button" title={$t('메뉴')}>
+          <button type="button" class="icon-button" title={$t('메뉴')} onclick={() => navigate('/menu')}>
             <Menu size={24} />
-          </a>
+          </button>
         </div>
       {/if}
     </nav>
@@ -291,6 +302,12 @@
     text-decoration: none;
     color: inherit;
     flex-shrink: 0;
+    /* button 기본 스타일 리셋 */
+    border: none;
+    background: none;
+    padding: 0;
+    font-family: inherit;
+    cursor: pointer;
   }
 
   /* 로고 섹션 (로고 + 페이지 제목) */
@@ -374,6 +391,7 @@
     cursor: pointer;
     text-decoration: none;
     transition: background-color 0.2s;
+    font-family: inherit;
   }
 
   .nav-button:hover {
@@ -414,6 +432,7 @@
     cursor: pointer;
     text-decoration: none;
     transition: background-color 0.2s;
+    font-family: inherit;
   }
 
   .icon-button:hover {
@@ -534,6 +553,7 @@
     cursor: pointer;
     text-decoration: none;
     transition: background-color 0.2s;
+    font-family: inherit;
   }
 
   .dropdown-item:hover {

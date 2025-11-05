@@ -37,10 +37,14 @@
   }: Props = $props();
 
   // 내 좋아요 상태를 실시간으로 구독
-  // 새로운 구조: /post-likes/{postId}-{uid}
+  // 통합 좋아요 구조: /likes/post-{postId}-{uid}
   // 노드가 없으면 0(좋아요 안 누름)을 기본값으로 사용
+  // ⚠️ postId가 '-'로 시작하면 제거 (Firebase 오래된 push 키 형식 대응)
+  const cleanPostId = itemData.postId.startsWith('-')
+    ? itemData.postId.substring(1)
+    : itemData.postId;
   const myLikeStore = userId
-    ? rtdb<number>(`post-likes/${itemData.postId}-${userId}`, 0)
+    ? rtdb<number>(`likes/post-${cleanPostId}-${userId}`, 0)
     : null;
 
   // 댓글 모달 상태 관리
@@ -51,7 +55,34 @@
   // 댓글 목록 상태 관리
   // CommentWithId[] 타입을 명시하여 타입 안전성 확보
   let comments = $state<CommentWithId[]>([]);
-  let showComments = $state<boolean>(false); // 댓글 목록 표시/숨김 상태
+  let showComments = $state<boolean>(true); // 댓글 목록 표시/숨김 상태 (기본값: true로 댓글이 기본적으로 열림)
+  let showAllComments = $state<boolean>(false); // 모든 댓글 표시 여부 (기본값: false로 마지막 5개만 표시)
+
+  // 댓글 미리보기 개수 (마지막 5개만 초기에 표시)
+  const COMMENT_PREVIEW_COUNT = 5;
+
+  /**
+   * 현재 표시할 댓글 배열을 반환합니다.
+   * - showAllComments가 false면: 마지막 5개 댓글만 반환
+   * - showAllComments가 true면: 모든 댓글 반환
+   *
+   * @returns 표시할 댓글 배열
+   */
+  function getDisplayedComments(): CommentWithId[] {
+    // 모든 댓글을 보여주는 경우
+    if (showAllComments) {
+      return comments;
+    }
+
+    // 마지막 5개만 보여주는 경우
+    // comments 배열의 뒤에서부터 5개 선택
+    if (comments.length > COMMENT_PREVIEW_COUNT) {
+      return comments.slice(-COMMENT_PREVIEW_COUNT);
+    }
+
+    // 댓글이 5개 이하면 모두 표시
+    return comments;
+  }
 
   /**
    * 컴포넌트 마운트 시 댓글 리스너 등록
@@ -85,7 +116,7 @@
 
     try {
       // 2. 좋아요 토글 (추가 또는 취소)
-      const result = await toggleLike(itemData.postId, userId);
+      const result = await toggleLike('post', itemData.postId, userId);
 
       // 3. 결과 처리
       if (result.success) {
@@ -271,12 +302,32 @@
       <!-- 댓글 목록 -->
       {#if showComments}
         <div class="comments-list">
-          {#each comments as comment (comment.commentId)}
+          {#each getDisplayedComments() as comment (comment.commentId)}
             <CommentItem
               {comment}
               {userId}
             />
           {/each}
+
+          <!-- 더 보기 버튼: 댓글이 5개를 초과할 때 표시 -->
+          {#if comments.length > COMMENT_PREVIEW_COUNT && !showAllComments}
+            <button
+              class="comments-show-more"
+              onclick={() => (showAllComments = true)}
+            >
+              📋 {$t("댓글더보기", { count: comments.length - COMMENT_PREVIEW_COUNT })}
+            </button>
+          {/if}
+
+          <!-- 댓글 숨기기 버튼: 모든 댓글을 보는 중일 때 표시 -->
+          {#if showAllComments}
+            <button
+              class="comments-hide-extra"
+              onclick={() => (showAllComments = false)}
+            >
+              ▲ {$t("댓글숨기기")}
+            </button>
+          {/if}
         </div>
       {/if}
     </div>
@@ -644,5 +695,57 @@
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
+  }
+
+  /* 댓글 더 보기 버튼 */
+  .comments-show-more {
+    margin-top: 0.75rem;
+    padding: 0.65rem 1rem;
+    width: 100%;
+    background-color: #f0f4ff;
+    color: #3b82f6;
+    border: 1px solid #d1d5ff;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+  }
+
+  .comments-show-more:hover {
+    background-color: #e0eaff;
+    border-color: #3b82f6;
+    transform: translateY(-1px);
+  }
+
+  .comments-show-more:active {
+    transform: translateY(0);
+  }
+
+  /* 댓글 숨기기 버튼 */
+  .comments-hide-extra {
+    margin-top: 0.75rem;
+    padding: 0.65rem 1rem;
+    width: 100%;
+    background-color: #f9fafb;
+    color: #6b7280;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+  }
+
+  .comments-hide-extra:hover {
+    background-color: #f3f4f6;
+    border-color: #d1d5db;
+    color: #374151;
+  }
+
+  .comments-hide-extra:active {
+    transform: translateY(0);
   }
 </style>

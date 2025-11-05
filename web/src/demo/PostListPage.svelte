@@ -206,8 +206,8 @@
           )}
             <PostItem
               itemData={{
-                postId: rawItemData.key,
                 ...rawItemData.data,
+                postId: rawItemData.key,
               }}
               {index}
               category={rawItemData.data.category}

@@ -64,8 +64,8 @@ const posts = createRealtimeStore('posts');
 // 사용자 데이터 실시간 구독
 const user = createRealtimeStore('users/user123');
 
-// 게시글 좋아요 상태 실시간 구독 (Flat Style)
-const myLike = createRealtimeStore('post-likes/post-abc-user-xyz');
+// 게시글 좋아요 상태 실시간 구독 (Flat Style - 통합 좋아요)
+const myLike = createRealtimeStore('likes/post-post-abc-user-xyz');
 ```
 
 ### ✅ 언마운트 시 구독 해제
@@ -193,8 +193,8 @@ import { increment } from 'firebase/database';
 async function addLike(postId, userId) {
   const updates = {};
 
-  // 1. 좋아요 상태 저장 (Flat Style: /post-likes/{postId}-{uid})
-  updates[`post-likes/${postId}-${userId}`] = 1;
+  // 1. 좋아요 상태 저장 (Flat Style - 통합 좋아요: /likes/post-{postId}-{uid})
+  updates[`likes/post-${postId}-${userId}`] = 1;
 
   // 2. 게시글의 좋아요 개수 증가 (서버에서 원자적으로 +1)
   updates[`posts/${postId}/likeCount`] = increment(1);
@@ -214,8 +214,8 @@ import { increment } from 'firebase/database';
 async function removeLike(postId, userId) {
   const updates = {};
 
-  // 1. 좋아요 기록 삭제 (Flat Style: null로 설정하면 삭제됨)
-  updates[`post-likes/${postId}-${userId}`] = null;
+  // 1. 좋아요 기록 삭제 (Flat Style - 통합 좋아요: null로 설정하면 삭제됨)
+  updates[`likes/post-${postId}-${userId}`] = null;
 
   // 2. 게시글의 좋아요 개수 감소 (서버에서 원자적으로 -1)
   updates[`posts/${postId}/likeCount`] = increment(-1);

@@ -27,7 +27,7 @@
 파이어베이스 클라우드 함수는 서버리스 환경에서 백엔드 코드를 실행할 수 있는 기능을 제공합니다. SNS 프로젝트에서는 게시글, 댓글, 좋아요 등의 이벤트 발생 시 자동으로 실행되는 백그라운드 함수를 구현하여 다음과 같은 작업을 자동화합니다:
 
 - **사용자 프로필 동기화**: `/users/{uid}` 변경 시 `/user-props/` 자동 업데이트
-- **좋아요/댓글 개수 동기화**: `/post-likes/` 변경 시 `/posts/{postId}/likeCount` 업데이트
+- **좋아요/댓글 개수 동기화**: `/likes/` 변경 시 `/posts/{postId}/likeCount` 또는 `/comments/{commentId}/likeCount` 업데이트 (통합 좋아요 구조)
 - **게시글 삭제 시 연관 데이터 정리**: 게시글 삭제 시 좋아요, 댓글 등 연관 데이터 자동 삭제
 - **알림 트리거 및 전송**: 좋아요, 댓글, 친구 요청 등의 이벤트 발생 시 알림 전송
 
@@ -75,9 +75,10 @@
    - Firebase Realtime Database 최상위 경로 사용
    - 게시글: `/posts/{postId}`
    - 사용자: `/users/{uid}`
-   - 게시글 좋아요: `/post-likes/{postId}-{uid}`
+   - 통합 좋아요 (Flat Style): `/likes/{type}-{nodeId}-{uid}` (값: 1)
+     - 게시글 좋아요: `/likes/post-{postId}-{uid}`
+     - 댓글 좋아요: `/likes/comment-{commentId}-{uid}`
    - 댓글: `/comments/{commentId}`
-   - 댓글 좋아요: `/comment-props/likes/{commentId}/{uid}`
    - 채팅: `/chat/messages/{roomId}/{messageId}`
    - 채팅 참여: `/chat/joins/{uid}/{roomId}`
 
@@ -385,20 +386,18 @@ await updateLikeCount(postId);
  */
 async function updateLikeCount(postId: string) {
   // 1. 해당 게시글의 모든 좋아요 개수 조회
-  // /post-likes/{postId}-{uid} 형태의 모든 좋아요 조회
+  // /likes/post-{postId}-{uid} 형태의 모든 좋아요 조회 (통합 좋아요 구조)
+  const prefix = `post-${postId}-`;
   const likesSnapshot = await admin.database()
-    .ref("/post-likes")
+    .ref("/likes")
     .orderByKey()
+    .startAt(prefix)
+    .endAt(`${prefix}\uf8ff`)
     .once("value");
 
   let likeCount = 0;
   if (likesSnapshot.exists()) {
-    likesSnapshot.forEach((childSnapshot) => {
-      const key = childSnapshot.key || "";
-      if (key.startsWith(`${postId}-`)) {
-        likeCount++;
-      }
-    });
+    likeCount = likesSnapshot.numChildren();
   }
 
   // 2. 좋아요 개수 업데이트
@@ -411,8 +410,8 @@ async function updateLikeCount(postId: string) {
 ```
 
 **처리 내역**:
-- `/post-likes/` 경로에서 `{postId}-{uid}` 패턴의 좋아요 개수 계산
-- `/posts/{postId}/likeCount` 업데이트
+- `/likes/` 경로에서 `post-{postId}-{uid}` 또는 `comment-{commentId}-{uid}` 패턴의 좋아요 개수 계산 (통합 좋아요 구조)
+- `/posts/{postId}/likeCount` 또는 `/comments/{commentId}/likeCount` 업데이트
 
 ---
 
@@ -469,38 +468,43 @@ await admin.database()
     uid: "user-A-uid"
     likeCount: 5  ← Cloud Functions가 자동으로 업데이트
 
-/post-likes/
-  post-abc123-user-A-uid: 1
-  post-abc123-user-B-uid: 1
-  post-abc123-user-C-uid: 1
-  post-abc123-user-D-uid: 1
-  post-abc123-user-E-uid: 1
+/likes/
+  post-post-abc123-user-A-uid: 1
+  post-post-abc123-user-B-uid: 1
+  post-post-abc123-user-C-uid: 1
+  post-post-abc123-user-D-uid: 1
+  post-post-abc123-user-E-uid: 1
 ```
 
 **SNS 관련 추가 예제**:
 
-##### 댓글 개수 동기화 Cloud Function
+##### 댓글 좋아요 개수 동기화 Cloud Function
 
 ```typescript
 /**
- * 댓글이 추가되면 게시글의 commentCount를 자동으로 업데이트 (Gen 2)
+ * 댓글 좋아요가 추가되면 댓글의 likeCount를 자동으로 업데이트 (Gen 2)
+ * 통합 좋아요 구조: /likes/comment-{commentId}-{uid}
  */
-export const onCommentCreated = onValueCreated(
-  "/post-props/comments/{postId}/{commentId}",
+export const onCommentLikeCreated = onValueCreated(
+  "/likes/comment-{commentId}-{userId}",
   async (event) => {
-    const postId = event.params.postId as string;
+    const commentId = event.params.commentId as string;
 
-    // 댓글 개수 계산
-    const commentsSnapshot = await admin.database()
-      .ref(`/post-props/comments/${postId}`)
+    // 댓글 좋아요 개수 계산
+    const prefix = `comment-${commentId}-`;
+    const likesSnapshot = await admin.database()
+      .ref("/likes")
+      .orderByKey()
+      .startAt(prefix)
+      .endAt(`${prefix}\uf8ff`)
       .once("value");
 
-    const commentCount = commentsSnapshot.numChildren();
+    const likeCount = likesSnapshot.numChildren();
 
-    // 게시글의 commentCount 업데이트
+    // 댓글의 likeCount 업데이트
     await admin.database()
-      .ref(`/posts/${postId}/commentCount`)
-      .set(commentCount);
+      .ref(`/comments/${commentId}/likeCount`)
+      .set(likeCount);
   }
 );
 ```
@@ -632,9 +636,10 @@ SNS Cloud Functions 개발 시 반드시 최상위 경로 구조를 따라야 �
 
 - **게시글**: `/posts/{postId}`
 - **사용자**: `/users/{uid}`
-- **게시글 좋아요**: `/post-likes/{postId}-{uid}`
+- **통합 좋아요 (Flat Style)**: `/likes/{type}-{nodeId}-{uid}` (값: 1)
+  - 게시글 좋아요: `/likes/post-{postId}-{uid}`
+  - 댓글 좋아요: `/likes/comment-{commentId}-{uid}`
 - **댓글**: `/comments/{commentId}`
-- **댓글 좋아요**: `/comment-props/likes/{commentId}/{uid}`
 - **채팅 메시지**: `/chat/messages/{roomId}/{messageId}`
 - **채팅 참여**: `/chat/joins/{uid}/{roomId}`
 
