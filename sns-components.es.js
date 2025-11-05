@@ -21997,7 +21997,16 @@ Phone: {phone}`,
   제목과내용을입력하세요: "Please enter title and content.",
   수정불가: "Cannot Edit",
   댓글이달려있어수정불가메시지: `Cannot edit the post because there are comments.
-Please delete the comments first before editing.`
+Please delete the comments first before editing.`,
+  답글: "Reply",
+  답글작성: "Write Reply",
+  좋아요를하였습니다: "You liked this.",
+  좋아요를취소했습니다: "You unliked this.",
+  댓글수정: "Edit Comment",
+  수정중: "Updating...",
+  댓글이수정되었습니다: "Comment has been updated.",
+  댓글삭제확인: "Are you sure you want to delete this comment?",
+  댓글이삭제되었습니다: "Comment has been deleted."
 }, ZI = {
   프로젝트_명칭: "한",
   웰컴: "SNS에 오신 것을 환영합니다!",
@@ -22272,6 +22281,7 @@ Please delete the comments first before editing.`
   모든댓글보기: "모든 댓글 보기",
   댓글숨기기: "댓글 숨기기",
   답글: "답글",
+  답글작성: "답글 작성",
   좋아요를하였습니다: "좋아요를 하였습니다.",
   좋아요를취소했습니다: "좋아요를 취소했습니다.",
   "error.unknown": "알 수 없는 오류가 발생했습니다.",
@@ -22363,7 +22373,12 @@ Please delete the comments first before editing.`
   제목과내용을입력하세요: "제목과 내용을 입력하세요.",
   수정불가: "수정할 수 없습니다",
   댓글이달려있어수정불가메시지: `댓글이 달려 있어서 게시글을 수정할 수 없습니다.
-댓글을 먼저 삭제한 후 수정해주세요.`
+댓글을 먼저 삭제한 후 수정해주세요.`,
+  댓글수정: "댓글 수정",
+  수정중: "수정 중...",
+  댓글이수정되었습니다: "댓글이 수정되었습니다.",
+  댓글삭제확인: "정말로 이 댓글을 삭제하시겠습니까?",
+  댓글이삭제되었습니다: "댓글이 삭제되었습니다."
 }, eC = "GitHub", tC = {
   프로젝트_명칭: "ハンバボ 0.2",
   웰컴: "SNSへようこそ!",
