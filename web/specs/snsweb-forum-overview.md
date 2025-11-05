@@ -1,3 +1,30 @@
+---
+name: snsweb-forum-overview
+version: 1.0.0
+description: 게시판 개발 가이드 문서의 SED 사양
+author: JaeHo Song
+email: thruthesky@gmail.com
+homepage: https://github.com/thruthesky/
+funding: ""
+license: GPL
+dependencies: []
+"프로젝트 이름": snsweb
+---
+
+## Overview
+- 이 문서는 "게시판 개발 가이드"에 대한 세부 사양을 정리하며, 기존 내용을 그대로 유지한 채 SED 구조에 맞춰 제공합니다.
+
+## Requirements
+- 문서 전반에 걸쳐 소개되는 지침과 참고 사항을 모두 숙지해야 하며, 별도의 추가 선행 조건은 원문 각 절에서 제시되는 내용을 따릅니다.
+
+## Workflow
+1. 아래 `## Detail Items` 절에 포함된 원문 목차를 검토합니다.
+2. 필요한 경우 원문의 각 절을 순서대로 읽으며 프로젝트 작업 흐름에 반영합니다.
+3. 문서에 명시된 모든 지침을 확인한 뒤 실제 개발 단계에 적용합니다.
+
+## Detail Items
+- 이하에는 기존 문서의 모든 내용을 원형 그대로 포함하여 참조할 수 있도록 구성했습니다.
+
 # 게시판 개발 가이드
 
 본 문서는 Svelte 5 기반으로 게시판 기능을 개발하는 데 필요한 지침과 로직을 제공합니다.
