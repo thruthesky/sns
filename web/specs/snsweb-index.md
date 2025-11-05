@@ -25,7 +25,7 @@ SNS 웹 개발 지침
 
 ## 관련 문서
 
-- [SNS 프로젝트 전체 개요](../../docs/sns.md) - 서비스 기획 및 전체 개요
+- [SNS 프로젝트 전체 개요](../../specs/sns.md) - 서비스 기획 및 전체 개요
 - [Svelte Custom Elements 개발 가이드](./sns-custom-elements.md) - Custom Elements 개발 상세 가이드
 - [Firebase 보안 규칙 개발 가이드](./sns-web-security.md) - Firebase Security Rules 구현 (AppCheck 비용 절감, **필수**)
 - [프로젝트 개발 지침](../CLAUDE.md) - 전체 프로젝트 개발 워크플로우 및 규칙

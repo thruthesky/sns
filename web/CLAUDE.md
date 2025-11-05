@@ -6,20 +6,20 @@ SNS 개발 지침
 
 **본 CLAUDE.md 문서는 요약 및 레퍼런스 역할을 합니다:**
 - ✅ **CLAUDE.md**: 핵심 규칙과 요약 설명만 포함, 자세한 예제는 제외
-- ✅ **docs/*.md**: 상세한 설명, 예제 코드, 사용법 포함
-- ✅ **레퍼런스 링크**: CLAUDE.md에서 docs/*.md로 연결
+- ✅ **specs/*.md**: 상세한 설명, 예제 코드, 사용법 포함
+- ✅ **레퍼런스 링크**: CLAUDE.md에서 specs/*.md로 연결
 
 이를 통해 CLAUDE.md는 간결하게 유지하고, 상세한 정보는 각 주제별 문서에서 확인할 수 있습니다.
 
 # 워크플로우
-- [ ] 프로젝트 루트의 docs/ 폴더에 있는 관련 문서를 먼저 참고하여, 개발자에게 어떤 문서를 참고하는지 알려준다.
+- [ ] 프로젝트 루트의 specs/ 폴더에 있는 관련 문서를 먼저 참고하여, 개발자에게 어떤 문서를 참고하는지 알려준다.
 - [ ] 각 문서에 명시된 워크플로를 준수해야 한다.
 - [ ] **웹 개발**을 할 때에는 항상 (반드시) 본 문서의 아래 항목에 있는 [개발 문서 레퍼런스 목록](#개발-문서-레퍼런스-목록)을 반드시 참고해야 하며, 어떤 문서를 참고하는지 개발자에게 반드시 먼저 알려준다.
 - [ ] **모바일 앱 개발**을 할 때에는 항상 (반드시) 본 문서의 아래 항목에 있는 [개발 문서 레퍼런스 목록](#개발-문서-레퍼런스-목록)을 반드시 참고해야 하며, 어떤 문서를 참고하는지 개발자에게 반드시 먼저 알려준다.
 - [ ] **Firebase Cloud Functions 개발** 시에는 반드시 다음 문서들을 참고해야 합니다:
-  - [ ] [docs/sns-firebase-cloud-functions.md](docs/sns-firebase-cloud-functions.md) - Cloud Functions 개발 가이드 (필수)
-  - [ ] [docs/sns-web-database.md](docs/sns-web-database.md) - 데이터베이스 구조 가이드 (필수)
-  - [ ] 추가적으로 관련된 docs/*.md 문서들을 확인해야 합니다
+  - [ ] [specs/sns-firebase-cloud-functions.md](specs/sns-firebase-cloud-functions.md) - Cloud Functions 개발 가이드 (필수)
+  - [ ] [specs/sns-web-database.md](specs/sns-web-database.md) - 데이터베이스 구조 가이드 (필수)
+  - [ ] 추가적으로 관련된 specs/*.md 문서들을 확인해야 합니다
 - [ ] 웹 개발 할 때에는 항상 [Svelte MCP 문서](https://svelte.dev/docs/mcp/overview)를 참고해야 한다.
 - [ ] 소스 코드 수정 할 때 유의 사항:
 - [ ] 모든 경로 이동(라우팅, navigation)은 반드시 `navigate()` 함수를 사용해 SPA 방식으로 처리한다.
@@ -27,7 +27,7 @@ SNS 개발 지침
 - [ ] 특히, 각 항목/요소/섹션/UI 별로 명칭을 적어서, 개발자간 소통을 원활하게 해야 한다.
 - [ ] 각 기술 스택에 맞는 MCP 를 활용해야 한다.
 - [ ] **문서 작성 및 수정 시 준수 사항**:
-  - [ ] 모든 `docs/*.md` 문서 상단에는 **목차 (Table of Contents)** 를 항상 업데이트해야 한다
+  - [ ] 모든 `specs/*.md` 문서 상단에는 **목차 (Table of Contents)** 를 항상 업데이트해야 한다
   - [ ] 새로운 섹션을 추가하면 목차에 해당 섹션을 즉시 추가한다
   - [ ] 섹션 제목을 변경하면 목차도 함께 업데이트한다
   - [ ] 섹션 삭제 시 목차에서도 해당 항목을 제거한다
@@ -49,7 +49,7 @@ SNS 개발 지침
 
 ### 상세 가이드
 자세한 사용 예제와 설명은 다음 문서를 참고하세요:
-- [docs/sns-web-coding-guideline.md](docs/sns-web-coding-guideline.md) - Firebase Auth vs RTDB 필드명 차이 섹션
+- [specs/sns-web-coding-guideline.md](specs/sns-web-coding-guideline.md) - Firebase Auth vs RTDB 필드명 차이 섹션
 
 ---
 
@@ -65,7 +65,7 @@ SNS 개발 지침
 
 ### 상세 가이드
 자세한 사용 예제와 에러 타입은 다음 문서를 참고하세요:
-- [docs/sns-web-coding-guideline.md](docs/sns-web-coding-guideline.md) - Firebase 에러 처리 섹션
+- [specs/sns-web-coding-guideline.md](specs/sns-web-coding-guideline.md) - Firebase 에러 처리 섹션
 - [src/lib/utils/error-handler.js](src/lib/utils/error-handler.js) - 에러 처리 로직
 
 ---
@@ -88,7 +88,7 @@ SNS 개발 지침
 
 ### 상세 가이드
 자세한 사용 예제와 피해야 할 패턴은 다음 문서를 참고하세요:
-- [docs/sns-web-coding-guideline.md](docs/sns-web-coding-guideline.md) - increment 함수 사용법 섹션
+- [specs/sns-web-coding-guideline.md](specs/sns-web-coding-guideline.md) - increment 함수 사용법 섹션
 
 ---
 
@@ -106,7 +106,7 @@ SNS 개발 지침
   - 두 가지 스크롤 방식 지원:
     - **Body 스크롤**: DatabaseListView를 body에 직접 마운트하여 전체 페이지 스크롤 사용
     - **Container 스크롤**: 래퍼 컨테이너로 감싸고 높이를 지정하여 특정 영역만 스크롤
-  - 자세한 사용법은 [docs/sns-web-coding-guideline.md](docs/sns-web-coding-guideline.md)의 "DatabaseListView 컴포넌트" 섹션 참조
+  - 자세한 사용법은 [specs/sns-web-coding-guideline.md](specs/sns-web-coding-guideline.md)의 "DatabaseListView 컴포넌트" 섹션 참조
 
 ## 아이콘 사용 가이드라인
 
@@ -120,14 +120,14 @@ SNS 개발 지침
 
 ### 상세 가이드
 자세한 사용 예제, Props, 스타일링 방법은 다음 문서를 참고하세요:
-- [docs/sns-web-coding-guideline.md](docs/sns-web-coding-guideline.md) - 아이콘 사용 가이드라인 섹션
+- [specs/sns-web-coding-guideline.md](specs/sns-web-coding-guideline.md) - 아이콘 사용 가이드라인 섹션
 
 ---
 
 ## 상세한 코딩 가이드라인
 
 - **상세한 코딩 가이드라인은 별도 문서를 참조하세요**
-  - [docs/sns-web-coding-guideline.md](docs/sns-web-coding-guideline.md) - 상세한 코딩 규칙 및 패턴
+  - [specs/sns-web-coding-guideline.md](specs/sns-web-coding-guideline.md) - 상세한 코딩 규칙 및 패턴
 
 
 # 프로젝트 구조
@@ -138,12 +138,12 @@ SNS 개발 지침
 
 ```
 sns/
-├── docs/                           # 프로젝트 문서
+├── specs/                          # 프로젝트 문서
 │   ├── sns.md                      # SNS 전체 개요 및 기획
 │   └── app/                        # 앱 개발 문서
 │       └── sns-app.md              # Flutter 앱 개발 지침
 ├── web/                            # 웹 프로젝트 (Svelte 5 Custom Elements)
-│   ├── docs/                       # 웹 개발 문서
+│   ├── specs/                      # 웹 개발 문서
 │   │   ├── sns-web.md              # 웹 개발 지침
 │   │   └── sns-custom-elements.md  # Svelte Custom Elements 개발 상세 가이드
 │   ├── src/
@@ -159,14 +159,14 @@ sns/
 - **소스 코드 위치**: `/web` 폴더
 - **작업 폴더**: `./web` 폴더에서 소스 코드 작업 및 빌드
 - **참고 문서**:
-  - [docs/sns-web.md](docs/sns-web.md)
-  - [docs/sns-custom-elements.md](docs/sns-custom-elements.md)
+  - [specs/sns-web.md](specs/sns-web.md)
+  - [specs/sns-custom-elements.md](specs/sns-custom-elements.md)
 
 ## 앱 개발
 
 - **소스 코드 위치**: `/app` 폴더
 - **작업 폴더**: `./app` 폴더에서 소스 코드 작업 및 빌드
-- **참고 문서**: [../docs/app/sns-app.md](../docs/app/sns-app.md)
+- **참고 문서**: [../specs/app/sns-app.md](../specs/app/sns-app.md)
 
 
 # MCP 목록
@@ -179,11 +179,11 @@ MCP 는 컨텍스트 윈도우의 토큰 낭비로 인해, 필요한 경우에�
 
 # 개발 문서 레퍼런스 목록
 
-아래는 `docs/` 폴더의 모든 개발 문서 목록입니다. 각 문서는 특정 상황에 맞춰 참고해야 하며, 문서에 명시된 워크플로우를 반드시 준수해야 합니다.
+아래는 `specs/` 폴더의 모든 개발 문서 목록입니다. 각 문서는 특정 상황에 맞춰 참고해야 하며, 문서에 명시된 워크플로우를 반드시 준수해야 합니다.
 
 ## 📚 전체 프로젝트 문서
 
-### [../docs/sns.md](../docs/sns.md) - SNS 프로젝트 전체 개요 및 기획
+### [../specs/sns.md](../specs/sns.md) - SNS 프로젝트 전체 개요 및 기획
 
 **포함 내용**:
 - 로컬 기반 소셜 모임 서비스의 전체 컨셉 및 목적
@@ -203,7 +203,7 @@ MCP 는 컨텍스트 윈도우의 토큰 낭비로 인해, 필요한 경우에�
 
 ## 🌐 웹 개발 문서
 
-### [docs/sns-web.md](docs/sns-web.md) - 웹 개발 지침
+### [specs/sns-web.md](specs/sns-web.md) - 웹 개발 지침
 
 **포함 내용**:
 - 웹 개발 워크플로우 및 필수 체크사항
@@ -217,7 +217,7 @@ MCP 는 컨텍스트 윈도우의 토큰 낭비로 인해, 필요한 경우에�
 - ✅ 웹 프로젝트의 전반적인 개발 방향을 이해하고자 할 때
 - ✅ Custom Elements 개발 가이드로 이동하기 전 기본 지침 확인 시
 
-### [docs/sns-custom-elements.md](docs/sns-custom-elements.md) - Svelte Custom Elements 개발 상세 가이드
+### [specs/sns-custom-elements.md](specs/sns-custom-elements.md) - Svelte Custom Elements 개발 상세 가이드
 
 **포함 내용**:
 - Svelte 5 Runes (`$state`, `$derived`, `$effect` 등) 사용법
@@ -236,7 +236,7 @@ MCP 는 컨텍스트 윈도우의 토큰 낭비로 인해, 필요한 경우에�
 - ✅ Firebase 연동 방법을 구현할 때
 - ✅ Web Components의 props, 이벤트, 슬롯 처리 방법을 찾을 때
 
-### [docs/sns-web-quick-start.md](docs/sns-web-quick-start.md) - 웹 개발 퀵 스타트
+### [specs/sns-web-quick-start.md](specs/sns-web-quick-start.md) - 웹 개발 퀵 스타트
 
 **포함 내용**:
 - 개발 환경 설정 (Node.js, 패키지 설치)
@@ -252,7 +252,7 @@ MCP 는 컨텍스트 윈도우의 토큰 낭비로 인해, 필요한 경우에�
 - ✅ 다른 개발자에게 프로젝트 시작 방법을 안내할 때
 - ✅ Firebase 초기 설정이 필요할 때
 
-### [docs/sns-web-project-flow.md](docs/sns-web-project-flow.md) - 웹 프로젝트 플로우
+### [specs/sns-web-project-flow.md](specs/sns-web-project-flow.md) - 웹 프로젝트 플로우
 
 **포함 내용**:
 - 전체 프로젝트 구조 및 파일 간 관계
@@ -270,7 +270,7 @@ MCP 는 컨텍스트 윈도우의 토큰 낭비로 인해, 필요한 경우에�
 - ✅ Vite 설정이나 진입점을 수정해야 할 때
 - ✅ 데모 앱과 라이브러리 빌드의 차이를 이해하고자 할 때
 
-### [docs/sns-web-deploy.md](docs/sns-web-deploy.md) - 웹 배포 가이드
+### [specs/sns-web-deploy.md](specs/sns-web-deploy.md) - 웹 배포 가이드
 
 **포함 내용**:
 - 배포 전 체크리스트
@@ -291,7 +291,7 @@ MCP 는 컨텍스트 윈도우의 토큰 낭비로 인해, 필요한 경우에�
 - ✅ 빌드 관련 문제를 해결해야 할 때
 - ✅ 환경 변수 설정 방법을 확인할 때
 
-### [docs/sns-web-i18n.md](docs/sns-web-i18n.md) - 웹 국제화(i18n) 개발 가이드
+### [specs/sns-web-i18n.md](specs/sns-web-i18n.md) - 웹 국제화(i18n) 개발 가이드
 
 **포함 내용**:
 - 국제화(i18n) 개요 및 지원 언어 (한국어, 영어, 일본어, 중국어)
@@ -312,7 +312,7 @@ MCP 는 컨텍스트 윈도우의 토큰 낭비로 인해, 필요한 경우에�
 - ✅ 언어 선택기 UI를 구현할 때
 - ✅ 브라우저 언어 자동 감지 로직을 이해하고자 할 때
 
-### [docs/sns-web-security.md](docs/sns-web-security.md) - Firebase 보안 규칙 개발 가이드
+### [specs/sns-web-security.md](specs/sns-web-security.md) - Firebase 보안 규칙 개발 가이드
 
 **포함 내용**:
 - AppCheck의 비용 문제 및 보안 규칙 필요성
@@ -333,7 +333,7 @@ MCP 는 컨텍스트 윈도우의 토큰 낭비로 인해, 필요한 경우에�
 - ✅ 데이터 검증 규칙을 작성할 때
 - ✅ 프로덕션 환경에 배포하기 전에
 
-### [docs/sns-web-storage.md](docs/sns-web-storage.md) - 파일 및 사진 업로드 개발 가이드
+### [specs/sns-web-storage.md](specs/sns-web-storage.md) - 파일 및 사진 업로드 개발 가이드
 
 **포함 내용**:
 - Firebase Storage를 사용한 파일 업로드 구현 방법
@@ -352,7 +352,7 @@ MCP 는 컨텍스트 윈도우의 토큰 낭비로 인해, 필요한 경우에�
 - ✅ 파일 접근 권한을 제어해야 할 때
 - ✅ 업로드된 파일 URL을 데이터베이스에 저장할 때
 
-### [docs/sns-web-user.md](docs/sns-web-user.md) - 사용자 관리 개발 가이드
+### [specs/sns-web-user.md](specs/sns-web-user.md) - 사용자 관리 개발 가이드
 
 **포함 내용**:
 - 사용자 프로필 데이터 구조 및 필드 정의
@@ -377,7 +377,7 @@ MCP 는 컨텍스트 윈도우의 토큰 낭비로 인해, 필요한 경우에�
 - ✅ 사용자별 프로필 보안 규칙을 설정할 때
 - ✅ 사용자 정보 검증을 구현할 때
 
-### [docs/sns-web-database.md](docs/sns-web-database.md) - 데이터베이스 구조 가이드
+### [specs/sns-web-database.md](specs/sns-web-database.md) - 데이터베이스 구조 가이드
 
 **포함 내용**:
 - Firebase Realtime Database 전체 구조 정의
@@ -398,7 +398,7 @@ MCP 는 컨텍스트 윈도우의 토큰 낭비로 인해, 필요한 경우에�
 - ✅ 사용자 속성을 효율적으로 조회해야 할 때
 - ✅ 친구 관계 기능을 구현할 때
 
-### [docs/sns-web-post.md](docs/sns-web-post.md) - 게시판 개발 가이드
+### [specs/sns-web-post.md](specs/sns-web-post.md) - 게시판 개발 가이드
 
 **포함 내용**:
 - 게시판 주요 기능 (글 작성, 목록, 수정, 삭제)
@@ -422,7 +422,7 @@ MCP 는 컨텍스트 윈도우의 토큰 낭비로 인해, 필요한 경우에�
 - ✅ 카테고리별 게시글을 관리할 때
 - ✅ 게시글 수정/삭제 기능을 추가할 때
 
-### [docs/sns-web-comments.md](docs/sns-web-comments.md) - 댓글 개발 가이드
+### [specs/sns-web-comments.md](specs/sns-web-comments.md) - 댓글 개발 가이드
 
 **포함 내용**:
 - 댓글 트리 구조 (스레딩) 구현 방법
@@ -442,7 +442,7 @@ MCP 는 컨텍스트 윈도우의 토큰 낭비로 인해, 필요한 경우에�
 - ✅ 댓글 작성/조회 API를 구현할 때
 - ✅ 댓글 UI 컴포넌트를 작성할 때
 
-### [docs/sns-web-likes.md](docs/sns-web-likes.md) - 좋아요 개발 가이드
+### [specs/sns-web-likes.md](specs/sns-web-likes.md) - 좋아요 개발 가이드
 
 **포함 내용**:
 - 게시글/댓글 좋아요 통합 구조
@@ -461,7 +461,7 @@ MCP 는 컨텍스트 윈도우의 토큰 낭비로 인해, 필요한 경우에�
 - ✅ 좋아요 통계를 표시할 때
 - ✅ Cloud Functions와 연동할 때
 
-### [docs/sns-web-friends.md](docs/sns-web-friends.md) - 친구 관계 관리 개발 가이드
+### [specs/sns-web-friends.md](specs/sns-web-friends.md) - 친구 관계 관리 개발 가이드
 
 **포함 내용**:
 - 친구/팔로워/팔로잉 데이터 구조
@@ -480,7 +480,7 @@ MCP 는 컨텍스트 윈도우의 토큰 낭비로 인해, 필요한 경우에�
 - ✅ 친구 관계 API를 작성할 때
 - ✅ 친구 관계 동기화를 구현할 때
 
-### [docs/sns-web-coding-guideline.md](docs/sns-web-coding-guideline.md) - 코딩 가이드라인
+### [specs/sns-web-coding-guideline.md](specs/sns-web-coding-guideline.md) - 코딩 가이드라인
 
 **포함 내용**:
 - 아이콘 사용 가이드라인 (lucide-svelte)
@@ -505,7 +505,7 @@ MCP 는 컨텍스트 윈도우의 토큰 낭비로 인해, 필요한 경우에�
 
 ## 🔥 Firebase Cloud Functions 개발 문서
 
-### [docs/sns-firebase-cloud-functions.md](docs/sns-firebase-cloud-functions.md) - Firebase Cloud Functions 개발 가이드
+### [specs/sns-firebase-cloud-functions.md](specs/sns-firebase-cloud-functions.md) - Firebase Cloud Functions 개발 가이드
 
 **포함 내용**:
 - Cloud Functions 개발 환경 설정
@@ -532,7 +532,7 @@ MCP 는 컨텍스트 윈도우의 토큰 낭비로 인해, 필요한 경우에�
 
 ## 📱 앱 개발 문서
 
-### [../docs/app/sns-app.md](../docs/app/sns-app.md) - Flutter 앱 개발 지침
+### [../specs/app/sns-app.md](../specs/app/sns-app.md) - Flutter 앱 개발 지침
 
 **포함 내용**:
 - Flutter 앱 개발 워크플로우
@@ -554,27 +554,27 @@ MCP 는 컨텍스트 윈도우의 토큰 낭비로 인해, 필요한 경우에�
 ### 개발 시작 시 권장 문서 읽기 순서
 
 #### 웹 개발자용
-1. **[../docs/sns.md](../docs/sns.md)** - 전체 프로젝트 이해
-2. **[docs/sns-web-quick-start.md](docs/sns-web-quick-start.md)** - 개발 환경 설정
-3. **[docs/sns-web.md](docs/sns-web.md)** - 웹 개발 워크플로우 확인
-4. **[docs/sns-custom-elements.md](docs/sns-custom-elements.md)** - Custom Elements 개발 (개발 중 항상 참고)
-5. **[docs/sns-web-coding-guideline.md](docs/sns-web-coding-guideline.md)** - 코딩 가이드라인 (필수)
-6. **[docs/sns-web-project-flow.md](docs/sns-web-project-flow.md)** - 프로젝트 구조 파악
-7. **[docs/sns-web-database.md](docs/sns-web-database.md)** - 데이터베이스 구조 (필수)
-8. **[docs/sns-web-i18n.md](docs/sns-web-i18n.md)** - 다국어 지원 구현 (i18n)
-9. **[docs/sns-web-security.md](docs/sns-web-security.md)** - Firebase 보안 규칙 (필수)
-10. **[docs/sns-web-storage.md](docs/sns-web-storage.md)** - 파일 업로드 기능 구현
-11. **[docs/sns-web-user.md](docs/sns-web-user.md)** - 사용자 프로필 관리
-12. **[docs/sns-web-post.md](docs/sns-web-post.md)** - 게시판 개발 가이드
-13. **[docs/sns-web-comments.md](docs/sns-web-comments.md)** - 댓글 개발 가이드
-14. **[docs/sns-web-likes.md](docs/sns-web-likes.md)** - 좋아요 개발 가이드
-15. **[docs/sns-web-friends.md](docs/sns-web-friends.md)** - 친구 관계 관리 가이드
-16. **[docs/sns-firebase-cloud-functions.md](docs/sns-firebase-cloud-functions.md)** - Cloud Functions 개발 가이드
-17. **[docs/sns-web-deploy.md](docs/sns-web-deploy.md)** - 배포 시 참고
+1. **[../specs/sns.md](../specs/sns.md)** - 전체 프로젝트 이해
+2. **[specs/sns-web-quick-start.md](specs/sns-web-quick-start.md)** - 개발 환경 설정
+3. **[specs/sns-web.md](specs/sns-web.md)** - 웹 개발 워크플로우 확인
+4. **[specs/sns-custom-elements.md](specs/sns-custom-elements.md)** - Custom Elements 개발 (개발 중 항상 참고)
+5. **[specs/sns-web-coding-guideline.md](specs/sns-web-coding-guideline.md)** - 코딩 가이드라인 (필수)
+6. **[specs/sns-web-project-flow.md](specs/sns-web-project-flow.md)** - 프로젝트 구조 파악
+7. **[specs/sns-web-database.md](specs/sns-web-database.md)** - 데이터베이스 구조 (필수)
+8. **[specs/sns-web-i18n.md](specs/sns-web-i18n.md)** - 다국어 지원 구현 (i18n)
+9. **[specs/sns-web-security.md](specs/sns-web-security.md)** - Firebase 보안 규칙 (필수)
+10. **[specs/sns-web-storage.md](specs/sns-web-storage.md)** - 파일 업로드 기능 구현
+11. **[specs/sns-web-user.md](specs/sns-web-user.md)** - 사용자 프로필 관리
+12. **[specs/sns-web-post.md](specs/sns-web-post.md)** - 게시판 개발 가이드
+13. **[specs/sns-web-comments.md](specs/sns-web-comments.md)** - 댓글 개발 가이드
+14. **[specs/sns-web-likes.md](specs/sns-web-likes.md)** - 좋아요 개발 가이드
+15. **[specs/sns-web-friends.md](specs/sns-web-friends.md)** - 친구 관계 관리 가이드
+16. **[specs/sns-firebase-cloud-functions.md](specs/sns-firebase-cloud-functions.md)** - Cloud Functions 개발 가이드
+17. **[specs/sns-web-deploy.md](specs/sns-web-deploy.md)** - 배포 시 참고
 
 #### 앱 개발자용
-1. **[../docs/sns.md](../docs/sns.md)** - 전체 프로젝트 이해
-2. **[../docs/app/sns-app.md](../docs/app/sns-app.md)** - Flutter 앱 개발 가이드
+1. **[../specs/sns.md](../specs/sns.md)** - 전체 프로젝트 이해
+2. **[../specs/app/sns-app.md](../specs/app/sns-app.md)** - Flutter 앱 개발 가이드
 
 ### 상황별 참고 문서
 
@@ -620,7 +620,7 @@ MCP 는 컨텍스트 윈도우의 토큰 낭비로 인해, 필요한 경우에�
 
 # 테스트 가이드
 
-테스트 계정 정보 및 테스트 방법은 [docs/sns-web-test.md](docs/sns-web-test.md) 문서를 참고하세요.
+테스트 계정 정보 및 테스트 방법은 [specs/sns-web-test.md](specs/sns-web-test.md) 문서를 참고하세요.
 
 
 ## 경로

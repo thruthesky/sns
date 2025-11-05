@@ -175,10 +175,10 @@ export const firebaseConfig = {
 - [Svelte MCP 문서](https://svelte.dev/docs/mcp/overview)
 
 ### 프로젝트 문서
-- [SNS 프로젝트 전체 개요](../docs/sns.md) - 서비스 기획 및 전체 개요
-- [웹 개발 지침](../docs/web/sns-web.md) - 웹 개발 워크플로우
-- [Svelte Custom Elements 개발 가이드](../docs/web/sns-custom-elements.md) - Custom Elements 개발 상세 가이드
-- [프로젝트 개발 지침](../CLAUDE.md) - 전체 프로젝트 개발 규칙
+- [SNS 프로젝트 전체 개요](../specs/sns.md) - 서비스 기획 및 전체 개요
+- [웹 개발 지침](specs/sns-web.md) - 웹 개발 워크플로우
+- [Svelte Custom Elements 개발 가이드](specs/sns-custom-elements.md) - Custom Elements 개발 상세 가이드
+- [프로젝트 개발 지침](CLAUDE.md) - 전체 프로젝트 개발 규칙
 
 ## 📝 스크립트
 

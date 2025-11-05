@@ -1266,9 +1266,13 @@ Suggested Action: Review and revise spec or code alignment.</code
       <div class="content">
         <p>
           SED 방법론을 실제로 적용하기 위해서는 작성한 스펙의 구조와 완성도를
-          검증할 수 있는 도구가 필요합니다. <strong>SEDVibe</strong>는 여러분이
+          검증할 수 있는 도구가 필요합니다. <strong>SEDAI</strong>는 여러분이
           작성한 스펙을 분석하고 점수를 매겨주는 유틸리티입니다.
         </p>
+
+        <div class="info-box" style="margin-top: 1rem; margin-bottom: 1.5rem;">
+          <strong>📦 NPM 패키지:</strong> <a href="https://www.npmjs.com/package/sedai" target="_blank" rel="noopener noreferrer" style="color: #2563eb; text-decoration: underline;">https://www.npmjs.com/package/sedai</a>
+        </div>
 
         <div class="utility-box">
           <h3 class="utility-title">📦 설치 및 실행</h3>
@@ -1279,12 +1283,12 @@ Suggested Action: Review and revise spec or code alignment.</code
 
           <div class="code-block">
             <div class="code-header">스펙 검증 명령어</div>
-            <pre><code>npx sedvibe doctor</code></pre>
+            <pre><code>npx sedai doctor</code></pre>
           </div>
 
           <div style="margin-top: 1.5rem;">
             <h4 style="font-size: 1.125rem; font-weight: 600; color: #0f172a; margin-bottom: 0.75rem;">
-              🔍 SEDVibe Doctor가 수행하는 작업
+              🔍 SEDAI Doctor가 수행하는 작업
             </h4>
             <ul class="feature-list">
               <li>
@@ -1314,7 +1318,7 @@ Suggested Action: Review and revise spec or code alignment.</code
           <div class="highlight-box" style="margin-top: 1.5rem;">
             💡 <strong>참고:</strong> SED 방법론에서는 스펙 점수가 <strong
               >90점 이상</strong
-            >이어야 개발을 시작할 수 있습니다. 90점 미만인 경우, SEDVibe Doctor의
+            >이어야 개발을 시작할 수 있습니다. 90점 미만인 경우, SEDAI Doctor의
             제안을 따라 스펙을 보완한 후 다시 검증하세요.
           </div>
         </div>
@@ -1322,8 +1326,8 @@ Suggested Action: Review and revise spec or code alignment.</code
         <div class="utility-box" style="margin-top: 1.5rem;">
           <h3 class="utility-title">📊 출력 예시</h3>
           <div class="code-block">
-            <div class="code-header">SEDVibe Doctor 실행 결과</div>
-            <pre style="white-space: pre-wrap; color: #cbd5e1; line-height: 1.8;">$ npx sedvibe doctor
+            <div class="code-header">SEDAI Doctor 실행 결과</div>
+            <pre style="white-space: pre-wrap; color: #cbd5e1; line-height: 1.8;">$ npx sedai doctor
 
 🔍 Analyzing your SED specifications...
 
@@ -1376,7 +1380,7 @@ Suggested Action: Review and revise spec or code alignment.</code
           </h3>
           <ol style="margin: 0; padding-left: 1.5rem; color: #475569; line-height: 1.8;">
             <li>
-              SEDVibe Doctor를 실행하여 현재 스펙의 상태를 확인합니다.
+              SEDAI Doctor를 실행하여 현재 스펙의 상태를 확인합니다.
             </li>
             <li>
               점수가 90점 미만인 파일들을 우선적으로 보완합니다.
