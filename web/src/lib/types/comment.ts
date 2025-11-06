@@ -37,6 +37,7 @@ export interface CreateTopLevelCommentParams {
   postId: FirebaseKey;
   userId: UserId;
   content: string;
+  urls?: string[]; // 첨부 파일 URL 목록 (선택)
 }
 
 /**
@@ -46,6 +47,7 @@ export interface CreateChildCommentParams {
   parentCommentId: FirebaseKey;
   userId: UserId;
   content: string;
+  urls?: string[]; // 첨부 파일 URL 목록 (선택)
 }
 
 /**

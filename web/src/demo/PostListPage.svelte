@@ -15,6 +15,9 @@
   import DatabaseListView from "../lib/components/DatabaseListView.svelte";
   import PostItem from "./PostItem.svelte";
   import type { PostCategory } from "../lib/types/post";
+  // 파일 업로드 웹 컴포넌트 import
+  import '../lib/components/FileUploadTrigger.wc.svelte';
+  import '../lib/components/FileUploadList.wc.svelte';
 
   // 인증 상태
   let userId = $state<string | null>(null);
@@ -35,6 +38,8 @@
   let postTitle = $state<string>("");
   let postContent = $state<string>("");
   let isSubmitting = $state<boolean>(false);
+  // 카테고리 선택 모드 토글 (true: 라디오 버튼 리스트 표시, false: 읽기 전용 표시)
+  let isCategorySelectMode = $state<boolean>(false);
 
   /**
    * Firebase 인증 상태 확인
@@ -65,6 +70,7 @@
   /**
    * 게시글 작성 버튼 클릭 핸들러
    * 로그인 상태를 확인하고 모달을 엽니다.
+   * URL 파라미터의 카테고리를 자동으로 설정합니다.
    */
   function handleCreatePost() {
     if (!userId) {
@@ -72,6 +78,10 @@
       window.location.href = "/user/login";
       return;
     }
+    // URL 파라미터의 currentCategory를 postCategory에 자동 설정
+    postCategory = currentCategory;
+    // 카테고리 선택 모드를 읽기 전용으로 초기화
+    isCategorySelectMode = false;
     // 글쓰기 모달 열기
     isDialogOpen = true;
   }
@@ -85,6 +95,7 @@
     postCategory = "";
     postTitle = "";
     postContent = "";
+    isCategorySelectMode = false;
   }
 
   /**
@@ -115,26 +126,33 @@
     isSubmitting = true;
 
     try {
-      // 3. Firebase RTDB에 게시글 저장
+      // 3. 업로드된 파일 URL 목록 가져오기
+      const fileUploadList = document.querySelector('file-upload-list[id="post-create"]');
+      // @ts-ignore - FileUploadList 컴포넌트의 getUrls() 메서드 호출
+      const urls = fileUploadList?.getUrls ? fileUploadList.getUrls() : [];
+
+      // 4. Firebase RTDB에 게시글 저장 (파일 URL 포함)
       const result = await createPost(
         postCategory,
         userId,
         userName,
         postTitle,
-        postContent
+        postContent,
+        urls.length > 0 ? urls : undefined
       );
 
       if (result.success) {
-        // 4. 모달 닫기 및 초기화
+        // 5. 모달 닫기 및 초기화
         isDialogOpen = false;
         postCategory = "";
         postTitle = "";
         postContent = "";
+        isCategorySelectMode = false;
 
-        // 5. 성공 메시지 표시 (Toast)
+        // 6. 성공 메시지 표시 (Toast)
         showToast($t("게시글작성완료"), "success");
 
-        // 6. DatabaseListView가 실시간으로 데이터를 감시하므로 별도 갱신이 필요 없습니다.
+        // 7. DatabaseListView가 실시간으로 데이터를 감시하므로 별도 갱신이 필요 없습니다.
       } else {
         showToast(
           $t("게시글저장실패", { error: result.error || "Unknown error" }),
@@ -145,9 +163,26 @@
       console.error("게시글 저장 오류:", error);
       showToast($t("게시글저장중오류"), "error");
     } finally {
-      // 6. 전송 중 상태 해제
+      // 8. 전송 중 상태 해제
       isSubmitting = false;
     }
+  }
+
+  /**
+   * (변경하기) 버튼 클릭 핸들러
+   * 카테고리 선택 모드를 토글합니다.
+   */
+  function handleCategorySelectToggle() {
+    isCategorySelectMode = !isCategorySelectMode;
+  }
+
+  /**
+   * 라디오 버튼 카테고리 선택 핸들러
+   * 카테고리를 변경하고 선택 모드를 종료합니다.
+   */
+  function handleCategorySelect(category: PostCategory) {
+    postCategory = category;
+    isCategorySelectMode = false;
   }
 
   /**
@@ -292,18 +327,40 @@
           <!-- 카테고리 선택 -->
           <div class="form-group">
             <label for="category">{$t("카테고리")}</label>
-            <select
-              id="category"
-              bind:value={postCategory}
-              class="form-control"
-            >
-              <option value="">{$t("카테고리선택")}</option>
-              {#each POST_CATEGORIES as category (category)}
-                <option value={category}
-                  >{$t(`label.category.${category}`)}</option
+
+            {#if !isCategorySelectMode}
+              <!-- 읽기 전용 카테고리 표시 -->
+              <div class="category-display">
+                <span class="category-name">
+                  {$t(`label.category.${postCategory}`)}
+                </span>
+                <button
+                  type="button"
+                  class="btn-change-category"
+                  onclick={handleCategorySelectToggle}
                 >
-              {/each}
-            </select>
+                  (변경하기)
+                </button>
+              </div>
+            {:else}
+              <!-- 카테고리 선택 모드: 라디오 버튼 리스트 -->
+              <div class="category-select-mode">
+                {#each POST_CATEGORIES as category (category)}
+                  <label class="radio-option">
+                    <input
+                      type="radio"
+                      name="category"
+                      value={category}
+                      checked={postCategory === category}
+                      onchange={() => handleCategorySelect(category)}
+                    />
+                    <span class="radio-label">
+                      {$t(`label.category.${category}`)}
+                    </span>
+                  </label>
+                {/each}
+              </div>
+            {/if}
           </div>
 
           <!-- 제목 입력 -->
@@ -329,6 +386,22 @@
               rows="8"
             ></textarea>
           </div>
+
+          <!-- 파일 업로드 트리거 -->
+          <div class="form-group">
+            <label>{$t("파일첨부")}</label>
+            <div class="file-upload-area">
+              <file-upload-trigger
+                id="post-create"
+                category="posts"
+                multiple="true"
+                buttonText={$t("이미지첨부")}
+              ></file-upload-trigger>
+            </div>
+          </div>
+
+          <!-- 파일 목록 -->
+          <file-upload-list id="post-create"></file-upload-list>
         </div>
 
         <!-- 모달 버튼 -->
@@ -622,6 +695,91 @@
     opacity: 0.65;
     transform: none;
     box-shadow: none;
+  }
+
+  /* === 카테고리 선택 UI === */
+
+  /* 읽기 전용 카테고리 표시 */
+  .category-display {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 0.9rem;
+    background: #f9fafb;
+    border: 1px solid #d1d5db;
+    border-radius: 0.75rem;
+  }
+
+  .category-name {
+    font-size: 0.9rem;
+    color: #1f2937;
+    font-weight: 500;
+  }
+
+  /* (변경하기) 버튼 - 링크 스타일 */
+  .btn-change-category {
+    background: none;
+    border: none;
+    color: #2563eb;
+    font-size: 0.85rem;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: none;
+    transition: color 0.2s ease;
+  }
+
+  .btn-change-category:hover {
+    color: #1d4ed8;
+    text-decoration: underline;
+  }
+
+  /* 카테고리 선택 모드: 라디오 버튼 리스트 */
+  .category-select-mode {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background: #f9fafb;
+    border: 1px solid #d1d5db;
+    border-radius: 0.75rem;
+  }
+
+  /* 라디오 버튼 옵션 */
+  .radio-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 0.75rem;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .radio-option:hover {
+    background: #eff6ff;
+    border-color: #3b82f6;
+  }
+
+  /* 라디오 버튼 선택 시 강조 */
+  .radio-option:has(input:checked) {
+    background: #dbeafe;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  }
+
+  .radio-option input[type="radio"] {
+    width: 1rem;
+    height: 1rem;
+    cursor: pointer;
+    accent-color: #2563eb;
+  }
+
+  .radio-label {
+    font-size: 0.9rem;
+    color: #1f2937;
+    cursor: pointer;
   }
 
   @media (max-width: 640px) {

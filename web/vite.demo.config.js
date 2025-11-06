@@ -20,6 +20,13 @@ export default defineConfig({
       include: /\.wc\.svelte$/
     })
   ],
+  // 경로 alias 설정
+  // $lib을 src/lib으로 매핑 (SvelteKit 스타일)
+  resolve: {
+    alias: {
+      '$lib': resolve(__dirname, './src/lib')
+    }
+  },
   // 데모 앱의 루트 폴더
   root: 'src/demo',
   // 정적 자산 폴더 (public 폴더가 프로젝트 루트에 있으므로 명시)

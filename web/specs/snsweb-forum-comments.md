@@ -108,6 +108,7 @@ dependencies: []
     postId: "abc123"         # 소속 게시글 ID
     uid: "사용자 UID"
     content: "댓글 내용"
+    urls: ["url1", "url2"]   # 첨부 파일 URL 목록 (선택, Firebase Storage)
     depth: 1                 # 댓글 깊이 (1부터 시작, 최대 12)
     order: "abc123-00001,0000,000,000,000,000,000,000,000,000,000,000"
     parentId: null           # 부모 댓글 ID (첫 번째 레벨은 null)
@@ -124,6 +125,7 @@ dependencies: []
 | `postId` | string | ✅ | 소속 게시글 ID |
 | `uid` | string | ✅ | 작성자 UID |
 | `content` | string | ✅ | 댓글 내용 |
+| `urls` | string[] | ❌ | 첨부 파일 URL 목록 (Firebase Storage) |
 | `depth` | number | ✅ | 댓글 깊이 (1~12, 1부터 시작) |
 | `order` | string | ✅ | 정렬 문자열 (트리 구조 정렬용) |
 | `parentId` | string | ❌ | 부모 댓글 ID (첫 번째 레벨은 null) |
@@ -1290,6 +1292,316 @@ function listenToComments(postId, callback) {
 #### 5. Cloud Functions 사용 권장
 - 서버 측에서 `order` 생성 및 `commentCount` 동기화를 처리하는 것이 더 안전함
 - 클라이언트에서 직접 처리 시 동시성 문제 발생 가능
+
+---
+
+## 댓글 파일 업로드
+
+댓글 작성 시 파일 업로드 기능을 제공합니다. 파일 업로드 웹 컴포넌트 시스템을 사용하여 구현됩니다.
+
+### 파일 업로드 시스템 개요
+
+- **Firebase Storage**: 파일은 Firebase Storage에 저장됩니다
+- **경로 구조**: `/users/{userId}/comments/{timestamp}-{filename}`
+- **URL 저장**: 업로드된 파일의 다운로드 URL을 RTDB `/comments/{commentId}/urls` 배열에 저장
+- **웹 컴포넌트**: `FileUploadTrigger` + `FileUploadList` 조합 사용
+- **실시간 진행률**: 업로드 진행 상황을 실시간으로 표시
+- **파일 검증**: 크기(5MB) 및 타입(JPEG, PNG, WebP) 자동 검증
+- **편집 지원**: 기존 파일 로드 및 수정 가능
+
+### 웹 컴포넌트 사용 방법
+
+#### 답글 작성 시 파일 업로드
+
+```html
+<!-- CommentItem.svelte -->
+<Dialog bind:open={isReplyDialogOpen}>
+  <form onsubmit={handleReplySubmit}>
+    <!-- 답글 내용 입력 -->
+    <textarea bind:value={replyContent}></textarea>
+
+    <!-- 파일 업로드 트리거 버튼 -->
+    <file-upload-trigger
+      id="comment-reply-{comment.commentId}"
+      category="comments"
+      multiple="true"
+      buttonText={$t("이미지첨부")}
+    ></file-upload-trigger>
+
+    <!-- 파일 목록 표시 -->
+    <file-upload-list id="comment-reply-{comment.commentId}"></file-upload-list>
+
+    <button type="submit">{$t("답글등록")}</button>
+  </form>
+</Dialog>
+```
+
+**제출 시 URL 가져오기**:
+```typescript
+async function handleReplySubmit() {
+  // 1. 내용 검증
+  if (!replyContent.trim()) {
+    alert('답글 내용을 입력해주세요');
+    return;
+  }
+
+  // 2. 사용자 정보 확인
+  const userId = $login.uid;
+
+  // 3. 업로드된 파일 URL 목록 가져오기
+  const fileUploadList = document.querySelector(`file-upload-list[id="comment-reply-${comment.commentId}"]`);
+  // @ts-ignore
+  const urls = fileUploadList?.getUrls ? fileUploadList.getUrls() : [];
+
+  // 4. Firebase에 답글 저장 (파일 URL 포함)
+  const result = await createChildComment({
+    parentCommentId: comment.commentId,
+    userId: userId,
+    content: replyContent,
+    urls: urls.length > 0 ? urls : undefined
+  });
+
+  // 5. 결과 처리
+  if (result.success) {
+    alert('답글이 등록되었습니다');
+    isReplyDialogOpen = false;
+    replyContent = '';
+  } else {
+    alert('답글 등록에 실패했습니다: ' + result.error);
+  }
+}
+```
+
+#### 댓글 수정 시 파일 업로드 (기존 파일 로드)
+
+```html
+<!-- CommentItem.svelte -->
+<Dialog bind:open={isEditDialogOpen}>
+  <form onsubmit={handleEditSubmit}>
+    <!-- 댓글 내용 입력 -->
+    <textarea bind:value={editContent}></textarea>
+
+    <!-- 파일 업로드 트리거 -->
+    <file-upload-trigger
+      id="comment-edit-{comment.commentId}"
+      category="comments"
+      multiple="true"
+      buttonText={$t("이미지첨부")}
+    ></file-upload-trigger>
+
+    <!-- 파일 목록 (initial-urls로 기존 파일 표시) -->
+    <file-upload-list
+      id="comment-edit-{comment.commentId}"
+      initial-urls={JSON.stringify(comment.urls || [])}
+    ></file-upload-list>
+
+    <button type="submit">{$t("수정")}</button>
+  </form>
+</Dialog>
+```
+
+**제출 시 URL 가져오기**:
+```typescript
+async function handleEditSubmit() {
+  // 1. 내용 검증
+  if (!editContent.trim()) {
+    alert('댓글 내용을 입력해주세요');
+    return;
+  }
+
+  // 2. 업로드된 파일 URL 목록 가져오기
+  const fileUploadList = document.querySelector(`file-upload-list[id="comment-edit-${comment.commentId}"]`);
+  // @ts-ignore
+  const urls = fileUploadList?.getUrls ? fileUploadList.getUrls() : [];
+
+  // 3. Firebase에 댓글 업데이트
+  const result = await updateComment(comment.commentId, {
+    content: editContent,
+    urls: urls.length > 0 ? urls : undefined
+  });
+
+  // 4. 결과 처리
+  if (result.success) {
+    alert('댓글이 수정되었습니다');
+    isEditDialogOpen = false;
+  } else {
+    alert('댓글 수정에 실패했습니다: ' + result.error);
+  }
+}
+```
+
+### 서비스 함수 수정
+
+#### `createTopLevelComment` 함수
+
+```typescript
+// src/lib/services/comment.ts
+export async function createTopLevelComment(
+  params: CreateTopLevelCommentParams
+): Promise<CreateCommentResult> {
+  const { postId, userId, content, urls } = params;  // ← urls 추가
+
+  // ... 기존 코드 (order 계산 등) ...
+
+  const commentData: any = {
+    postId: postId,
+    uid: userId,
+    content: content,
+    depth: 1,
+    order: orderString,
+    parentId: null,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  // 첨부 파일 URL 추가 (있는 경우)
+  if (urls && urls.length > 0) {
+    commentData.urls = urls;
+  }
+
+  // ... 저장 로직 ...
+}
+```
+
+#### `createChildComment` 함수
+
+```typescript
+// src/lib/services/comment.ts
+export async function createChildComment(
+  params: CreateChildCommentParams
+): Promise<CreateCommentResult> {
+  const { parentCommentId, userId, content, urls } = params;  // ← urls 추가
+
+  // ... 기존 코드 (order 계산 등) ...
+
+  const commentData: any = {
+    postId: postId,
+    uid: userId,
+    content: content,
+    depth: newDepth,
+    order: newOrder,
+    parentId: parentCommentId,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  // 첨부 파일 URL 추가 (있는 경우)
+  if (urls && urls.length > 0) {
+    commentData.urls = urls;
+  }
+
+  // ... 저장 로직 ...
+}
+```
+
+#### `updateComment` 함수
+
+```typescript
+// src/lib/services/comment.ts
+export async function updateComment(
+  commentId: FirebaseKey,
+  updates: { content: string; urls?: string[] }  // ← urls 추가
+): Promise<CreateCommentResult> {
+  // ... 기존 코드 ...
+
+  const updateData: Record<string, any> = {};
+  updateData[`comments/${commentId}/content`] = updates.content;
+  updateData[`comments/${commentId}/updatedAt`] = now;
+
+  // 첨부 파일 URL 업데이트 (있는 경우)
+  if (updates.urls !== undefined) {
+    if (updates.urls.length > 0) {
+      updateData[`comments/${commentId}/urls`] = updates.urls;
+    } else {
+      // urls가 빈 배열이면 필드 삭제
+      updateData[`comments/${commentId}/urls`] = null;
+    }
+  }
+
+  await update(ref(database), updateData);
+
+  // ... 결과 반환 ...
+}
+```
+
+### TypeScript 인터페이스
+
+**Comment 인터페이스 (`src/lib/types/comment.ts`)**:
+```typescript
+export interface Comment {
+  postId: FirebaseKey;
+  uid: UserId;
+  content: string;
+  urls?: string[];  // ← 첨부 파일 URL 배열 (선택)
+  depth: number;
+  order: string;
+  parentId: FirebaseKey | null;
+  likeCount: number;
+  commentCount: number;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+export interface CreateTopLevelCommentParams {
+  postId: FirebaseKey;
+  userId: UserId;
+  content: string;
+  urls?: string[];  // ← 첨부 파일 URL 목록 (선택)
+}
+
+export interface CreateChildCommentParams {
+  parentCommentId: FirebaseKey;
+  userId: UserId;
+  content: string;
+  urls?: string[];  // ← 첨부 파일 URL 목록 (선택)
+}
+```
+
+### 파일 표시 및 다운로드
+
+댓글 컴포넌트에서 첨부 파일을 표시하려면:
+
+```svelte
+<!-- CommentItem.svelte -->
+<div class="comment-content">
+  <p>{comment.content}</p>
+
+  <!-- 첨부 파일 표시 -->
+  {#if comment.urls && comment.urls.length > 0}
+    <div class="comment-attachments">
+      <div class="file-list">
+        {#each comment.urls as url, index}
+          <div class="file-item">
+            <img src={url} alt="첨부 이미지 {index + 1}" class="attachment-image" />
+            <a href={url} target="_blank" rel="noopener noreferrer" class="download-link">
+              다운로드
+            </a>
+          </div>
+        {/each}
+      </div>
+    </div>
+  {/if}
+</div>
+```
+
+### URL 배열 관리 규칙
+
+1. **신규 생성 시**:
+   - URL이 있으면 배열로 저장: `urls: [...]`
+   - URL이 없으면 필드 자체를 추가하지 않음 (undefined)
+
+2. **수정 시**:
+   - URL이 있으면 배열로 업데이트: `urls: [...]`
+   - URL이 없으면 필드 삭제: `urls: null`
+
+3. **조회 시**:
+   - `urls` 필드가 없을 수 있으므로 항상 optional chaining 사용
+   - 예: `comment.urls || []`
+
+### 상세 가이드
+
+파일 업로드 시스템에 대한 상세한 가이드는 다음 문서를 참고하세요:
+- [Firebase Storage 개발 가이드](./snsweb-firebase-storage.md) - 파일 업로드 웹 컴포넌트 시스템 전체 설명
 
 ---
 

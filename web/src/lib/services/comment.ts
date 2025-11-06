@@ -154,7 +154,7 @@ function createInitialOrder(): number[] {
 export async function createTopLevelComment(
   params: CreateTopLevelCommentParams
 ): Promise<CreateCommentResult> {
-  const { postId, userId, content } = params;
+  const { postId, userId, content, urls } = params;
 
   try {
     // 현재 시간 (Unix timestamp 밀리초)
@@ -198,7 +198,7 @@ export async function createTopLevelComment(
     const orderString = formatOrder(postId, orderIndices);
 
     // 댓글 객체 생성
-    const commentData = {
+    const commentData: any = {
       postId: postId,
       uid: userId,
       content: content,
@@ -208,6 +208,11 @@ export async function createTopLevelComment(
       createdAt: now,
       updatedAt: now,
     };
+
+    // 첨부 파일 URL 추가 (있는 경우)
+    if (urls && urls.length > 0) {
+      commentData.urls = urls;
+    }
 
     // 5. 새 댓글 생성 (push key 미리 생성)
     const newCommentRef = push(commentsRef);
@@ -276,7 +281,7 @@ export async function createTopLevelComment(
 export async function createChildComment(
   params: CreateChildCommentParams
 ): Promise<CreateCommentResult> {
-  const { parentCommentId, userId, content } = params;
+  const { parentCommentId, userId, content, urls } = params;
 
   try {
     // 1. 부모 댓글 정보 조회
@@ -354,7 +359,7 @@ export async function createChildComment(
     const now = Date.now();
 
     // 9. 댓글 객체 생성
-    const commentData = {
+    const commentData: any = {
       postId: postId,
       uid: userId,
       content: content,
@@ -364,6 +369,11 @@ export async function createChildComment(
       createdAt: now,
       updatedAt: now,
     };
+
+    // 첨부 파일 URL 추가 (있는 경우)
+    if (urls && urls.length > 0) {
+      commentData.urls = urls;
+    }
 
     // 10. 새 댓글 생성 (push key 미리 생성, commentsRef 재사용)
     const newCommentRef = push(commentsRef);
@@ -523,7 +533,7 @@ export function listenToComments(
  */
 export async function updateComment(
   commentId: FirebaseKey,
-  updates: { content: string }
+  updates: { content: string; urls?: string[] }
 ): Promise<CreateCommentResult> {
   try {
     // 1. 댓글 정보 조회 (commentCount 확인)
@@ -555,6 +565,16 @@ export async function updateComment(
     const updateData: Record<string, any> = {};
     updateData[`comments/${commentId}/content`] = updates.content;
     updateData[`comments/${commentId}/updatedAt`] = now;
+
+    // 첨부 파일 URL 업데이트 (있는 경우)
+    if (updates.urls !== undefined) {
+      if (updates.urls.length > 0) {
+        updateData[`comments/${commentId}/urls`] = updates.urls;
+      } else {
+        // urls가 빈 배열이면 필드 삭제 (null로 설정)
+        updateData[`comments/${commentId}/urls`] = null;
+      }
+    }
 
     await update(ref(database), updateData);
 

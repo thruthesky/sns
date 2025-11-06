@@ -52,6 +52,11 @@ dependencies: []
 - 작성된 글은 Firebase RTDB에 실시간으로 저장됩니다.
 - 로그인한 사용자만 글을 작성할 수 있습니다.
 - 작성 시 모달 다이얼로그를 통해 입력받습니다.
+- **카테고리 선택 UI (v2.2.0 개선)**:
+  - URL 파라미터로 카테고리 자동 선택 (예: `?category=qna`)
+  - "카테고리: 질문답변 (변경하기)" 형식의 inline display
+  - (변경하기) 버튼 클릭 시 라디오 버튼 리스트 표시
+  - Select box 대신 사용자 친화적인 UI 제공
 
 ### 2. 글 목록
 - 작성된 글은 카테고리별로 목록 형태로 표시됩니다.
@@ -93,6 +98,7 @@ dependencies: []
     author: "작성자 displayName"
     category: "community"  # 카테고리 (community, qna, news, market)
     order: "community-1234567890"  # <category>-<timestamp> 형식
+    urls: ["url1", "url2"]  # 첨부 파일 URL 목록 (선택, Firebase Storage)
     createdAt: 1234567890  # Unix timestamp (밀리초)
     updatedAt: 1234567890  # Unix timestamp (밀리초)
     likeCount: 0         # 좋아요 총 개수 (Cloud Functions로 관리)
@@ -111,6 +117,10 @@ dependencies: []
       "author": "사용자1",
       "category": "community",
       "order": "community-1698473000000",
+      "urls": [
+        "https://firebasestorage.googleapis.com/.../image1.jpg",
+        "https://firebasestorage.googleapis.com/.../image2.jpg"
+      ],
       "createdAt": 1698473000000,
       "updatedAt": 1698473000000,
       "likeCount": 3,
@@ -315,6 +325,7 @@ export async function deletePost(postId, currentUserId) {
   let postTitle = $state('');
   let postContent = $state('');
   let isSubmitting = $state(false);
+  let isCategorySelectMode = $state(false);  // 카테고리 선택 모드
 
   // 게시글 목록
   let posts = $state([]);
@@ -367,13 +378,36 @@ export async function deletePost(postId, currentUserId) {
     <div class="modal" onclick={(e) => e.stopPropagation()}>
       <h2>새 게시글 작성</h2>
 
-      <!-- 카테고리 선택 -->
-      <select bind:value={postCategory} class="form-control">
-        <option value="">카테고리 선택</option>
-        {#each FORUM_CATEGORIES as category (category.value)}
-          <option value={category.value}>{category.label}</option>
-        {/each}
-      </select>
+      <!-- 카테고리 선택 (개선됨: inline display 방식) -->
+      <!-- 자세한 구현은 "4. 카테고리 선택 UI (개선됨)" 섹션 참조 -->
+      <div class="form-group">
+        <label for="category">{$t("카테고리")}</label>
+        {#if !isCategorySelectMode}
+          <div class="category-display">
+            <span class="category-name">
+              {$t(`label.category.${postCategory}`)}
+            </span>
+            <button type="button" class="btn-change-category" onclick={handleCategorySelectToggle}>
+              (변경하기)
+            </button>
+          </div>
+        {:else}
+          <div class="category-select-mode">
+            {#each POST_CATEGORIES as category (category)}
+              <label class="radio-option">
+                <input
+                  type="radio"
+                  name="category"
+                  value={category}
+                  checked={postCategory === category}
+                  onchange={() => handleCategorySelect(category)}
+                />
+                <span class="radio-label">{$t(`label.category.${category}`)}</span>
+              </label>
+            {/each}
+          </div>
+        {/if}
+      </div>
 
       <!-- 제목 입력 -->
       <input
@@ -439,6 +473,8 @@ Svelte 5의 Runes를 사용하여 반응형 상태를 관리합니다.
   let postTitle = $state('');
   let postContent = $state('');
   let isSubmitting = $state(false);
+  // 카테고리 선택 모드 토글 (true: 라디오 버튼 리스트 표시, false: 읽기 전용 표시)
+  let isCategorySelectMode = $state(false);
 
   // 게시글 목록
   let posts = $state([]);
@@ -509,13 +545,201 @@ Svelte 5의 Runes를 사용하여 반응형 상태를 관리합니다.
 </script>
 ```
 
-### 4. 글쓰기 버튼 클릭 핸들러
+### 4. 카테고리 선택 UI (개선됨)
+
+**⚠️ 중요 변경사항**: Select box 대신 inline display 방식으로 변경되었습니다.
+
+#### 주요 기능
+1. **URL 파라미터 기반 자동 선택**: 글쓰기 모달 열 때 현재 URL의 카테고리가 자동으로 선택됨
+2. **읽기 전용 표시**: "카테고리: 질문답변 (변경하기)" 형식으로 표시
+3. **(변경하기) 버튼**: 클릭 시 라디오 버튼 리스트로 전환
+4. **라디오 버튼 선택**: 카테고리 선택 후 자동으로 읽기 전용 모드로 복귀
+
+#### 상태 변수
+
+```javascript
+// 카테고리 선택 모드 토글
+// - false: 읽기 전용 표시 (기본값)
+// - true: 라디오 버튼 리스트 표시
+let isCategorySelectMode = $state(false);
+```
+
+#### 핸들러 함수
+
+```javascript
+/**
+ * (변경하기) 버튼 클릭 핸들러
+ * 카테고리 선택 모드를 토글합니다.
+ */
+function handleCategorySelectToggle() {
+  isCategorySelectMode = !isCategorySelectMode;
+}
+
+/**
+ * 라디오 버튼 카테고리 선택 핸들러
+ * 카테고리를 변경하고 선택 모드를 종료합니다.
+ */
+function handleCategorySelect(category) {
+  postCategory = category;
+  isCategorySelectMode = false;
+}
+```
+
+#### HTML 구조
+
+```svelte
+<!-- 카테고리 선택 -->
+<div class="form-group">
+  <label for="category">{$t("카테고리")}</label>
+
+  {#if !isCategorySelectMode}
+    <!-- 읽기 전용 카테고리 표시 -->
+    <div class="category-display">
+      <span class="category-name">
+        {$t(`label.category.${postCategory}`)}
+      </span>
+      <button
+        type="button"
+        class="btn-change-category"
+        onclick={handleCategorySelectToggle}
+      >
+        (변경하기)
+      </button>
+    </div>
+  {:else}
+    <!-- 카테고리 선택 모드: 라디오 버튼 리스트 -->
+    <div class="category-select-mode">
+      {#each POST_CATEGORIES as category (category)}
+        <label class="radio-option">
+          <input
+            type="radio"
+            name="category"
+            value={category}
+            checked={postCategory === category}
+            onchange={() => handleCategorySelect(category)}
+          />
+          <span class="radio-label">
+            {$t(`label.category.${category}`)}
+          </span>
+        </label>
+      {/each}
+    </div>
+  {/if}
+</div>
+```
+
+#### CSS 스타일링
+
+```css
+/* === 카테고리 선택 UI === */
+
+/* 읽기 전용 카테고리 표시 */
+.category-display {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 0.9rem;
+  background: #f9fafb;
+  border: 1px solid #d1d5db;
+  border-radius: 0.75rem;
+}
+
+.category-name {
+  font-size: 0.9rem;
+  color: #1f2937;
+  font-weight: 500;
+}
+
+/* (변경하기) 버튼 - 링크 스타일 */
+.btn-change-category {
+  background: none;
+  border: none;
+  color: #2563eb;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.btn-change-category:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+/* 카테고리 선택 모드: 라디오 버튼 리스트 */
+.category-select-mode {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: #f9fafb;
+  border: 1px solid #d1d5db;
+  border-radius: 0.75rem;
+}
+
+/* 라디오 버튼 옵션 */
+.radio-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.radio-option:hover {
+  background: #eff6ff;
+  border-color: #3b82f6;
+}
+
+/* 라디오 버튼 선택 시 강조 */
+.radio-option:has(input:checked) {
+  background: #dbeafe;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.radio-option input[type="radio"] {
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+  accent-color: #2563eb;
+}
+
+.radio-label {
+  font-size: 0.9rem;
+  color: #1f2937;
+  cursor: pointer;
+}
+```
+
+#### 장점
+
+1. **사용자 경험 향상**:
+   - URL 파라미터 기반으로 카테고리가 자동 선택되어 편리함
+   - Select box보다 직관적인 UI
+
+2. **시각적 피드백**:
+   - 현재 선택된 카테고리가 명확하게 표시됨
+   - 라디오 버튼의 호버 및 선택 효과로 상호작용 피드백 제공
+
+3. **모바일 친화적**:
+   - 라디오 버튼이 터치 인터페이스에 더 적합함
+
+---
+
+### 5. 글쓰기 버튼 클릭 핸들러
 
 ```javascript
 <script>
   /**
    * 글쓰기 버튼 클릭 시 처리
    * 로그인 상태를 확인하고 모달을 엽니다.
+   * URL 파라미터의 카테고리를 자동으로 설정합니다.
    */
   function handleCreatePost() {
     if (!userId) {
@@ -523,13 +747,17 @@ Svelte 5의 Runes를 사용하여 반응형 상태를 관리합니다.
       window.location.href = '/user/login';
       return;
     }
+    // URL 파라미터의 currentCategory를 postCategory에 자동 설정
+    postCategory = currentCategory;
+    // 카테고리 선택 모드를 읽기 전용으로 초기화
+    isCategorySelectMode = false;
     // 글쓰기 모달 열기
     isDialogOpen = true;
   }
 </script>
 ```
 
-### 5. 글쓰기 전송 핸들러
+### 6. 글쓰기 전송 핸들러
 
 ```javascript
 <script>
@@ -596,7 +824,7 @@ Svelte 5의 Runes를 사용하여 반응형 상태를 관리합니다.
 </script>
 ```
 
-### 6. 카테고리 탭 네비게이션
+### 7. 카테고리 탭 네비게이션
 
 ```svelte
 <!-- 카테고리 탭 -->
@@ -639,7 +867,7 @@ Svelte 5의 Runes를 사용하여 반응형 상태를 관리합니다.
 </style>
 ```
 
-### 7. 게시글 목록 렌더링 (수정/삭제 버튼 포함)
+### 8. 게시글 목록 렌더링 (수정/삭제 버튼 포함)
 
 ```svelte
 <script>
@@ -986,10 +1214,208 @@ Svelte 5의 Runes를 사용하여 반응형 상태를 관리합니다.
 - 더보기 버튼
 - Svelte 반응형 상태로 구현
 
-### 5. 이미지 업로드
-- Firebase Storage 사용
-- 이미지 미리보기
-- 드래그 앤 드롭 기능
+### 5. 파일 업로드
+
+게시글 작성 시 파일 업로드 기능을 제공합니다. 파일 업로드 웹 컴포넌트 시스템을 사용하여 구현됩니다.
+
+#### 5.1. 파일 업로드 시스템 개요
+
+- **Firebase Storage**: 파일은 Firebase Storage에 저장됩니다
+- **경로 구조**: `/users/{userId}/posts/{timestamp}-{filename}`
+- **URL 저장**: 업로드된 파일의 다운로드 URL을 RTDB `/posts/{postId}/urls` 배열에 저장
+- **웹 컴포넌트**: `FileUploadTrigger` + `FileUploadList` 조합 사용
+- **실시간 진행률**: 업로드 진행 상황을 실시간으로 표시
+- **파일 검증**: 크기(5MB) 및 타입(JPEG, PNG, WebP) 자동 검증
+- **편집 지원**: 기존 파일 로드 및 수정 가능
+
+#### 5.2. 웹 컴포넌트 사용 방법
+
+**신규 게시글 작성**:
+```html
+<!-- PostListPage.svelte -->
+<Dialog bind:open={isNewPostDialogOpen}>
+  <form onsubmit={handleSubmit}>
+    <!-- 제목, 내용 입력 ... -->
+
+    <!-- 파일 업로드 트리거 버튼 -->
+    <file-upload-trigger
+      id="post-create"
+      category="posts"
+      multiple="true"
+      buttonText={$t("이미지첨부")}
+    ></file-upload-trigger>
+
+    <!-- 파일 목록 표시 -->
+    <file-upload-list id="post-create"></file-upload-list>
+
+    <button type="submit">{$t("등록")}</button>
+  </form>
+</Dialog>
+```
+
+**제출 시 URL 가져오기**:
+```typescript
+async function handleSubmit(event: Event) {
+  event.preventDefault();
+
+  // 업로드된 파일 URL 목록 가져오기
+  const fileUploadList = document.querySelector('file-upload-list[id="post-create"]');
+  // @ts-ignore
+  const urls = fileUploadList?.getUrls ? fileUploadList.getUrls() : [];
+
+  // 게시글 생성 (파일 URL 포함)
+  const result = await createPost(
+    postCategory,
+    userId,
+    userName,
+    postTitle,
+    postContent,
+    urls.length > 0 ? urls : undefined
+  );
+
+  // ... 결과 처리
+}
+```
+
+**게시글 수정 (기존 파일 로드)**:
+```html
+<Dialog bind:open={isEditDialogOpen}>
+  <form onsubmit={handleEditSubmit}>
+    <!-- 제목, 내용 입력 ... -->
+
+    <!-- 파일 업로드 트리거 -->
+    <file-upload-trigger
+      id="post-edit-{editingPost.postId}"
+      category="posts"
+      multiple="true"
+      buttonText={$t("이미지첨부")}
+    ></file-upload-trigger>
+
+    <!-- 파일 목록 (initial-urls로 기존 파일 표시) -->
+    <file-upload-list
+      id="post-edit-{editingPost.postId}"
+      initial-urls={JSON.stringify(editingPost.urls || [])}
+    ></file-upload-list>
+
+    <button type="submit">{$t("수정")}</button>
+  </form>
+</Dialog>
+```
+
+#### 5.3. 서비스 함수 수정
+
+**`createPost` 함수**:
+```typescript
+// src/lib/services/forum.ts
+export async function createPost(
+  category: PostCategory,
+  uid: UserId,
+  author: string,
+  title: string,
+  content: string,
+  urls?: string[]  // ← 파일 URL 배열 추가
+): Promise<CreatePostResult> {
+  // ... 기존 코드 ...
+
+  const postData: any = {
+    uid,
+    title,
+    content,
+    author,
+    category,
+    order,
+    createdAt: now,
+    updatedAt: now,
+    likeCount: 0,
+    commentCount: 0
+  };
+
+  // 첨부 파일 URL 추가 (있는 경우)
+  if (urls && urls.length > 0) {
+    postData.urls = urls;
+  }
+
+  // ... 저장 로직
+}
+```
+
+**`updatePost` 함수**:
+```typescript
+// src/lib/services/forum.ts
+export async function updatePost(
+  postId: FirebaseKey,
+  updates: { title: string; content: string; urls?: string[] }  // ← urls 추가
+): Promise<CreatePostResult> {
+  // ... 기존 코드 ...
+
+  const updateData: Record<string, any> = {};
+  updateData[`posts/${postId}/title`] = updates.title;
+  updateData[`posts/${postId}/content`] = updates.content;
+  updateData[`posts/${postId}/updatedAt`] = now;
+
+  // 첨부 파일 URL 업데이트 (있는 경우)
+  if (updates.urls !== undefined) {
+    if (updates.urls.length > 0) {
+      updateData[`posts/${postId}/urls`] = updates.urls;
+    } else {
+      // urls가 빈 배열이면 필드 삭제
+      updateData[`posts/${postId}/urls`] = null;
+    }
+  }
+
+  await update(ref(database), updateData);
+
+  // ... 결과 반환
+}
+```
+
+#### 5.4. TypeScript 인터페이스
+
+**Post 인터페이스 (`src/lib/types/forum.ts`)**:
+```typescript
+export interface Post {
+  postId: FirebaseKey;
+  uid: UserId;
+  title: string;
+  content: string;
+  urls?: string[];  // ← 첨부 파일 URL 배열 (선택)
+  author: string;
+  category: PostCategory;
+  order: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  likeCount: number;
+  commentCount: number;
+}
+```
+
+#### 5.5. 파일 표시 및 다운로드
+
+게시글 상세 페이지에서 첨부 파일을 표시하려면:
+
+```svelte
+<!-- PostDetail.svelte -->
+{#if post.urls && post.urls.length > 0}
+  <div class="attachments">
+    <h3>첨부 파일</h3>
+    <div class="file-list">
+      {#each post.urls as url, index}
+        <div class="file-item">
+          <img src={url} alt="첨부 이미지 {index + 1}" />
+          <a href={url} target="_blank" rel="noopener noreferrer">
+            다운로드
+          </a>
+        </div>
+      {/each}
+    </div>
+  </div>
+{/if}
+```
+
+#### 5.6. 상세 가이드
+
+파일 업로드 시스템에 대한 상세한 가이드는 다음 문서를 참고하세요:
+- [Firebase Storage 개발 가이드](./snsweb-firebase-storage.md) - 파일 업로드 웹 컴포넌트 시스템 전체 설명
 
 ### 6. Svelte 5 Runes 최적화
 - `$derived` 사용하여 파생 상태 관리
@@ -999,7 +1425,17 @@ Svelte 5의 Runes를 사용하여 반응형 상태를 관리합니다.
 ---
 
 **Last Updated**: 2025-11-05
-**Version**: 2.1.0 (게시글 수정/삭제 기능 추가)
+**Version**: 2.2.0 (카테고리 선택 UI 개선)
+
+### 변경 이력
+
+- **v2.2.0** (2025-11-05): 카테고리 선택 UI 개선
+  - Select box를 inline display 방식으로 변경
+  - URL 파라미터 기반 카테고리 자동 선택
+  - (변경하기) 버튼으로 라디오 버튼 리스트 토글
+  - 사용자 경험 및 모바일 친화성 향상
+- **v2.1.0**: 게시글 수정/삭제 기능 추가
+- **v2.0.0**: 초기 게시글 기능 구현
 
 ## 관련 문서
 

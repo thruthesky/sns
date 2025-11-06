@@ -54,6 +54,7 @@ import type { UserId, FirebaseKey } from '../types/common';
  * @param author - 작성자 표시명
  * @param title - 게시글 제목
  * @param content - 게시글 내용
+ * @param urls - 첨부 파일 URL 목록 (선택)
  * @returns 생성 결과 (success, postId, error)
  *
  * 기능:
@@ -62,6 +63,7 @@ import type { UserId, FirebaseKey } from '../types/common';
  * - order 필드 자동 생성 (<category>-<timestamp> 형식)
  * - createdAt, updatedAt 자동 설정 (현재 시간)
  * - likeCount, commentCount 초기화
+ * - 첨부 파일 URL 배열 저장 (선택)
  *
  * 사용 예시:
  * ```typescript
@@ -70,7 +72,8 @@ import type { UserId, FirebaseKey } from '../types/common';
  *   'user-uid-123',
  *   '홍길동',
  *   '첫 번째 게시글',
- *   '안녕하세요! 첫 게시글입니다.'
+ *   '안녕하세요! 첫 게시글입니다.',
+ *   ['https://storage.googleapis.com/...']
  * );
  *
  * if (result.success) {
@@ -83,7 +86,8 @@ export async function createPost(
   uid: UserId,
   author: string,
   title: string,
-  content: string
+  content: string,
+  urls?: string[]
 ): Promise<CreatePostResult> {
   try {
     // 현재 시간 (Unix timestamp 밀리초)
@@ -93,7 +97,7 @@ export async function createPost(
     const order = `${category}-${now}`;
 
     // 게시글 객체 생성
-    const postData = {
+    const postData: any = {
       uid: uid,
       title: title,
       content: content,
@@ -105,6 +109,11 @@ export async function createPost(
       likeCount: 0,
       commentCount: 0
     };
+
+    // 첨부 파일 URL 추가 (있는 경우)
+    if (urls && urls.length > 0) {
+      postData.urls = urls;
+    }
 
     // Firebase 경로: /posts/ (flat style)
     const postsRef = ref(database, 'posts');
@@ -229,11 +238,11 @@ export function listenToPosts(
  * 본인이 작성한 글만 수정 가능합니다.
  *
  * @param postId - 게시글 ID
- * @param updates - 수정할 내용 { title?: string, content?: string }
+ * @param updates - 수정할 내용 { title?: string, content?: string, urls?: string[] }
  * @returns 수정 결과 (success, error)
  *
  * 기능:
- * - 기존 게시글의 제목, 내용 수정 (flat style)
+ * - 기존 게시글의 제목, 내용, 첨부 파일 수정 (flat style)
  * - updatedAt 자동 갱신
  * - 본인 작성 글만 수정 가능 (보안 규칙에서 확인)
  *
@@ -241,7 +250,8 @@ export function listenToPosts(
  * ```typescript
  * const result = await updatePost('post-id-123', {
  *   title: '수정된 제목',
- *   content: '수정된 내용'
+ *   content: '수정된 내용',
+ *   urls: ['https://storage.googleapis.com/...']
  * });
  * ```
  */
@@ -275,7 +285,7 @@ export async function updatePost(
     }
 
     // 3. 수정 데이터에 updatedAt 추가
-    const updateData = {
+    const updateData: any = {
       ...updates,
       updatedAt: Date.now()
     };

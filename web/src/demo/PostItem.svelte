@@ -19,6 +19,7 @@
   import type { PostWithId, PostCategory } from "../lib/types/post";
   import type { CommentWithId } from "../lib/types/comment";
   import type { FirebaseKey } from "../lib/types/common";
+  import { portal } from "../lib/utils/portal";
 
   // Props 타입 정의
   interface Props {
@@ -483,7 +484,7 @@
 
 <!-- 댓글 작성 모달 다이얼로그 -->
 {#if isCommentDialogOpen}
-  <div class="modal-backdrop" onclick={handleCommentCancel}>
+  <div class="modal-backdrop" use:portal onclick={handleCommentCancel}>
     <div class="modal" onclick={(e) => e.stopPropagation()}>
       <!-- 모달 헤더 -->
       <div class="modal-header">
@@ -520,7 +521,7 @@
 
 <!-- 게시글 수정 모달 다이얼로그 -->
 {#if isEditDialogOpen}
-  <div class="modal-backdrop" onclick={handleEditCancel}>
+  <div class="modal-backdrop" use:portal onclick={handleEditCancel}>
     <div class="modal" onclick={(e) => e.stopPropagation()}>
       <!-- 모달 헤더 -->
       <div class="modal-header">
@@ -726,7 +727,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1000;
+    z-index: 2500; /* PostListPage 모달(z-index: 2000)보다 높게 설정 */
     padding: 1rem;
   }
 
@@ -737,8 +738,8 @@
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
     max-width: 500px;
     width: 100%;
-    max-height: 90vh;
-    overflow-y: auto;
+    max-height: calc(100vh - 2rem); /* 상하 여백을 고려한 최대 높이 */
+    overflow-y: auto; /* 모달 내용이 길 경우 스크롤 가능 */
   }
 
   /* 모달 헤더 */

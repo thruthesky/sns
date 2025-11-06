@@ -38,7 +38,14 @@
 
     // 출력 디렉토리
     "outDir": "./dist",
-    "rootDir": "./src"
+    "rootDir": "./src",
+
+    // 경로 alias 설정 ($lib을 src/lib으로 매핑)
+    "baseUrl": ".",
+    "paths": {
+      "$lib": ["./src/lib"],
+      "$lib/*": ["./src/lib/*"]
+    }
   },
   "include": [
     "src/**/*.d.ts",

@@ -12,6 +12,10 @@
   import { toggleLike } from "../lib/services/like.js";
   import { showToast } from "../lib/stores/toast.ts";
   import { Pencil, Trash2 } from "lucide-svelte";
+  // 파일 업로드 웹 컴포넌트 import
+  import '../lib/components/FileUploadTrigger.wc.svelte';
+  import '../lib/components/FileUploadList.wc.svelte';
+  import { portal } from "../lib/utils/portal";
 
   // Props
   let {
@@ -108,15 +112,21 @@
     isSubmitting = true;
 
     try {
-      // 3. Firebase에 답글 저장 (Flat Style 구조)
+      // 3. 업로드된 파일 URL 목록 가져오기
+      const fileUploadList = document.querySelector(`file-upload-list[id="comment-reply-${comment.commentId}"]`);
+      // @ts-ignore - FileUploadList 컴포넌트의 getUrls() 메서드 호출
+      const urls = fileUploadList?.getUrls ? fileUploadList.getUrls() : [];
+
+      // 4. Firebase에 답글 저장 (Flat Style 구조)
       // 참고: postId와 commentCount는 Firebase Cloud Functions에서 자동으로 관리됨
       const result = await createChildComment({
         parentCommentId: comment.commentId,  // 부모 댓글 ID
         userId: userId,                      // 작성자 UID
-        content: replyContent                // 답글 내용
+        content: replyContent,               // 답글 내용
+        urls: urls.length > 0 ? urls : undefined  // 파일 URL 목록
       });
 
-      // 4. 결과 처리
+      // 5. 결과 처리
       if (result.success) {
         showToast($t("댓글이작성되었습니다"), "success");
         isReplyDialogOpen = false;
@@ -172,12 +182,18 @@
     isEditSubmitting = true;
 
     try {
-      // 3. Firebase에 댓글 업데이트
+      // 3. 업로드된 파일 URL 목록 가져오기
+      const fileUploadList = document.querySelector(`file-upload-list[id="comment-edit-${comment.commentId}"]`);
+      // @ts-ignore - FileUploadList 컴포넌트의 getUrls() 메서드 호출
+      const urls = fileUploadList?.getUrls ? fileUploadList.getUrls() : [];
+
+      // 4. Firebase에 댓글 업데이트
       const result = await updateComment(comment.commentId, {
-        content: editContent
+        content: editContent,
+        urls: urls.length > 0 ? urls : undefined
       });
 
-      // 4. 결과 처리
+      // 5. 결과 처리
       if (result.success) {
         showToast($t("댓글이수정되었습니다"), "success");
         isEditDialogOpen = false;
@@ -281,8 +297,8 @@
         onclick={handleLike}
         title={$t("좋아요")}
       >
-        {($myLikeStore?.data ?? 0) >= 1 ? "❤️" : "🤍"}
-        {$t("좋아요")}
+        <span class="emoji">{($myLikeStore?.data ?? 0) >= 1 ? "❤️" : "🤍"}</span>
+        <span class="text">{$t("좋아요")}</span>
         {#if comment.likeCount > 0}
           <span class="count">{comment.likeCount}</span>
         {/if}
@@ -292,23 +308,22 @@
     <!-- 답글 버튼 -->
     {#if userId && comment.depth < 12}
       <button class="action-button reply-button" onclick={handleReplyClick}>
-        💬 {$t("답글")}
+        <span class="emoji">💬</span>
+        <span class="text">{$t("답글")}</span>
       </button>
     {/if}
 
-    <!-- 수정 버튼 (작성자만 표시) -->
+    <!-- 수정 버튼 (작성자만 표시, 아이콘만) -->
     {#if userId && userId === comment.uid}
       <button class="action-button edit-button" onclick={handleEditClick} title={$t("수정")}>
         <Pencil size={14} />
-        {$t("수정")}
       </button>
     {/if}
 
-    <!-- 삭제 버튼 (작성자만 표시) -->
+    <!-- 삭제 버튼 (작성자만 표시, 아이콘만) -->
     {#if userId && userId === comment.uid}
       <button class="action-button delete-button" onclick={handleDeleteClick} title={$t("삭제")}>
         <Trash2 size={14} />
-        {$t("삭제")}
       </button>
     {/if}
   </div>
@@ -316,7 +331,7 @@
 
 <!-- 답글 작성 모달 다이얼로그 -->
 {#if isReplyDialogOpen}
-  <div class="modal-backdrop" onclick={handleReplyCancel}>
+  <div class="modal-backdrop" use:portal onclick={handleReplyCancel}>
     <div class="modal" onclick={(e) => e.stopPropagation()}>
       <!-- 모달 헤더 -->
       <div class="modal-header">
@@ -332,6 +347,19 @@
           rows="5"
           autofocus
         ></textarea>
+
+        <!-- 파일 업로드 트리거 -->
+        <div class="file-upload-section">
+          <file-upload-trigger
+            id="comment-reply-{comment.commentId}"
+            category="comments"
+            multiple="true"
+            buttonText={$t("이미지첨부")}
+          ></file-upload-trigger>
+        </div>
+
+        <!-- 파일 목록 -->
+        <file-upload-list id="comment-reply-{comment.commentId}"></file-upload-list>
       </div>
 
       <!-- 모달 푸터 -->
@@ -353,7 +381,7 @@
 
 <!-- 댓글 수정 모달 다이얼로그 -->
 {#if isEditDialogOpen}
-  <div class="modal-backdrop" onclick={handleEditCancel}>
+  <div class="modal-backdrop" use:portal onclick={handleEditCancel}>
     <div class="modal" onclick={(e) => e.stopPropagation()}>
       <!-- 모달 헤더 -->
       <div class="modal-header">
@@ -369,6 +397,22 @@
           rows="5"
           autofocus
         ></textarea>
+
+        <!-- 파일 업로드 트리거 -->
+        <div class="file-upload-section">
+          <file-upload-trigger
+            id="comment-edit-{comment.commentId}"
+            category="comments"
+            multiple="true"
+            buttonText={$t("이미지첨부")}
+          ></file-upload-trigger>
+        </div>
+
+        <!-- 파일 목록 -->
+        <file-upload-list
+          id="comment-edit-{comment.commentId}"
+          initial-urls={JSON.stringify(comment.urls || [])}
+        ></file-upload-list>
       </div>
 
       <!-- 모달 푸터 -->
@@ -391,7 +435,12 @@
 <!-- 경고 알림 다이얼로그 (commentCount > 0일 때 표시) -->
 {#if isAlertDialogOpen}
   <alert-dialog
+    open="true"
+    type="warning"
+    title={$t("알림")}
     message={alertMessage}
+    confirmText={$t("확인")}
+    onconfirm={() => { isAlertDialogOpen = false; }}
     onclose={() => { isAlertDialogOpen = false; }}
   />
 {/if}
@@ -475,7 +524,7 @@
   .comment-actions {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.375rem;
     margin-top: 0.5rem;
   }
 
@@ -484,75 +533,91 @@
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
-    padding: 0.375rem 0.75rem;
+    padding: 0.25rem 0.5rem;
     font-size: 0.75rem;
     background-color: transparent;
-    border: 1px solid;
-    border-radius: 0.375rem;
+    border: none;
+    border-radius: 0.25rem;
     cursor: pointer;
     transition: all 0.2s ease;
     font-weight: 500;
   }
 
+  /* 이모지 스타일 */
+  .action-button .emoji {
+    font-size: 0.875rem;
+    line-height: 1;
+  }
+
+  /* 텍스트 스타일 */
+  .action-button .text {
+    font-size: 0.75rem;
+  }
+
+  /* 모바일에서 좋아요/답글 버튼의 이모지 숨기기 */
+  @media (max-width: 768px) {
+    .like-button .emoji,
+    .reply-button .emoji {
+      display: none;
+    }
+  }
+
   /* 좋아요 버튼 */
   .like-button {
     color: #6b7280;
-    border-color: #d1d5db;
   }
 
   .like-button:hover {
     background-color: #fee2e2;
-    border-color: #fca5a5;
     color: #dc2626;
   }
 
   /* 좋아요 한 버튼 강조 표시 */
   .like-button.liked {
     background-color: #fee2e2;
-    border-color: #dc2626;
     color: #dc2626;
     font-weight: 600;
   }
 
   .like-button.liked:hover {
     background-color: #fecaca;
-    border-color: #b91c1c;
     color: #b91c1c;
   }
 
   /* 답글 버튼 */
   .reply-button {
     color: #3b82f6;
-    border-color: #93c5fd;
   }
 
   .reply-button:hover {
     background-color: #dbeafe;
-    border-color: #3b82f6;
     color: #2563eb;
   }
 
-  /* 수정 버튼 */
+  /* 수정 버튼 (아이콘만 표시, 오른쪽 정렬) */
   .edit-button {
     color: #10b981;
-    border-color: #6ee7b7;
+    padding: 0.25rem;
+    min-width: 2rem;
+    justify-content: center;
+    margin-left: auto;
   }
 
   .edit-button:hover {
     background-color: #d1fae5;
-    border-color: #10b981;
     color: #059669;
   }
 
-  /* 삭제 버튼 */
+  /* 삭제 버튼 (아이콘만 표시) */
   .delete-button {
     color: #ef4444;
-    border-color: #fca5a5;
+    padding: 0.25rem;
+    min-width: 2rem;
+    justify-content: center;
   }
 
   .delete-button:hover {
     background-color: #fee2e2;
-    border-color: #ef4444;
     color: #dc2626;
   }
 
@@ -565,15 +630,13 @@
   /* 모달 배경 (backdrop) */
   .modal-backdrop {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    inset: 0; /* top, left, right, bottom을 0으로 설정 (더 간결하고 명확함) */
     background-color: rgba(0, 0, 0, 0.5);
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1000;
+    z-index: 3000; /* PostListPage 모달(z-index: 2000)보다 높게 설정 */
+    padding: 1rem; /* 모바일에서 여백 확보 */
   }
 
   /* 모달 컨테이너 */
@@ -583,8 +646,8 @@
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
     max-width: 500px;
     width: 90%;
-    max-height: 90vh;
-    overflow-y: auto;
+    max-height: calc(100vh - 2rem); /* 상하 여백을 고려한 최대 높이 */
+    overflow-y: auto; /* 모달 내용이 길 경우 스크롤 가능 */
   }
 
   /* 모달 헤더 */
