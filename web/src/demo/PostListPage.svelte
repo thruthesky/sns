@@ -15,9 +15,10 @@
   import DatabaseListView from "../lib/components/DatabaseListView.svelte";
   import PostItem from "./PostItem.svelte";
   import type { PostCategory } from "../lib/types/post";
-  // 파일 업로드 웹 컴포넌트 import
+  // 파일 업로드 웹 컴포넌트 및 상태 관리 import
   import '../lib/components/FileUploadTrigger.wc.svelte';
   import '../lib/components/FileUploadList.wc.svelte';
+  import { getUploadedUrls, destroyUploader } from '../lib/services/fileUploadState';
 
   // 인증 상태
   let userId = $state<string | null>(null);
@@ -91,6 +92,9 @@
    * 모달을 닫고 입력값을 초기화합니다.
    */
   function handleCancel() {
+    // 파일 업로드 상태 정리
+    destroyUploader('post-create');
+
     isDialogOpen = false;
     postCategory = "";
     postTitle = "";
@@ -126,10 +130,11 @@
     isSubmitting = true;
 
     try {
-      // 3. 업로드된 파일 URL 목록 가져오기
-      const fileUploadList = document.querySelector('file-upload-list[id="post-create"]');
-      // @ts-ignore - FileUploadList 컴포넌트의 getUrls() 메서드 호출
-      const urls = fileUploadList?.getUrls ? fileUploadList.getUrls() : [];
+      // 3. 업로드된 파일 URL 목록 가져오기 (fileUploadState에서 직접 가져오기)
+      // Portal 사용으로 인해 DOM querySelector가 실패할 수 있으므로, 상태에서 직접 가져옵니다.
+      const urls = getUploadedUrls('post-create');
+      console.log('[PostListPage] 업로드된 파일 URLs (fileUploadState):', urls);
+      console.log('[PostListPage] createPost 호출 - urls 파라미터:', urls.length > 0 ? urls : undefined);
 
       // 4. Firebase RTDB에 게시글 저장 (파일 URL 포함)
       const result = await createPost(
@@ -142,17 +147,20 @@
       );
 
       if (result.success) {
-        // 5. 모달 닫기 및 초기화
+        // 5. 파일 업로드 상태 정리
+        destroyUploader('post-create');
+
+        // 6. 모달 닫기 및 초기화
         isDialogOpen = false;
         postCategory = "";
         postTitle = "";
         postContent = "";
         isCategorySelectMode = false;
 
-        // 6. 성공 메시지 표시 (Toast)
+        // 7. 성공 메시지 표시 (Toast)
         showToast($t("게시글작성완료"), "success");
 
-        // 7. DatabaseListView가 실시간으로 데이터를 감시하므로 별도 갱신이 필요 없습니다.
+        // 8. DatabaseListView가 실시간으로 데이터를 감시하므로 별도 갱신이 필요 없습니다.
       } else {
         showToast(
           $t("게시글저장실패", { error: result.error || "Unknown error" }),
@@ -386,41 +394,39 @@
               rows="8"
             ></textarea>
           </div>
-
-          <!-- 파일 업로드 트리거 -->
-          <div class="form-group">
-            <label>{$t("파일첨부")}</label>
-            <div class="file-upload-area">
-              <file-upload-trigger
-                id="post-create"
-                category="posts"
-                multiple="true"
-                buttonText={$t("이미지첨부")}
-              ></file-upload-trigger>
-            </div>
-          </div>
-
-          <!-- 파일 목록 -->
-          <file-upload-list id="post-create"></file-upload-list>
         </div>
 
-        <!-- 모달 버튼 -->
+        <!-- 모달 푸터 (이미지 업로드 버튼 + 취소/전송 버튼) -->
         <div class="modal-footer">
-          <button
-            class="btn-cancel"
-            onclick={handleCancel}
-            disabled={isSubmitting}
-          >
-            {$t("취소")}
-          </button>
-          <button
-            class="btn-submit"
-            onclick={handleSubmit}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? $t("전송중") : $t("전송")}
-          </button>
+          <!-- 이미지 업로드 버튼 (왼쪽) -->
+          <file-upload-trigger
+            id="post-create"
+            category="posts"
+            multiple="true"
+            buttonText={$t("이미지첨부")}
+          ></file-upload-trigger>
+
+          <!-- 취소/전송 버튼 그룹 (오른쪽) -->
+          <div class="button-group">
+            <button
+              class="btn-cancel"
+              onclick={handleCancel}
+              disabled={isSubmitting}
+            >
+              {$t("취소")}
+            </button>
+            <button
+              class="btn-submit"
+              onclick={handleSubmit}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? $t("전송중") : $t("전송")}
+            </button>
+          </div>
         </div>
+
+        <!-- 파일 목록 (모달 푸터 아래) -->
+        <file-upload-list id="post-create"></file-upload-list>
       </div>
     </div>
   {/if}
@@ -648,11 +654,19 @@
   .modal-footer {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
-    gap: 0.75rem;
+    justify-content: space-between; /* 왼쪽(이미지 버튼)/오른쪽(취소/전송) 배치 */
+    gap: 1rem;
     padding: 1.25rem 1.5rem 1.5rem;
     background: rgba(248, 250, 252, 0.85);
     border-top: 1px solid rgba(148, 163, 184, 0.25);
+  }
+
+  /* 취소/전송 버튼 그룹 */
+  .button-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-left: auto; /* 오른쪽 정렬 */
   }
 
   .btn-cancel,

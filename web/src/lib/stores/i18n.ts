@@ -16,14 +16,23 @@
  * console.log($locale); // 'en'
  */
 
-import { writable, derived } from 'svelte/store';
-import type { Writable, Readable } from 'svelte/store';
-import { createI18n, detectLocale } from '../i18n/index.js';
+import { writable, derived } from "svelte/store";
+import type { Writable, Readable } from "svelte/store";
+import { createI18n, detectLocale } from "../i18n/index";
+
+/**
+ * i18n 인스턴스 타입
+ */
+export interface I18nInstance {
+  getLocale(): string;
+  setLocale(locale: string): void;
+  t(key: string, vars?: Record<string, string | number>): string;
+}
 
 /**
  * 지원하는 언어 코드 타입
  */
-export type Locale = 'ko' | 'en' | 'ja' | 'zh';
+export type Locale = "ko" | "en" | "ja" | "zh";
 
 /**
  * 언어 선택 옵션 인터페이스
@@ -41,22 +50,25 @@ export interface LocaleOption {
  * @param vars - 변수 치환을 위한 객체
  * @returns 번역된 문자열
  */
-export type TranslateFunction = (key: string, vars?: Record<string, string | number>) => string;
+export type TranslateFunction = (
+  key: string,
+  vars?: Record<string, string | number>
+) => string;
 
 /**
  * 로컬 스토리지 키
  */
-const STORAGE_KEY = 'sns-web-locale';
+const STORAGE_KEY = "sns-web-locale";
 
 /**
  * 지원하는 언어 목록
  * 언어 선택기 UI에서 사용됩니다.
  */
 export const SUPPORTED_LOCALES: LocaleOption[] = [
-  { code: 'ko', label: '🇰🇷 한국어' },
-  { code: 'en', label: '🇺🇸 English' },
-  { code: 'ja', label: '🇯🇵 日本語' },
-  { code: 'zh', label: '🇨🇳 中文' }
+  { code: "ko", label: "🇰🇷 한국어" },
+  { code: "en", label: "🇺🇸 English" },
+  { code: "ja", label: "🇯🇵 日本語" },
+  { code: "zh", label: "🇨🇳 中文" },
 ];
 
 /**
@@ -67,7 +79,7 @@ export const SUPPORTED_LOCALES: LocaleOption[] = [
  */
 function getStoredLocale(): Locale | null {
   // SSR 환경에서는 localStorage 사용 불가
-  if (typeof localStorage === 'undefined') return null;
+  if (typeof localStorage === "undefined") return null;
 
   const stored = localStorage.getItem(STORAGE_KEY);
   if (!stored) return null;
@@ -83,10 +95,11 @@ function getStoredLocale(): Locale | null {
 const initialLocale: Locale = getStoredLocale() ?? detectLocale();
 
 // i18n 인스턴스 생성
-const i18nInstance = createI18n(initialLocale);
+// createI18n은 JavaScript 파일에 정의되어 있어서 타입 단언이 필요합니다
+const i18nInstance = createI18n(initialLocale) as I18nInstance;
 
 // 초기 locale을 localStorage에 저장
-if (typeof localStorage !== 'undefined') {
+if (typeof localStorage !== "undefined") {
   localStorage.setItem(STORAGE_KEY, i18nInstance.getLocale());
 }
 
@@ -117,7 +130,7 @@ export function setLocale(newLocale: string): void {
   locale.set(normalized);
 
   // localStorage에 저장 (브라우저 환경에서만)
-  if (typeof localStorage !== 'undefined') {
+  if (typeof localStorage !== "undefined") {
     localStorage.setItem(STORAGE_KEY, normalized);
   }
 }
@@ -134,10 +147,8 @@ export function setLocale(newLocale: string): void {
  * $t('환영메시지', { name: '홍길동', age: 25 })
  * // "안녕하세요, 홍길동님! 나이: 25세" (ko.json에 정의된 형식에 따라)
  */
-export const t: Readable<TranslateFunction> = derived(
-  locale,
-  ($locale) => {
-    // locale이 변경될 때마다 새로운 번역 함수 반환
-    return (key: string, vars: Record<string, string | number> = {}) => i18nInstance.t(key, vars);
-  }
-);
+export const t: Readable<TranslateFunction> = derived(locale, ($locale) => {
+  // locale이 변경될 때마다 새로운 번역 함수 반환
+  return (key: string, vars: Record<string, string | number> = {}) =>
+    i18nInstance.t(key, vars);
+});

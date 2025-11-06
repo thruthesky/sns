@@ -4,15 +4,15 @@
    *
    * 각 게시글을 표시하고, 실시간 좋아요 상태를 관리합니다.
    */
-  import { rtdb } from "../lib/stores/database.js";
-  import { showToast } from "../lib/stores/toast.ts";
-  import { t } from "../lib/stores/i18n.ts";
+  import { rtdb } from "../lib/stores/database";
+  import { showToast } from "../lib/stores/toast";
+  import { t } from "../lib/stores/i18n";
   import {
     createTopLevelComment,
     listenToComments,
-  } from "../lib/services/comment.js";
-  import { toggleLike } from "../lib/services/like.js";
-  import { updatePost, deletePost } from "../lib/services/forum.js";
+  } from "../lib/services/comment";
+  import { toggleLike } from "../lib/services/like";
+  import { updatePost, deletePost } from "../lib/services/forum";
   import { onMount } from "svelte";
   import CommentItem from "./CommentItem.svelte";
   import { Edit, Trash2 } from "lucide-svelte";
@@ -20,6 +20,15 @@
   import type { CommentWithId } from "../lib/types/comment";
   import type { FirebaseKey } from "../lib/types/common";
   import { portal } from "../lib/utils/portal";
+  // 파일 업로드 웹 컴포넌트 및 상태 관리 import
+  import "../lib/components/FileUploadTrigger.wc.svelte";
+  import "../lib/components/FileUploadList.wc.svelte";
+  import {
+    getUploadedUrls,
+    destroyUploader,
+  } from "../lib/services/fileUploadState";
+  // AlertDialog 웹 컴포넌트 import
+  import "../lib/components/AlertDialog.wc.svelte";
 
   // Props 타입 정의
   interface Props {
@@ -43,7 +52,7 @@
   // 통합 좋아요 구조: /likes/post-{postId}-{uid}
   // 노드가 없으면 0(좋아요 안 누름)을 기본값으로 사용
   // ⚠️ postId가 '-'로 시작하면 제거 (Firebase 오래된 push 키 형식 대응)
-  const cleanPostId = itemData.postId.startsWith('-')
+  const cleanPostId = itemData.postId.startsWith("-")
     ? itemData.postId.substring(1)
     : itemData.postId;
   const myLikeStore = userId
@@ -128,7 +137,7 @@
 
     try {
       // 2. 좋아요 토글 (추가 또는 취소)
-      const result = await toggleLike('post', itemData.postId, userId);
+      const result = await toggleLike("post", itemData.postId, userId);
 
       // 3. 결과 처리
       if (result.success) {
@@ -142,7 +151,7 @@
         onLike(itemData.postId);
       } else {
         // result.error는 i18n 키
-        showToast($t(result.error), "error");
+        showToast($t(result.error || "error.unknown"), "error");
       }
     } catch (error: unknown) {
       console.error("좋아요 오류:", error);
@@ -185,16 +194,23 @@
     isSubmitting = true;
 
     try {
-      // 4. Firebase에 댓글 저장 (Flat style: postId만 필요)
+      // 4. 업로드된 파일 URL 목록 가져오기 (fileUploadState에서 직접 가져오기)
+      const urls = getUploadedUrls(`comment-create-${itemData.postId}`);
+
+      // 5. Firebase에 댓글 저장 (Flat style: postId만 필요)
       // 참고: commentCount는 Firebase Cloud Functions에서 자동으로 증가됨
       const result = await createTopLevelComment({
         postId: itemData.postId, // 게시글 ID
         userId: userId, // 작성자 UID (이미 null 체크됨)
         content: commentContent, // 댓글 내용
+        urls: urls.length > 0 ? urls : undefined, // 파일 URL 목록
       });
 
-      // 4. 결과 처리
+      // 6. 결과 처리
       if (result.success) {
+        // 파일 업로드 상태 정리
+        destroyUploader(`comment-create-${itemData.postId}`);
+
         showToast($t("댓글이작성되었습니다"), "success");
         isCommentDialogOpen = false;
         commentContent = "";
@@ -203,7 +219,7 @@
       } else {
         // result.error는 i18n 키 (예: 'error.db.permissionDenied')
         // i18n 키를 번역하여 사용자 친화적인 메시지 표시
-        showToast($t(result.error), "error");
+        showToast($t(result.error || "error.unknown"), "error");
       }
     } catch (error: unknown) {
       // 예상치 못한 에러 발생 시 기본 에러 메시지 표시
@@ -218,6 +234,9 @@
    * 댓글 작성 취소 핸들러
    */
   function handleCommentCancel() {
+    // 파일 업로드 상태 정리
+    destroyUploader(`comment-create-${itemData.postId}`);
+
     isCommentDialogOpen = false;
     commentContent = "";
   }
@@ -260,6 +279,9 @@
    * 게시글 수정 취소 핸들러
    */
   function handleEditCancel() {
+    // 파일 업로드 상태 정리
+    destroyUploader(`post-edit-${itemData.postId}`);
+
     isEditDialogOpen = false;
     editTitle = "";
     editContent = "";
@@ -285,21 +307,28 @@
     isEditSubmitting = true;
 
     try {
-      // 4. Firebase에 게시글 수정 (commentCount 체크 포함)
+      // 4. 업로드된 파일 URL 목록 가져오기 (fileUploadState에서 직접 가져오기)
+      const urls = getUploadedUrls(`post-edit-${itemData.postId}`);
+
+      // 5. Firebase에 게시글 수정 (commentCount 체크 포함)
       const result = await updatePost(itemData.postId, {
         title: editTitle.trim(),
         content: editContent.trim(),
+        urls: urls.length > 0 ? urls : undefined, // 파일 URL 목록
       });
 
-      // 5. 결과 처리
+      // 6. 결과 처리
       if (result.success) {
+        // 파일 업로드 상태 정리
+        destroyUploader(`post-edit-${itemData.postId}`);
+
         showToast($t("게시글수정완료"), "success");
         isEditDialogOpen = false;
         editTitle = "";
         editContent = "";
       } else {
         // result.error는 i18n 키 (예: '댓글이달려있어수정불가', 'error.db.permissionDenied')
-        showToast($t(result.error), "error");
+        showToast($t(result.error || "error.unknown"), "error");
       }
     } catch (error: unknown) {
       // 예상치 못한 에러 발생 시 기본 에러 메시지 표시
@@ -336,12 +365,65 @@
         // 게시글이 삭제되면 자동으로 목록에서 사라짐 (실시간 동기화)
       } else {
         // result.error는 i18n 키 (예: '댓글이달려있어삭제불가', 'error.db.permissionDenied')
-        showToast($t(result.error), "error");
+        showToast($t(result.error || "error.unknown"), "error");
       }
     } catch (error: unknown) {
       // 예상치 못한 에러 발생 시 기본 에러 메시지 표시
       console.error("게시글 삭제 오류:", error);
       showToast($t("error.unknown"), "error");
+    }
+  }
+
+  /**
+   * 파일이 이미지인지 확인하는 헬퍼 함수
+   * URL 확장자 기반으로 판별 (대소문자 무시)
+   *
+   * @param url - 파일 URL
+   * @returns 이미지 파일 여부
+   */
+  function isImageFile(url: string): boolean {
+    const lowerUrl = url.toLowerCase();
+    return (
+      lowerUrl.includes(".jpg") ||
+      lowerUrl.includes(".jpeg") ||
+      lowerUrl.includes(".png") ||
+      lowerUrl.includes(".gif") ||
+      lowerUrl.includes(".webp")
+    );
+  }
+
+  /**
+   * 파일이 동영상인지 확인하는 헬퍼 함수
+   * URL 확장자 기반으로 판별 (대소문자 무시)
+   *
+   * @param url - 파일 URL
+   * @returns 동영상 파일 여부
+   */
+  function isVideoFile(url: string): boolean {
+    const lowerUrl = url.toLowerCase();
+    return (
+      lowerUrl.includes(".mp4") ||
+      lowerUrl.includes(".webm") ||
+      lowerUrl.includes(".mov") ||
+      lowerUrl.includes(".avi") ||
+      lowerUrl.includes(".mkv")
+    );
+  }
+
+  /**
+   * URL에서 파일명을 추출하는 헬퍼 함수
+   *
+   * @param url - 파일 URL
+   * @returns 파일명
+   */
+  function getFileName(url: string): string {
+    try {
+      const urlObj = new URL(url);
+      const pathname = urlObj.pathname;
+      const fileName = pathname.split("/").pop();
+      return fileName || "file";
+    } catch (error) {
+      return "file";
     }
   }
 </script>
@@ -353,6 +435,45 @@
   </div>
 
   <h3 class="post-title">{itemData.title}</h3>
+
+  <!-- 첨부 파일 미리보기 영역: 제목 아래, 내용 위에 표시 -->
+  {#if itemData.urls && itemData.urls.length > 0}
+    <div class="post-files-preview">
+      {#each itemData.urls as url (url)}
+        {#if isImageFile(url)}
+          <!-- 이미지 파일: 미리보기 표시 -->
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="file-item image-item"
+          >
+            <img src={url} alt="첨부 이미지" class="file-image" />
+          </a>
+        {:else if isVideoFile(url)}
+          <!-- 동영상 파일: video 태그로 재생 -->
+          <div class="file-item video-item">
+            <video src={url} controls class="file-video">
+              <track kind="captions" />
+              브라우저가 비디오를 지원하지 않습니다.
+            </video>
+          </div>
+        {:else}
+          <!-- 기타 파일: 다운로드 링크 -->
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="file-item download-item"
+          >
+            <div class="file-icon">📎</div>
+            <div class="file-name">{getFileName(url)}</div>
+          </a>
+        {/if}
+      {/each}
+    </div>
+  {/if}
+
   <p class="post-content">{itemData.content}</p>
 
   <div class="post-meta">
@@ -412,10 +533,18 @@
     <!-- 오른쪽 버튼 그룹: 수정, 삭제 (작성자만 표시) -->
     <div class="post-actions-right">
       {#if userId === itemData.uid}
-        <button class="action-btn edit icon-only" title={$t("게시글수정")} onclick={handleEdit}>
+        <button
+          class="action-btn edit icon-only"
+          title={$t("게시글수정")}
+          onclick={handleEdit}
+        >
           <Edit size={18} />
         </button>
-        <button class="action-btn delete icon-only" title={$t("삭제")} onclick={handleDelete}>
+        <button
+          class="action-btn delete icon-only"
+          title={$t("삭제")}
+          onclick={handleDelete}
+        >
           <Trash2 size={18} />
         </button>
       {/if}
@@ -438,10 +567,7 @@
       {#if showComments}
         <div class="comments-list">
           {#each getDisplayedComments() as comment (comment.commentId)}
-            <CommentItem
-              {comment}
-              {userId}
-            />
+            <CommentItem {comment} {userId} />
           {/each}
 
           <!-- 더 보기 버튼: 댓글이 5개를 초과할 때 표시 -->
@@ -450,7 +576,9 @@
               class="comments-show-more"
               onclick={() => (showAllComments = true)}
             >
-              📋 {$t("댓글더보기", { count: comments.length - COMMENT_PREVIEW_COUNT })}
+              📋 {$t("댓글더보기", {
+                count: comments.length - COMMENT_PREVIEW_COUNT,
+              })}
             </button>
           {/if}
 
@@ -502,19 +630,34 @@
         ></textarea>
       </div>
 
-      <!-- 모달 푸터 -->
+      <!-- 모달 푸터 (이미지 업로드 버튼 + 취소/전송 버튼) -->
       <div class="modal-footer">
-        <button class="btn-cancel" onclick={handleCommentCancel}>
-          {$t("취소")}
-        </button>
-        <button
-          class="btn-submit"
-          onclick={handleCommentSubmit}
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? $t("전송중") : $t("전송")}
-        </button>
+        <!-- 이미지 업로드 버튼 (왼쪽) -->
+        <file-upload-trigger
+          id="comment-create-{itemData.postId}"
+          category="comments"
+          multiple="true"
+          buttonText={$t("이미지첨부")}
+        ></file-upload-trigger>
+
+        <!-- 취소/전송 버튼 그룹 (오른쪽) -->
+        <div class="button-group">
+          <button class="btn-cancel" onclick={handleCommentCancel}>
+            {$t("취소")}
+          </button>
+          <button
+            class="btn-submit"
+            onclick={handleCommentSubmit}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? $t("전송중") : $t("전송")}
+          </button>
+        </div>
       </div>
+
+      <!-- 파일 목록 (모달 푸터 아래) -->
+      <file-upload-list id="comment-create-{itemData.postId}"
+      ></file-upload-list>
     </div>
   </div>
 {/if}
@@ -546,19 +689,36 @@
         ></textarea>
       </div>
 
-      <!-- 모달 푸터 -->
+      <!-- 모달 푸터 (이미지 업로드 버튼 + 취소/저장 버튼) -->
       <div class="modal-footer">
-        <button class="btn-cancel" onclick={handleEditCancel}>
-          {$t("취소")}
-        </button>
-        <button
-          class="btn-submit"
-          onclick={handleEditSubmit}
-          disabled={isEditSubmitting}
-        >
-          {isEditSubmitting ? $t("저장중") : $t("저장")}
-        </button>
+        <!-- 이미지 업로드 버튼 (왼쪽) -->
+        <file-upload-trigger
+          id="post-edit-{itemData.postId}"
+          category="posts"
+          multiple="true"
+          buttonText={$t("이미지첨부")}
+        ></file-upload-trigger>
+
+        <!-- 취소/저장 버튼 그룹 (오른쪽) -->
+        <div class="button-group">
+          <button class="btn-cancel" onclick={handleEditCancel}>
+            {$t("취소")}
+          </button>
+          <button
+            class="btn-submit"
+            onclick={handleEditSubmit}
+            disabled={isEditSubmitting}
+          >
+            {isEditSubmitting ? $t("저장중") : $t("저장")}
+          </button>
+        </div>
       </div>
+
+      <!-- 파일 목록 (모달 푸터 아래) -->
+      <file-upload-list
+        id="post-edit-{itemData.postId}"
+        initial-urls={JSON.stringify(itemData.urls || [])}
+      ></file-upload-list>
     </div>
   </div>
 {/if}
@@ -806,10 +966,19 @@
   /* 모달 푸터 */
   .modal-footer {
     display: flex;
-    gap: 0.75rem;
+    align-items: center;
+    justify-content: space-between; /* 왼쪽(이미지 버튼)/오른쪽(취소/전송) 배치 */
+    gap: 1rem;
     padding: 1.5rem;
     border-top: 1px solid #e5e7eb;
-    justify-content: flex-end;
+  }
+
+  /* 취소/전송 버튼 그룹 */
+  .button-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-left: auto; /* 오른쪽 정렬 */
   }
 
   .btn-cancel,
@@ -939,5 +1108,99 @@
 
   .comments-hide-extra:active {
     transform: translateY(0);
+  }
+
+  /* === 게시글 첨부 파일 미리보기 스타일 === */
+
+  /* 파일 미리보기 컨테이너: 그리드 레이아웃 (반응형) */
+  .post-files-preview {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 0.75rem;
+    margin: 0.75rem 0;
+    padding: 0.75rem;
+    background-color: #f9fafb;
+    border-radius: 0.5rem;
+    border: 1px solid #e5e7eb;
+  }
+
+  /* 개별 파일 아이템 (이미지, 동영상, 다운로드) */
+  .file-item {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 0.375rem;
+    overflow: hidden;
+    background-color: #f3f4f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    transition: all 0.2s ease;
+  }
+
+  /* 이미지 아이템 */
+  .file-item.image-item:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  /* 이미지 */
+  .file-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* 동영상 */
+  .file-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 0.375rem;
+  }
+
+  /* 동영상 아이템 */
+  .file-item.video-item {
+    background-color: #000000;
+  }
+
+  /* 다운로드 아이템 */
+  .file-item.download-item {
+    flex-direction: column;
+    padding: 0.5rem;
+    background-color: #ffffff;
+    border: 1px solid #d1d5db;
+    gap: 0.25rem;
+  }
+
+  .file-item.download-item:hover {
+    background-color: #f9fafb;
+    border-color: #3b82f6;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(59, 130, 246, 0.2);
+  }
+
+  /* 파일 아이콘 (다운로드용) */
+  .file-icon {
+    font-size: 2rem;
+    opacity: 0.6;
+  }
+
+  /* 파일명 (다운로드용) */
+  .file-name {
+    font-size: 0.7rem;
+    color: #6b7280;
+    text-align: center;
+    word-break: break-all;
+    line-height: 1.2;
+    max-height: 2.4em;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .file-item.download-item:hover .file-name {
+    color: #3b82f6;
   }
 </style>

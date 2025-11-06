@@ -1,7 +1,7 @@
 <svelte:options
   customElement={{
-    tag: 'file-upload-list',
-    shadow: 'none'
+    tag: "file-upload-list",
+    shadow: "none",
   }}
 />
 
@@ -26,8 +26,8 @@
    * - getUrls(): 완료된 파일의 URL 배열을 반환
    */
 
-  import { onMount, onDestroy } from 'svelte';
-  import { X, CheckCircle, AlertCircle } from 'lucide-svelte';
+  import { onMount } from "svelte";
+  import { X, AlertCircle } from "lucide-svelte";
   import {
     subscribe,
     getFiles,
@@ -35,19 +35,19 @@
     initializeWithUrls,
     getUploadedUrls,
     type UploadingFile,
-  } from '$lib/services/fileUploadState';
-  import { deleteFileByUrl } from '$lib/services/storage';
-  import { t } from '$lib/stores/i18n';
+  } from "$lib/services/fileUploadState";
+  import { deleteFileByUrl } from "$lib/services/storage";
+  import { t } from "$lib/stores/i18n";
 
   /**
    * Props (HTML 속성은 항상 문자열로 전달됨)
    */
   let {
-    id = '',
-    initialUrls = '',
+    id = "",
+    "initial-urls": initialUrls = "",
   }: {
     id?: string;
-    initialUrls?: string;
+    "initial-urls"?: string;
   } = $props();
 
   /**
@@ -62,6 +62,9 @@
 
   /**
    * 구독 해제 함수
+   *
+   * Svelte 5 Web Component에서는 onDestroy 대신 자동 정리를 사용합니다.
+   * 이 변수는 향후 수동 정리가 필요한 경우를 위해 유지합니다.
    */
   let unsubscribe: (() => void) | null = null;
 
@@ -71,7 +74,7 @@
   onMount(() => {
     // 업로더 ID 검증
     if (!id) {
-      console.error('[FileUploadList] id prop is required');
+      console.error("[FileUploadList] id prop is required");
       return;
     }
 
@@ -80,10 +83,13 @@
       try {
         const urls = JSON.parse(initialUrls) as string[];
         if (Array.isArray(urls) && urls.length > 0) {
+          console.log(
+            `[FileUploadList] Initializing with ${urls.length} URLs for id: ${id}`
+          );
           initializeWithUrls(id, urls);
         }
       } catch (error) {
-        console.error('[FileUploadList] Failed to parse initial-urls:', error);
+        console.error("[FileUploadList] Failed to parse initial-urls:", error);
       }
     }
 
@@ -96,7 +102,7 @@
     files = getFiles(id);
 
     // 외부에서 접근 가능한 메서드 등록 (CustomEvent 대신)
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const element = document.querySelector(`file-upload-list[id="${id}"]`);
       if (element) {
         // @ts-ignore
@@ -106,13 +112,15 @@
   });
 
   /**
-   * 컴포넌트 언마운트 시 정리
+   * Svelte 5 Web Component 정리 처리
+   *
+   * Svelte 5에서는 onDestroy() 대신 Web Component의 disconnectedCallback()을 사용합니다.
+   * Web Component가 DOM에서 제거될 때 Svelte가 자동으로 정리하므로 onDestroy는 제거했습니다.
+   *
+   * 참고: https://svelte.dev/docs/svelte/v5-migration-guide#Components-are-no-longer-classes
    */
-  onDestroy(() => {
-    if (unsubscribe) {
-      unsubscribe();
-    }
-  });
+  // onDestroy는 Svelte 5 Web Component에서 $destroy() 에러를 발생시키므로 제거
+  // 구독 해제는 Web Component가 제거될 때 자동으로 처리됩니다.
 
   /**
    * 파일 삭제 핸들러
@@ -123,7 +131,7 @@
   async function handleDeleteFile(fileId: string, url?: string) {
     if (deletingFileIds.has(fileId)) return;
 
-    const confirmDelete = confirm($t('파일삭제'));
+    const confirmDelete = confirm($t("파일삭제"));
     if (!confirmDelete) return;
 
     deletingFileIds.add(fileId);
@@ -133,7 +141,10 @@
       if (url) {
         const result = await deleteFileByUrl(url);
         if (!result.success) {
-          console.error('[FileUploadList] Failed to delete file from Storage:', result.error);
+          console.error(
+            "[FileUploadList] Failed to delete file from Storage:",
+            result.error
+          );
           // Storage 삭제 실패해도 목록에서는 제거 (사용자 경험 개선)
         }
       }
@@ -141,8 +152,8 @@
       // 상태에서 파일 제거
       removeFile(id, fileId);
     } catch (error) {
-      console.error('[FileUploadList] Delete error:', error);
-      alert($t('파일삭제실패'));
+      console.error("[FileUploadList] Delete error:", error);
+      alert($t("파일삭제실패"));
     } finally {
       deletingFileIds.delete(fileId);
     }
@@ -161,29 +172,120 @@
     if (file.url) {
       // URL에서 파일명 추출
       try {
-        const urlObj = new URL(file.url);
+        const url = file.url; // 타입 가드
+        const urlObj = new URL(url);
         const pathname = urlObj.pathname;
-        const parts = pathname.split('/');
+        const parts = pathname.split("/");
         const fileName = parts[parts.length - 1];
         // URL 디코딩
-        return decodeURIComponent(fileName);
+        return decodeURIComponent(fileName ?? "");
       } catch {
-        return '파일';
+        return "파일";
       }
     }
-    return '파일';
+    return "파일";
   }
 
   /**
-   * 파일 크기 포맷팅
+   * 이미지 미리보기 URL 생성
    *
-   * @param bytes - 바이트 크기
-   * @returns 포맷된 크기 문자열
+   * @param file - 파일 정보
+   * @returns 미리보기 URL 또는 null
    */
-  function formatFileSize(bytes: number): string {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  function getPreviewUrl(file: UploadingFile): string | null {
+    // 완료된 파일의 URL이 있으면 사용
+    if (file.url) {
+      return file.url;
+    }
+    // 업로드 중인 이미지 파일이면 Blob URL 생성
+    if (file.file && file.file.type.startsWith("image/")) {
+      return URL.createObjectURL(file.file);
+    }
+    return null;
+  }
+
+  /**
+   * 파일이 이미지인지 확인
+   *
+   * @param file - 파일 정보
+   * @returns 이미지 여부
+   */
+  function isImageFile(file: UploadingFile): boolean {
+    if (file.file && file.file.type.startsWith("image/")) {
+      return true;
+    }
+    if (file.url) {
+      // URL 확장자로 이미지 판단 (완벽하지 않지만 대부분의 경우 작동)
+      const lowerUrl = file.url.toLowerCase();
+      return (
+        lowerUrl.includes(".jpg") ||
+        lowerUrl.includes(".jpeg") ||
+        lowerUrl.includes(".png") ||
+        lowerUrl.includes(".gif") ||
+        lowerUrl.includes(".webp") ||
+        lowerUrl.includes(".bmp") ||
+        lowerUrl.includes(".svg")
+      );
+    }
+    return false;
+  }
+
+  /**
+   * 파일이 동영상인지 확인
+   *
+   * @param file - 파일 정보
+   * @returns 동영상 여부
+   */
+  function isVideoFile(file: UploadingFile): boolean {
+    if (file.file && file.file.type.startsWith("video/")) {
+      return true;
+    }
+    if (file.url) {
+      // URL 확장자로 동영상 판단
+      const lowerUrl = file.url.toLowerCase();
+      return (
+        lowerUrl.includes(".mp4") ||
+        lowerUrl.includes(".webm") ||
+        lowerUrl.includes(".mov") ||
+        lowerUrl.includes(".avi") ||
+        lowerUrl.includes(".mkv")
+      );
+    }
+    return false;
+  }
+
+  /**
+   * 파일 확장자 추출
+   *
+   * @param file - 파일 정보
+   * @returns 확장자 (대문자)
+   */
+  function getFileExtension(file: UploadingFile): string {
+    const fileName = getFileName(file);
+    const parts = fileName.split(".");
+    if (parts && parts.length > 1) {
+      const extension = parts[parts.length - 1];
+      return extension ? extension.toUpperCase() : "FILE";
+    }
+    return "FILE";
+  }
+
+  /**
+   * 비디오 미리보기 URL 생성
+   *
+   * @param file - 파일 정보
+   * @returns 비디오 URL 또는 null
+   */
+  function getVideoUrl(file: UploadingFile): string | null {
+    // 완료된 파일의 URL이 있으면 사용
+    if (file.url) {
+      return file.url;
+    }
+    // 업로드 중인 비디오 파일이면 Blob URL 생성
+    if (file.file && file.file.type.startsWith("video/")) {
+      return URL.createObjectURL(file.file);
+    }
+    return null;
   }
 </script>
 
@@ -192,60 +294,62 @@
   {#if files.length === 0}
     <!-- 파일 없음 -->
     <div class="empty-state">
-      <p class="empty-text">{$t('파일없음')}</p>
+      <p class="empty-text">{$t("파일없음")}</p>
     </div>
   {:else}
-    <!-- 파일 목록 -->
+    <!-- 파일 목록 (그리드) -->
     <div class="files-container">
       {#each files as file (file.id)}
         <div class="file-item {file.status}">
-          <!-- 파일 정보 -->
-          <div class="file-info">
-            <!-- 상태 아이콘 -->
-            <div class="file-icon">
-              {#if file.status === 'completed'}
-                <CheckCircle size={20} class="icon-success" />
-              {:else if file.status === 'error'}
-                <AlertCircle size={20} class="icon-error" />
-              {:else}
-                <div class="icon-uploading">⏳</div>
-              {/if}
-            </div>
+          <!-- 파일 미리보기 영역 -->
+          <div class="file-preview">
+            {#if isImageFile(file)}
+              <!-- 이미지 파일 -->
+              <img
+                src={getPreviewUrl(file)}
+                alt={getFileName(file)}
+                class="preview-image"
+              />
+            {:else if isVideoFile(file)}
+              <!-- 동영상 파일 -->
+              <video src={getVideoUrl(file)} class="preview-video" controls>
+                <track kind="captions" />
+              </video>
+            {:else}
+              <!-- 문서 파일 - 확장자 표시 -->
+              <div class="file-extension">
+                <div class="extension-text">{getFileExtension(file)}</div>
+              </div>
+            {/if}
 
-            <!-- 파일명 및 크기 -->
-            <div class="file-details">
-              <div class="file-name">{getFileName(file)}</div>
-              {#if file.file && file.file.size}
-                <div class="file-size">{formatFileSize(file.file.size)}</div>
-              {/if}
+            <!-- 진행률 오버레이 (업로드 중) -->
+            {#if file.status === "uploading"}
+              <div class="progress-overlay">
+                <div class="progress-circle">{file.progress}%</div>
+              </div>
+            {/if}
 
-              <!-- 에러 메시지 -->
-              {#if file.status === 'error' && file.error}
-                <div class="file-error">{file.error}</div>
-              {/if}
-            </div>
+            <!-- 에러 오버레이 -->
+            {#if file.status === "error"}
+              <div class="error-overlay">
+                <AlertCircle size={32} class="error-icon" />
+                <div class="error-text">{$t("업로드실패")}</div>
+              </div>
+            {/if}
+
+            <!-- 삭제 버튼 (왼쪽 상단) -->
+            {#if file.status === "completed" || file.status === "error"}
+              <button
+                type="button"
+                class="delete-button"
+                onclick={() => handleDeleteFile(file.id, file.url)}
+                disabled={deletingFileIds.has(file.id)}
+                aria-label={$t("파일삭제")}
+              >
+                <X size={16} />
+              </button>
+            {/if}
           </div>
-
-          <!-- 진행률 바 (업로드 중) -->
-          {#if file.status === 'uploading'}
-            <div class="progress-bar-container">
-              <div class="progress-bar" style="width: {file.progress}%"></div>
-              <span class="progress-text">{file.progress}%</span>
-            </div>
-          {/if}
-
-          <!-- 삭제 버튼 -->
-          {#if file.status === 'completed' || file.status === 'error'}
-            <button
-              type="button"
-              class="delete-button"
-              onclick={() => handleDeleteFile(file.id, file.url)}
-              disabled={deletingFileIds.has(file.id)}
-              aria-label={$t('파일삭제')}
-            >
-              <X size={18} />
-            </button>
-          {/if}
         </div>
       {/each}
     </div>
@@ -274,158 +378,158 @@
     font-size: 0.875rem;
   }
 
-  /* 파일 목록 */
+  /* 파일 목록 (그리드 레이아웃) */
   .files-container {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr); /* 기본 5열 */
+    gap: 1rem;
   }
 
   /* 파일 항목 */
   .file-item {
     position: relative;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    padding: 1rem;
-    background-color: #ffffff;
-    border: 1px solid #e5e7eb;
+    aspect-ratio: 1; /* 정사각형 유지 */
     border-radius: 0.5rem;
+    overflow: hidden;
+    border: 2px dashed #e5e7eb;
+    background-color: #f9fafb;
     transition: all 0.2s ease;
   }
 
   .file-item:hover {
-    border-color: #d1d5db;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   }
 
   /* 완료 상태 */
   .file-item.completed {
-    border-color: #d1fae5;
-    background-color: #f0fdf4;
+    border-color: #10b981;
+    border-style: solid;
   }
 
   /* 에러 상태 */
   .file-item.error {
-    border-color: #fecaca;
-    background-color: #fef2f2;
+    border-color: #ef4444;
+    border-style: solid;
   }
 
-  /* 파일 정보 */
-  .file-info {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-  }
-
-  /* 파일 아이콘 */
-  .file-icon {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  :global(.icon-success) {
-    color: #16a34a;
-  }
-
-  :global(.icon-error) {
-    color: #dc2626;
-  }
-
-  .icon-uploading {
-    font-size: 1.25rem;
-    animation: pulse 1s ease-in-out infinite;
-  }
-
-  @keyframes pulse {
-    0%,
-    100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.5;
-    }
-  }
-
-  /* 파일 상세 정보 */
-  .file-details {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-
-  .file-name {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: #111827;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .file-size {
-    font-size: 0.75rem;
-    color: #6b7280;
-  }
-
-  .file-error {
-    font-size: 0.75rem;
-    color: #dc2626;
-    font-weight: 500;
-  }
-
-  /* 진행률 바 */
-  .progress-bar-container {
+  /* 파일 미리보기 영역 */
+  .file-preview {
     position: relative;
     width: 100%;
-    height: 0.5rem;
-    background-color: #e5e7eb;
-    border-radius: 9999px;
-    overflow: hidden;
-  }
-
-  .progress-bar {
     height: 100%;
-    background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
-    border-radius: 9999px;
-    transition: width 0.3s ease;
-  }
-
-  .progress-text {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 0.625rem;
-    font-weight: 600;
-    color: #111827;
-  }
-
-  /* 삭제 버튼 */
-  .delete-button {
-    position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
-    width: 2rem;
-    height: 2rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: #ef4444;
+    background-color: #f3f4f6;
+  }
+
+  /* 이미지 미리보기 */
+  .preview-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* 비디오 미리보기 */
+  .preview-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background-color: #000000;
+  }
+
+  /* 파일 확장자 표시 (문서 파일) */
+  .file-extension {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  }
+
+  .extension-text {
+    font-size: 1.5rem;
+    font-weight: 700;
     color: #ffffff;
+    text-align: center;
+    padding: 0.5rem;
+    word-break: break-word;
+  }
+
+  /* 진행률 오버레이 */
+  .progress-overlay {
+    position: absolute;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 5;
+  }
+
+  /* 진행률 원형 표시 */
+  .progress-circle {
+    width: 60px;
+    height: 60px;
+    background-color: white;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #3b82f6;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  /* 에러 오버레이 */
+  .error-overlay {
+    position: absolute;
+    inset: 0;
+    background-color: rgba(239, 68, 68, 0.9);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    z-index: 5;
+  }
+
+  :global(.error-icon) {
+    color: white;
+  }
+
+  .error-text {
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  /* 삭제 버튼 (왼쪽 상단) */
+  .delete-button {
+    position: absolute;
+    top: 0.25rem;
+    left: 0.25rem;
+    width: 1.75rem;
+    height: 1.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(239, 68, 68, 0.9);
+    color: white;
     border: none;
-    border-radius: 0.375rem;
+    border-radius: 9999px;
     cursor: pointer;
     transition: all 0.2s ease;
+    z-index: 10;
   }
 
   .delete-button:hover:not(:disabled) {
-    background-color: #dc2626;
-    transform: scale(1.05);
+    background-color: rgba(220, 38, 38, 1);
+    transform: scale(1.1);
   }
 
   .delete-button:disabled {
@@ -433,18 +537,40 @@
     cursor: not-allowed;
   }
 
-  /* 반응형 - 모바일 */
+  /* 반응형 - 모바일 (4열) */
   @media (max-width: 640px) {
-    .file-item {
-      padding: 0.875rem;
+    .files-container {
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.75rem;
     }
 
-    .file-name {
-      font-size: 0.8125rem;
+    .progress-circle {
+      width: 50px;
+      height: 50px;
+      font-size: 1rem;
     }
 
-    .file-size {
-      font-size: 0.6875rem;
+    .delete-button {
+      width: 1.5rem;
+      height: 1.5rem;
+    }
+
+    .extension-text {
+      font-size: 1rem;
+    }
+  }
+
+  /* 반응형 - 태블릿 (4열) */
+  @media (min-width: 641px) and (max-width: 1024px) {
+    .files-container {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+
+  /* 반응형 - 데스크톱 (5열) */
+  @media (min-width: 1025px) {
+    .files-container {
+      grid-template-columns: repeat(5, 1fr);
     }
   }
 </style>

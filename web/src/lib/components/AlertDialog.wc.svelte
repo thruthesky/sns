@@ -1,7 +1,7 @@
 <svelte:options
   customElement={{
-    tag: 'alert-dialog',
-    shadow: 'none'
+    tag: "alert-dialog",
+    shadow: "none",
   }}
 />
 
@@ -42,22 +42,28 @@
    * - close: 다이얼로그 닫기 시 발생 (CustomEvent)
    */
 
-  import { CheckCircle2, XCircle, Info, AlertTriangle, X } from 'lucide-svelte';
+  import { CheckCircle2, XCircle, Info, AlertTriangle, X } from "lucide-svelte";
 
   /**
    * AlertDialog 타입 정의
    */
-  type AlertType = 'success' | 'error' | 'info' | 'warning';
+  type AlertType = "success" | "error" | "info" | "warning";
+
+  /**
+   * Portal용 backdrop 요소 참조
+   * bind:this를 통해 실제 DOM 요소를 가져와서 body로 이동시킵니다
+   */
+  let backdropElement: HTMLDivElement | null = null;
 
   /**
    * Props (HTML 속성은 항상 문자열로 전달됨)
    */
   let {
-    open = 'false',
-    type = 'info',
-    title = '',
-    message = '',
-    confirmText = '확인',
+    open = "false",
+    type = "info",
+    title = "",
+    message = "",
+    confirmText = "확인",
     onconfirm,
     onclose,
   }: {
@@ -73,20 +79,20 @@
   /**
    * 다이얼로그 표시 여부 (문자열을 boolean으로 변환)
    */
-  const isOpen = $derived(open === 'true' || open === '');
+  const isOpen = $derived(open === "true" || open === "");
 
   /**
    * 타입별 아이콘 컴포넌트 가져오기
    */
   function getIconComponent(alertType: AlertType) {
     switch (alertType) {
-      case 'success':
+      case "success":
         return CheckCircle2;
-      case 'error':
+      case "error":
         return XCircle;
-      case 'info':
+      case "info":
         return Info;
-      case 'warning':
+      case "warning":
         return AlertTriangle;
       default:
         return Info;
@@ -102,21 +108,22 @@
 
   /**
    * 확인 버튼 클릭 핸들러
-   * @param event - 클릭 이벤트
+   * @param _event - 클릭 이벤트
    */
-  function handleConfirm(event: MouseEvent) {
+  function handleConfirm(_event: MouseEvent) {
     // 1. onconfirm 콜백 호출 (props로 전달된 경우)
     if (onconfirm) {
       onconfirm();
     }
 
     // 2. confirm 커스텀 이벤트 디스패치 (이벤트 방식 지원)
-    const customEvent = new CustomEvent('confirm', {
+    const customEvent = new CustomEvent("confirm", {
       bubbles: true,
       composed: true,
     });
-    // 버튼의 상위 alert-dialog 커스텀 엘리먼트에서 이벤트 발생
-    const alertDialog = (event.target as HTMLElement).closest('alert-dialog');
+    // $host()를 사용하여 Web Component 호스트 엘리먼트에 직접 접근
+    // portal로 인해 backdrop이 body로 이동했기 때문에 closest()를 사용할 수 없음
+    const alertDialog = $host();
     if (alertDialog) {
       alertDialog.dispatchEvent(customEvent);
     }
@@ -124,28 +131,23 @@
 
   /**
    * 다이얼로그 닫기 핸들러
-   * @param event - 클릭 이벤트 (선택적)
+   * @param _event - 클릭 이벤트 (선택적)
    */
-  function handleClose(event?: MouseEvent) {
+  function handleClose(_event?: MouseEvent) {
     // 1. onclose 콜백 호출 (props로 전달된 경우)
     if (onclose) {
       onclose();
     }
 
     // 2. close 커스텀 이벤트 디스패치 (이벤트 방식 지원)
-    const customEvent = new CustomEvent('close', {
+    const customEvent = new CustomEvent("close", {
       bubbles: true,
       composed: true,
     });
 
-    // 이벤트가 있으면 타겟에서 alert-dialog 찾기, 없으면 document에서 찾기
-    let alertDialog: HTMLElement | null = null;
-    if (event) {
-      alertDialog = (event.target as HTMLElement).closest('alert-dialog');
-    } else {
-      alertDialog = document.querySelector('alert-dialog[open="true"]');
-    }
-
+    // $host()를 사용하여 Web Component 호스트 엘리먼트에 직접 접근
+    // portal로 인해 backdrop이 body로 이동했기 때문에 closest()나 querySelector()를 사용할 수 없음
+    const alertDialog = $host();
     if (alertDialog) {
       alertDialog.dispatchEvent(customEvent);
     }
@@ -159,20 +161,58 @@
       handleClose(event);
     }
   }
+
+  /**
+   * Portal 기능 구현
+   * backdropElement를 body로 이동시켜 전체 화면 기준으로 표시합니다.
+   * 이를 통해 부모 요소의 overflow나 position에 영향받지 않고 항상 전체 화면 중앙에 표시됩니다.
+   */
+  $effect(() => {
+    if (isOpen && backdropElement) {
+      // backdrop 요소를 body의 최상위로 이동
+      document.body.appendChild(backdropElement);
+
+      // 클린업: 컴포넌트 언마운트 시 또는 닫힐 때 제거
+      return () => {
+        if (backdropElement && document.body.contains(backdropElement)) {
+          document.body.removeChild(backdropElement);
+        }
+      };
+    }
+  });
 </script>
 
 <!-- Alert Dialog -->
 {#if isOpen}
-  <div class="alert-backdrop" onclick={handleBackdropClick}>
-    <div class="alert-dialog {getTypeClass(type)}" role="alertdialog" aria-modal="true" aria-labelledby="alert-title" aria-describedby="alert-message">
+  <div
+    class="alert-backdrop"
+    bind:this={backdropElement}
+    onclick={handleBackdropClick}
+  >
+    <div
+      class="alert-dialog {getTypeClass(type)}"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="alert-title"
+      aria-describedby="alert-message"
+    >
       <!-- 닫기 버튼 -->
-      <button class="alert-close-btn" onclick={handleClose} aria-label="닫기" type="button">
+      <button
+        class="alert-close-btn"
+        onclick={handleClose}
+        aria-label="닫기"
+        type="button"
+      >
         <X size={20} />
       </button>
 
       <!-- 아이콘 -->
       <div class="alert-icon">
-        <svelte:component this={getIconComponent(type)} size={48} strokeWidth={2} />
+        <svelte:component
+          this={getIconComponent(type)}
+          size={48}
+          strokeWidth={2}
+        />
       </div>
 
       <!-- 제목 -->

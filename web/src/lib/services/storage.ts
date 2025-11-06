@@ -16,6 +16,7 @@ import {
 } from 'firebase/storage';
 import { storage } from '$lib/utils/firebase';
 import { handleFirebaseError } from '$lib/utils/error-handler';
+import { validateFile } from '$lib/services/fileValidation';
 
 /**
  * 파일 업로드 결과 타입
@@ -25,14 +26,6 @@ export interface UploadResult {
   url?: string;
   fileName?: string;
   size?: number;
-  error?: string;
-}
-
-/**
- * 파일 유효성 검사 결과 타입
- */
-export interface ValidationResult {
-  valid: boolean;
   error?: string;
 }
 
@@ -47,45 +40,7 @@ export type ProgressCallback = (progress: number) => void;
 export type UploadCategory = 'posts' | 'comments' | 'profile';
 
 // 파일 제한 설정
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_FILES_COUNT = 10; // 최대 파일 개수
-
-/**
- * 파일 유효성 검사
- *
- * 파일 크기와 MIME 타입을 검사합니다.
- *
- * @param file - 검사할 파일
- * @returns 유효성 검사 결과
- *
- * @example
- * ```typescript
- * const result = validateFile(file);
- * if (!result.valid) {
- *   alert(result.error);
- * }
- * ```
- */
-export function validateFile(file: File): ValidationResult {
-  // 파일 크기 검사
-  if (file.size > MAX_FILE_SIZE) {
-    return {
-      valid: false,
-      error: 'error.file.tooLarge',
-    };
-  }
-
-  // MIME 타입 검사
-  if (!ALLOWED_MIME_TYPES.includes(file.type)) {
-    return {
-      valid: false,
-      error: 'error.file.invalidType',
-    };
-  }
-
-  return { valid: true };
-}
 
 /**
  * 파일을 Firebase Cloud Storage에 업로드합니다.

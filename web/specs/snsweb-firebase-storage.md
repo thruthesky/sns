@@ -130,32 +130,143 @@ console.log(profileRef.bucket);     // 'my-project.firebasestorage.app'
 
 # 파일 업로드 구현
 
+## 파일 업로드 제한
+
+### 허용되는 파일 타입 및 용량
+
+본 애플리케이션에서는 다음과 같은 파일 업로드 제한을 적용합니다:
+
+#### 이미지 파일
+- **확장자**: jpg, jpeg, png, gif, webp, bmp, svg
+- **MIME 타입**: image/jpeg, image/png, image/gif, image/webp, image/bmp, image/svg+xml
+- **최대 용량**: 10MB
+
+#### 동영상 파일
+- **확장자**: mp4 (mp4만 허용)
+- **MIME 타입**: video/mp4
+- **최대 용량**: 50MB
+
+#### 문서/압축 파일
+- **확장자**: zip, pdf, txt, doc, docx, ppt, pptx, csv, xls, xlsx, rar
+- **MIME 타입**:
+  - application/zip
+  - application/pdf
+  - text/plain
+  - application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document
+  - application/vnd.ms-powerpoint, application/vnd.openxmlformats-officedocument.presentationml.presentation
+  - text/csv
+  - application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+  - application/x-rar-compressed, application/vnd.rar
+- **최대 용량**: 15MB
+
+### 검증 위치
+
+파일 업로드 제한은 두 곳에서 검증됩니다:
+
+1. **클라이언트 측 (Svelte)**: `src/lib/services/fileValidation.ts`
+   - 사용자에게 즉각적인 피드백 제공
+   - 불필요한 네트워크 트래픽 방지
+
+2. **서버 측 (Firebase Storage Rules)**: `storage.rules`
+   - 보안 강화 (클라이언트 우회 방지)
+   - 최종 검증
+
+---
+
 ## 보안 규칙 설정
 
 아래와 같이 Firebase Storage 보안 규칙이 설정되어져 있습니다.
-- `/users/{userId}/` 경로에 업로드된 파일은 해당 사용자만 쓰기 권한이 있으며, 모든 사용자가 읽기 권한을 가집니다.
-  - 이는 사용자가 자신의 파일을 업로드하고, 다른 사용자는 해당 파일을 읽을 수 있도록 하기 위함입니다.
-  - 예를 들어, 프로필 사진은 모든 사용자가 볼 수 있어야 하지만, 사용자는 자신의 프로필 사진만 변경할 수 있어야 합니다.
-  - 따라서, 파일 업로드 시에는 반드시 사용자의 UID를 포함한 경로에 업로드해야 합니다.
+- `/users/{userId}/` 경로에 업로드된 파일은 해당 사용자만 쓰기 권한이 있으며, 모든 인증된 사용자가 읽기 권한을 가집니다.
+- 파일 타입 및 용량 제한이 서버 측에서도 강제됩니다.
+- 이는 사용자가 자신의 파일을 업로드하고, 다른 사용자는 해당 파일을 읽을 수 있도록 하기 위함입니다.
+- 따라서, 파일 업로드 시에는 반드시 사용자의 UID를 포함한 경로에 업로드해야 합니다.
 
 ### Firebase Storage 보안 규칙
 
+**파일 위치**: `storage.rules`
+
 ```
 rules_version = '2';
+
 service firebase.storage {
   match /b/{bucket}/o {
-    // 다른 경로의 파일은 모든 사용자가 읽고 쓸 수 있음
-    match /{allPaths=**} {
-      allow read, write: if true;
+    /**
+     * 사용자별 파일 업로드 규칙
+     * 경로: /users/{userId}/{category}/{filename}
+     */
+    match /users/{userId}/{category}/{filename} {
+      /**
+       * 읽기 권한: 모든 인증된 사용자
+       */
+      allow read: if request.auth != null;
+
+      /**
+       * 쓰기 권한: 본인만 업로드 가능 + 파일 검증
+       */
+      allow write: if request.auth != null
+                   && request.auth.uid == userId
+                   && isValidFile();
+
+      /**
+       * 삭제 권한: 본인만 삭제 가능
+       */
+      allow delete: if request.auth != null
+                    && request.auth.uid == userId;
+
+      /**
+       * 파일 검증 함수
+       */
+      function isValidFile() {
+        let fileSize = request.resource.size;
+        let contentType = request.resource.contentType;
+
+        // 이미지 파일 검증 (최대 10MB)
+        let isImage = contentType.matches('image/jpeg')
+                   || contentType.matches('image/png')
+                   || contentType.matches('image/gif')
+                   || contentType.matches('image/webp')
+                   || contentType.matches('image/bmp')
+                   || contentType.matches('image/svg\\+xml');
+        let isValidImage = isImage && fileSize <= 10 * 1024 * 1024;
+
+        // 동영상 파일 검증 (mp4만, 최대 50MB)
+        let isVideo = contentType.matches('video/mp4');
+        let isValidVideo = isVideo && fileSize <= 50 * 1024 * 1024;
+
+        // 문서/압축 파일 검증 (최대 15MB)
+        let isDocument = contentType.matches('application/zip')
+                      || contentType.matches('application/pdf')
+                      || contentType.matches('text/plain')
+                      || contentType.matches('application/msword')
+                      || contentType.matches('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+                      || contentType.matches('application/vnd.ms-powerpoint')
+                      || contentType.matches('application/vnd.openxmlformats-officedocument.presentationml.presentation')
+                      || contentType.matches('text/csv')
+                      || contentType.matches('application/vnd.ms-excel')
+                      || contentType.matches('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+                      || contentType.matches('application/x-rar-compressed')
+                      || contentType.matches('application/vnd.rar');
+        let isValidDocument = isDocument && fileSize <= 15 * 1024 * 1024;
+
+        return isValidImage || isValidVideo || isValidDocument;
+      }
     }
-    // /users/{userId}/ 경로 아래의 파일은 소유 사용자만 쓸 수 있음
-    match /users/{userId}/{allPaths=**} {
-      allow read: if true;                        // 모든 사용자가 읽을 수 있음
-      allow write: if request.auth.uid == userId; // 소유 사용자만 쓸 수 있음 (업로드, 삭제)
+
+    /**
+     * 기본 규칙: 다른 모든 경로는 거부
+     */
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
   }
 }
 ```
+
+**주요 변경 사항**:
+- ✅ 파일 타입별로 상세한 MIME 타입 검증
+- ✅ 파일 타입별 용량 제한 (이미지 10MB, 동영상 50MB, 문서 15MB)
+- ✅ 인증된 사용자만 파일 읽기 가능
+- ✅ 본인만 자신의 파일을 업로드/삭제 가능
 
 ---
 
@@ -612,6 +723,112 @@ async function handleSubmit(event) {
    └─────────────────┘
 ```
 
+## Svelte 5 Web Component 속성 매핑
+
+**🔥 중요: Svelte 5 Web Component에서 HTML 속성과 Props 매핑**
+
+Svelte 5 Web Component는 HTML 속성(kebab-case)과 JavaScript props(camelCase) 간 자동 매핑을 지원하지 않습니다. 따라서 kebab-case 속성을 사용하려면 `$props()`에서 명시적으로 매핑해야 합니다.
+
+### 문제 상황
+
+**❌ 잘못된 방법 (작동하지 않음)**:
+```typescript
+// Props 정의
+let {
+  id = '',
+  initialUrls = '',  // ❌ initial-urls 속성을 받지 못함
+} = $props();
+```
+
+```html
+<!-- HTML 사용 -->
+<file-upload-list
+  id="post-edit"
+  initial-urls='["https://example.com/image1.jpg"]'
+></file-upload-list>
+```
+
+**문제**: `initial-urls` 속성이 `initialUrls` prop으로 자동 매핑되지 않아서 값을 받지 못합니다.
+
+### 해결 방법
+
+**✅ 올바른 방법 (명시적 매핑)**:
+```typescript
+// Props 정의 - kebab-case 속성명을 문자열 리터럴로 매핑
+let {
+  id = '',
+  'initial-urls': initialUrls = '',  // ✅ kebab-case를 명시적으로 매핑
+}: {
+  id?: string;
+  'initial-urls'?: string;  // ✅ TypeScript 타입도 kebab-case 사용
+} = $props();
+```
+
+```html
+<!-- HTML 사용 (동일) -->
+<file-upload-list
+  id="post-edit"
+  initial-urls='["https://example.com/image1.jpg"]'
+></file-upload-list>
+```
+
+**핵심**: `$props()` 구조 분해에서 문자열 리터럴 프로퍼티 이름(`'initial-urls'`)을 사용하여 camelCase 변수(`initialUrls`)로 매핑합니다.
+
+### 적용 예제
+
+#### FileUploadList.wc.svelte
+```typescript
+let {
+  id = '',
+  'initial-urls': initialUrls = '',
+}: {
+  id?: string;
+  'initial-urls'?: string;
+} = $props();
+```
+
+#### FileUploadTrigger.wc.svelte
+```typescript
+// 단순한 단어는 kebab-case 매핑 불필요
+let {
+  id = '',
+  category = 'posts',
+  multiple = 'true',
+  buttonText = '',
+}: {
+  id?: string;
+  category?: UploadCategory;
+  multiple?: string;
+  buttonText?: string;
+} = $props();
+```
+
+**참고**: `buttonText` 같은 경우, HTML에서 `buttontext` 또는 `buttonText`로 전달할 수 있지만 kebab-case를 선호할 경우 `'button-text': buttonText`로 명시적으로 매핑하는 것이 좋습니다.
+
+### 규칙 요약
+
+1. **kebab-case HTML 속성 → camelCase Props**: 명시적 매핑 필요
+   ```typescript
+   'initial-urls': initialUrls  // ✅
+   ```
+
+2. **단순한 단어 (소문자)**: 자동 매핑 가능
+   ```typescript
+   id = ''  // ✅ (id 속성 → id prop)
+   ```
+
+3. **TypeScript 타입 정의**: kebab-case 속성명을 문자열 리터럴로 사용
+   ```typescript
+   {
+     'initial-urls'?: string;
+   }
+   ```
+
+4. **HTML 사용 시**: 항상 kebab-case 사용 (HTML 표준)
+   ```html
+   <file-upload-list initial-urls="..."></file-upload-list>
+   ```
+
 ## 헬퍼 함수 (storage.ts)
 
 **파일 위치**: `src/lib/services/storage.ts`
@@ -884,6 +1101,8 @@ interface Props {
 }
 ```
 
+**참고**: Web Component에서 모든 HTML 속성은 문자열로 전달되므로, `multiple`은 boolean이 아닌 `'true'` | `'false'` 문자열입니다.
+
 ### 사용 예제
 
 **단일 파일 업로드 버튼**:
@@ -910,12 +1129,172 @@ interface Props {
 
 1. 사용자가 버튼을 클릭하면 `<input type="file">` 다이얼로그가 열립니다
 2. 파일 선택 후:
-   - `validateFile()`로 파일 검증
+   - `validateFile()`로 파일 검증 (파일 크기, 타입 확인)
    - 검증 통과 시 `uploadFileWithProgress()`로 업로드 시작
-   - 진행률을 `fileUploadState`에 업데이트
+   - 진행률을 `fileUploadState`에 실시간 업데이트
 3. 업로드 완료 시:
    - 다운로드 URL을 `fileUploadState`에 저장
    - `FileUploadList` 컴포넌트가 자동으로 목록 갱신
+
+### 상세 구현 로직
+
+#### 1. Props 처리
+
+```typescript
+let {
+  id = '',
+  category = 'posts',
+  multiple = 'true',
+  buttonText = '',
+}: {
+  id?: string;
+  category?: UploadCategory;
+  multiple?: string;
+  buttonText?: string;
+} = $props();
+
+// 문자열 → boolean 변환
+const isMultiple = $derived(multiple === 'true' || multiple === '');
+
+// 버튼 텍스트 (기본값 또는 사용자 지정)
+const displayButtonText = $derived(buttonText || $t('파일선택'));
+```
+
+#### 2. 파일 선택 처리
+
+```typescript
+async function handleFileChange(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const files = input?.files;
+
+  if (!files || files.length === 0) return;
+
+  // 1. 업로더 ID 검증
+  if (!id) {
+    console.error('[FileUploadTrigger] id prop is required');
+    alert($t('error.file.invalidUrl'));
+    return;
+  }
+
+  // 2. 로그인 확인
+  if (!login.isAuthenticated || !login.uid) {
+    alert($t('로그인필요'));
+    return;
+  }
+
+  // 3. 파일 검증 (각 파일마다)
+  const filesArray = Array.from(files);
+  for (const file of filesArray) {
+    const validation = validateFile(file);
+    if (!validation.valid) {
+      alert(validation.error);
+      // 파일 입력 초기화
+      if (input) {
+        input.value = '';
+      }
+      return;
+    }
+  }
+
+  // 4. 파일 업로드 시작
+  isUploading = true;
+
+  try {
+    // 선택한 모든 파일을 병렬로 업로드
+    const uploadPromises = filesArray.map((file) =>
+      uploadSingleFile(file)
+    );
+
+    await Promise.all(uploadPromises);
+  } catch (error) {
+    console.error('[FileUploadTrigger] Upload error:', error);
+  } finally {
+    isUploading = false;
+    // 파일 입력 초기화 (재선택 가능하도록)
+    if (input) {
+      input.value = '';
+    }
+  }
+}
+```
+
+#### 3. 단일 파일 업로드
+
+```typescript
+async function uploadSingleFile(file: File) {
+  // 1. 파일 상태 추가 (fileUploadState에 등록)
+  const fileId = addFile(id, file);
+
+  try {
+    // 2. Firebase Storage에 업로드 (진행률 추적)
+    const result = await uploadFileWithProgress(
+      login.uid!,
+      file,
+      category as UploadCategory,
+      (progress) => {
+        // 진행률 업데이트 (0~100)
+        updateFileProgress(id, fileId, progress);
+      }
+    );
+
+    // 3. 업로드 결과 처리
+    if (result.success && result.url) {
+      // 성공: URL 저장
+      completeFileUpload(id, fileId, result.url);
+    } else {
+      // 실패: 에러 메시지 저장
+      const errorMessage = result.error ? $t(result.error) : $t('error.unknown');
+      failFileUpload(id, fileId, errorMessage);
+    }
+  } catch (error) {
+    console.error('[FileUploadTrigger] Upload failed:', error);
+    const errorMessage =
+      error instanceof Error ? error.message : $t('error.unknown');
+    failFileUpload(id, fileId, errorMessage);
+  }
+}
+```
+
+#### 4. UI 구조
+
+```html
+<div class="file-upload-trigger">
+  <!-- 숨겨진 파일 입력 -->
+  <input
+    type="file"
+    bind:this={fileInput}
+    onchange={handleFileChange}
+    accept={ACCEPT_STRING}
+    multiple={isMultiple}
+    style="display: none;"
+    aria-label={displayButtonText}
+  />
+
+  <!-- 업로드 버튼 -->
+  <button
+    type="button"
+    class="upload-button"
+    onclick={handleButtonClick}
+    disabled={isUploading}
+    aria-label={displayButtonText}
+  >
+    <ImagePlus size={20} />
+    <span class="button-text">{displayButtonText}</span>
+    {#if isUploading}
+      <span class="uploading-indicator">⏳</span>
+    {/if}
+  </button>
+</div>
+```
+
+#### 5. 주요 기능
+
+- **파일 검증**: 크기, 타입 제한 확인 (`fileValidation.ts`)
+- **로그인 확인**: 인증되지 않은 사용자는 업로드 불가
+- **다중 파일 업로드**: `Promise.all()`로 병렬 처리
+- **진행률 추적**: 각 파일의 업로드 진행률을 실시간으로 `fileUploadState`에 업데이트
+- **에러 처리**: 업로드 실패 시 사용자에게 명확한 에러 메시지 표시
+- **UI 피드백**: 업로드 중 버튼 비활성화 및 인디케이터 표시
 
 ## FileUploadList 웹 컴포넌트
 
@@ -928,8 +1307,20 @@ interface Props {
 ```typescript
 interface Props {
   id: string;                      // 업로더 고유 ID (필수, FileUploadTrigger와 동일하게 설정)
-  initialUrls?: string;            // 초기 URL 목록 JSON 문자열 (편집 모드용)
+  'initial-urls'?: string;         // 초기 URL 목록 JSON 문자열 (편집 모드용)
 }
+```
+
+**🔥 중요**: `initial-urls`는 kebab-case HTML 속성이므로, `$props()`에서 명시적으로 매핑해야 합니다:
+
+```typescript
+let {
+  id = '',
+  'initial-urls': initialUrls = '',  // ✅ kebab-case → camelCase 매핑
+}: {
+  id?: string;
+  'initial-urls'?: string;
+} = $props();
 ```
 
 ### 사용 예제
@@ -947,11 +1338,26 @@ interface Props {
 ></file-upload-list>
 ```
 
+**Svelte 컴포넌트에서 사용**:
+```html
+<file-upload-list
+  id="post-edit-{postId}"
+  initial-urls={JSON.stringify(post.urls || [])}
+></file-upload-list>
+```
+
 ### 동작 방식
 
-1. `onMount` 시 `fileUploadState` 구독
-2. 상태 변경 시 자동으로 UI 업데이트 (진행률, 완료, 에러)
-3. 삭제 버튼 클릭 시:
+1. **onMount 시**:
+   - `initial-urls`가 있으면 JSON 파싱하여 `initializeWithUrls()` 호출
+   - `fileUploadState` 구독하여 상태 변경 감지
+   - 외부에서 접근 가능한 `getUrls()` 메서드를 DOM 요소에 등록
+
+2. **상태 변경 시**:
+   - 자동으로 UI 업데이트 (진행률, 완료, 에러)
+   - 파일 목록을 그리드로 표시 (5열 레이아웃)
+
+3. **삭제 버튼 클릭 시**:
    - 사용자에게 확인 다이얼로그 표시
    - Firebase Storage에서 파일 삭제 (`deleteFileByUrl`)
    - `fileUploadState`에서 파일 제거
@@ -960,27 +1366,255 @@ interface Props {
 
 폼 제출 시 업로드된 파일의 URL 배열을 가져올 수 있습니다:
 
+**방법 1: fileUploadState 직접 사용 (권장)**
 ```typescript
-// DOM 쿼리를 통해 getUrls() 메서드 호출
-const fileUploadList = document.querySelector('file-upload-list[id="post-create"]');
-// @ts-ignore
-const urls = fileUploadList?.getUrls ? fileUploadList.getUrls() : [];
+import { getUploadedUrls } from '../lib/services/fileUploadState';
+
+// ✅ 모든 경우에 작동 (Portal 사용 시에도 안전)
+const urls = getUploadedUrls('post-create');
 
 console.log('업로드된 파일 URLs:', urls);
 // 출력: ['https://...', 'https://...']
 ```
 
+**방법 2: DOM querySelector 사용 (비권장 - Portal 사용 시 실패 가능)**
+```typescript
+// ❌ Portal을 사용하는 모달에서는 이 방식이 실패할 수 있음
+const fileUploadList = document.querySelector('file-upload-list[id="post-create"]');
+// @ts-ignore
+const urls = fileUploadList?.getUrls ? fileUploadList.getUrls() : [];
+```
+
+**권장**: 항상 `getUploadedUrls()` 함수를 사용하는 것이 안전합니다.
+
 ### UI 표시 항목
 
-- **상태 아이콘**:
-  - ⏳ 업로드 중
-  - ✅ 완료
-  - ❌ 에러
-- **파일 정보**:
-  - 파일명 (URL에서 추출 또는 File.name)
-  - 파일 크기 (KB, MB 단위로 표시)
-- **진행률 바**: 업로드 중일 때만 표시 (0~100%)
-- **삭제 버튼**: 완료 또는 에러 상태일 때 표시
+- **상태별 UI**:
+  - ⏳ **업로드 중**: 진행률 오버레이 표시 (0~100%)
+  - ✅ **완료**: 초록색 테두리, 삭제 버튼 표시
+  - ❌ **에러**: 빨간색 테두리, 에러 아이콘, 삭제 버튼 표시
+
+- **파일 타입별 미리보기**:
+  - 📷 **이미지 파일**: 썸네일 이미지 표시
+  - 🎥 **동영상 파일**: 비디오 플레이어 표시
+  - 📄 **문서 파일**: 확장자 표시 (PDF, ZIP 등)
+
+- **레이아웃**:
+  - 그리드 레이아웃 (데스크톱 5열, 태블릿/모바일 4열)
+  - 정사각형 비율 유지 (aspect-ratio: 1)
+  - 삭제 버튼은 왼쪽 상단에 배치
+
+### 상세 구현 로직
+
+#### 1. Props 처리 및 초기화
+
+```typescript
+let {
+  id = '',
+  'initial-urls': initialUrls = '',  // ✅ kebab-case 매핑
+}: {
+  id?: string;
+  'initial-urls'?: string;
+} = $props();
+
+// 파일 목록 (반응형 상태)
+let files: UploadingFile[] = $state([]);
+
+onMount(() => {
+  // 업로더 ID 검증
+  if (!id) {
+    console.error('[FileUploadList] id prop is required');
+    return;
+  }
+
+  // 초기 URL 목록이 있으면 초기화 (수정 모드)
+  if (initialUrls) {
+    try {
+      const urls = JSON.parse(initialUrls) as string[];
+      if (Array.isArray(urls) && urls.length > 0) {
+        console.log(`[FileUploadList] Initializing with ${urls.length} URLs for id: ${id}`);
+        initializeWithUrls(id, urls);
+      }
+    } catch (error) {
+      console.error('[FileUploadList] Failed to parse initial-urls:', error);
+    }
+  }
+
+  // 상태 변경 구독
+  unsubscribe = subscribe(id, () => {
+    files = getFiles(id);
+  });
+
+  // 초기 파일 목록 로드
+  files = getFiles(id);
+
+  // 외부에서 접근 가능한 메서드 등록
+  if (typeof window !== 'undefined') {
+    const element = document.querySelector(`file-upload-list[id="${id}"]`);
+    if (element) {
+      // @ts-ignore
+      element.getUrls = () => getUploadedUrls(id);
+    }
+  }
+});
+```
+
+**개선 사항**: 이전에는 DOM querySelector로 속성을 읽는 복잡한 로직이 있었지만, 이제 `$props()`의 kebab-case 매핑으로 간단하게 처리합니다.
+
+#### 2. 파일 삭제 처리
+
+```typescript
+async function handleDeleteFile(fileId: string, url?: string) {
+  if (deletingFileIds.has(fileId)) return;
+
+  const confirmDelete = confirm($t('파일삭제'));
+  if (!confirmDelete) return;
+
+  deletingFileIds.add(fileId);
+
+  try {
+    // Firebase Storage에서 파일 삭제 (URL이 있는 경우)
+    if (url) {
+      const result = await deleteFileByUrl(url);
+      if (!result.success) {
+        console.error('[FileUploadList] Failed to delete file from Storage:', result.error);
+        // Storage 삭제 실패해도 목록에서는 제거 (사용자 경험 개선)
+      }
+    }
+
+    // 상태에서 파일 제거
+    removeFile(id, fileId);
+  } catch (error) {
+    console.error('[FileUploadList] Delete error:', error);
+    alert($t('파일삭제실패'));
+  } finally {
+    deletingFileIds.delete(fileId);
+  }
+}
+```
+
+#### 3. 파일 타입별 미리보기 렌더링
+
+```html
+<div class="file-preview">
+  {#if isImageFile(file)}
+    <!-- 이미지 파일 -->
+    <img src={getPreviewUrl(file)} alt={getFileName(file)} class="preview-image" />
+  {:else if isVideoFile(file)}
+    <!-- 동영상 파일 -->
+    <video src={getVideoUrl(file)} class="preview-video" controls>
+      <track kind="captions" />
+    </video>
+  {:else}
+    <!-- 문서 파일 - 확장자 표시 -->
+    <div class="file-extension">
+      <div class="extension-text">{getFileExtension(file)}</div>
+    </div>
+  {/if}
+
+  <!-- 진행률 오버레이 (업로드 중) -->
+  {#if file.status === 'uploading'}
+    <div class="progress-overlay">
+      <div class="progress-circle">{file.progress}%</div>
+    </div>
+  {/if}
+
+  <!-- 에러 오버레이 -->
+  {#if file.status === 'error'}
+    <div class="error-overlay">
+      <AlertCircle size={32} class="error-icon" />
+      <div class="error-text">{$t('업로드실패')}</div>
+    </div>
+  {/if}
+
+  <!-- 삭제 버튼 (왼쪽 상단) -->
+  {#if file.status === 'completed' || file.status === 'error'}
+    <button
+      type="button"
+      class="delete-button"
+      onclick={() => handleDeleteFile(file.id, file.url)}
+      disabled={deletingFileIds.has(file.id)}
+      aria-label={$t('파일삭제')}
+    >
+      <X size={16} />
+    </button>
+  {/if}
+</div>
+```
+
+#### 4. 헬퍼 함수들
+
+```typescript
+// 파일 이름 추출 (URL 또는 File 객체에서)
+function getFileName(file: UploadingFile): string {
+  if (file.file && file.file.name) {
+    return file.file.name;
+  }
+  if (file.url) {
+    // URL에서 파일명 추출 및 디코딩
+    try {
+      const urlObj = new URL(file.url);
+      const pathname = urlObj.pathname;
+      const parts = pathname.split('/');
+      const fileName = parts[parts.length - 1];
+      return decodeURIComponent(fileName);
+    } catch {
+      return '파일';
+    }
+  }
+  return '파일';
+}
+
+// 이미지 파일 여부 확인
+function isImageFile(file: UploadingFile): boolean {
+  if (file.file && file.file.type.startsWith('image/')) {
+    return true;
+  }
+  if (file.url) {
+    // URL 확장자로 판단
+    const lowerUrl = file.url.toLowerCase();
+    return lowerUrl.includes('.jpg') || lowerUrl.includes('.jpeg') ||
+           lowerUrl.includes('.png') || lowerUrl.includes('.gif') ||
+           lowerUrl.includes('.webp') || lowerUrl.includes('.bmp') ||
+           lowerUrl.includes('.svg');
+  }
+  return false;
+}
+
+// 동영상 파일 여부 확인
+function isVideoFile(file: UploadingFile): boolean {
+  if (file.file && file.file.type.startsWith('video/')) {
+    return true;
+  }
+  if (file.url) {
+    const lowerUrl = file.url.toLowerCase();
+    return lowerUrl.includes('.mp4') || lowerUrl.includes('.webm') ||
+           lowerUrl.includes('.mov') || lowerUrl.includes('.avi') ||
+           lowerUrl.includes('.mkv');
+  }
+  return false;
+}
+
+// 파일 확장자 추출
+function getFileExtension(file: UploadingFile): string {
+  const fileName = getFileName(file);
+  const parts = fileName.split('.');
+  if (parts.length > 1) {
+    return parts[parts.length - 1].toUpperCase();
+  }
+  return 'FILE';
+}
+```
+
+#### 5. 주요 기능
+
+- **초기 URL 로드**: 편집 모드에서 기존 파일 목록 표시
+- **실시간 동기화**: `fileUploadState` 구독으로 상태 변경 자동 반영
+- **파일 타입별 UI**: 이미지, 동영상, 문서 파일을 각각 다르게 표시
+- **진행률 표시**: 업로드 중인 파일의 진행률을 오버레이로 표시
+- **에러 처리**: 업로드 실패 시 에러 오버레이 표시
+- **파일 삭제**: Firebase Storage와 상태 관리 동기화
+- **반응형 레이아웃**: 데스크톱(5열), 태블릿/모바일(4열)
 
 ## 게시글에서의 사용 예제
 
@@ -1029,7 +1663,11 @@ import '../lib/components/FileUploadList.wc.svelte';
 
 ### 3. 제출 시 URL 가져오기
 
+**⚠️ 중요**: Portal 패턴을 사용하는 모달에서는 DOM querySelector가 실패할 수 있습니다. `fileUploadState`에서 직접 URL을 가져오는 방식을 사용하세요.
+
 ```typescript
+import { getUploadedUrls, destroyUploader } from '../lib/services/fileUploadState';
+
 async function handleSubmit(event: Event) {
   event.preventDefault();
 
@@ -1043,10 +1681,9 @@ async function handleSubmit(event: Event) {
   const userId = $login.uid;
   const userName = $login.displayName || '익명';
 
-  // 3. 업로드된 파일 URL 목록 가져오기
-  const fileUploadList = document.querySelector('file-upload-list[id="post-create"]');
-  // @ts-ignore
-  const urls = fileUploadList?.getUrls ? fileUploadList.getUrls() : [];
+  // 3. 업로드된 파일 URL 목록 가져오기 (fileUploadState에서 직접 가져오기)
+  // Portal 사용으로 인해 DOM querySelector가 실패할 수 있으므로, 상태에서 직접 가져옵니다.
+  const urls = getUploadedUrls('post-create');
 
   // 4. Firebase RTDB에 게시글 저장 (파일 URL 포함)
   const result = await createPost(
@@ -1060,6 +1697,9 @@ async function handleSubmit(event: Event) {
 
   // 5. 결과 처리
   if (result.success) {
+    // 파일 업로드 상태 정리
+    destroyUploader('post-create');
+
     alert('게시글이 등록되었습니다');
     isNewPostDialogOpen = false;
     // 폼 초기화
@@ -1069,6 +1709,33 @@ async function handleSubmit(event: Event) {
     alert('게시글 등록에 실패했습니다: ' + result.error);
   }
 }
+
+/**
+ * 모달 취소 핸들러
+ */
+function handleCancel() {
+  // 파일 업로드 상태 정리
+  destroyUploader('post-create');
+
+  isNewPostDialogOpen = false;
+  postTitle = '';
+  postContent = '';
+}
+```
+
+**DOM querySelector 방식 (비권장 - Portal 사용 시 실패 가능)**:
+```typescript
+// ❌ Portal을 사용하는 모달에서는 이 방식이 실패할 수 있습니다
+const fileUploadList = document.querySelector('file-upload-list[id="post-create"]');
+// @ts-ignore
+const urls = fileUploadList?.getUrls ? fileUploadList.getUrls() : [];
+```
+
+**fileUploadState 직접 사용 방식 (권장)**:
+```typescript
+// ✅ 모든 경우에 작동합니다
+import { getUploadedUrls } from '../lib/services/fileUploadState';
+const urls = getUploadedUrls('post-create');
 ```
 
 ### 4. forum.ts 서비스 함수 수정
@@ -1141,13 +1808,13 @@ export async function createPost(
 ```
 
 ```typescript
+import { getUploadedUrls, destroyUploader } from '../lib/services/fileUploadState';
+
 async function handleEditSubmit(event: Event) {
   event.preventDefault();
 
-  // URL 가져오기
-  const fileUploadList = document.querySelector(`file-upload-list[id="post-edit-${editingPost.postId}"]`);
-  // @ts-ignore
-  const urls = fileUploadList?.getUrls ? fileUploadList.getUrls() : [];
+  // URL 가져오기 (fileUploadState에서 직접 가져오기)
+  const urls = getUploadedUrls(`post-edit-${editingPost.postId}`);
 
   // 게시글 업데이트
   const result = await updatePost(
@@ -1159,7 +1826,28 @@ async function handleEditSubmit(event: Event) {
     }
   );
 
-  // ... 결과 처리 ...
+  // 결과 처리
+  if (result.success) {
+    // 파일 업로드 상태 정리
+    destroyUploader(`post-edit-${editingPost.postId}`);
+
+    alert('게시글이 수정되었습니다');
+    isEditDialogOpen = false;
+  } else {
+    alert('게시글 수정에 실패했습니다: ' + result.error);
+  }
+}
+
+/**
+ * 편집 취소 핸들러
+ */
+function handleEditCancel() {
+  // 파일 업로드 상태 정리
+  destroyUploader(`post-edit-${editingPost.postId}`);
+
+  isEditDialogOpen = false;
+  editTitle = '';
+  editContent = '';
 }
 ```
 
@@ -1205,6 +1893,8 @@ import '../lib/components/FileUploadList.wc.svelte';
 ### 3. 답글 제출 시 URL 가져오기
 
 ```typescript
+import { getUploadedUrls, destroyUploader } from '../lib/services/fileUploadState';
+
 async function handleReplySubmit() {
   // 1. 내용 검증
   if (!replyContent.trim()) {
@@ -1215,10 +1905,8 @@ async function handleReplySubmit() {
   // 2. 사용자 정보 확인
   const userId = $login.uid;
 
-  // 3. 업로드된 파일 URL 목록 가져오기
-  const fileUploadList = document.querySelector(`file-upload-list[id="comment-reply-${comment.commentId}"]`);
-  // @ts-ignore
-  const urls = fileUploadList?.getUrls ? fileUploadList.getUrls() : [];
+  // 3. 업로드된 파일 URL 목록 가져오기 (fileUploadState에서 직접 가져오기)
+  const urls = getUploadedUrls(`comment-reply-${comment.commentId}`);
 
   // 4. Firebase에 답글 저장 (Flat Style 구조)
   const result = await createChildComment({
@@ -1230,12 +1918,26 @@ async function handleReplySubmit() {
 
   // 5. 결과 처리
   if (result.success) {
+    // 파일 업로드 상태 정리
+    destroyUploader(`comment-reply-${comment.commentId}`);
+
     alert('답글이 등록되었습니다');
     isReplyDialogOpen = false;
     replyContent = '';
   } else {
     alert('답글 등록에 실패했습니다: ' + result.error);
   }
+}
+
+/**
+ * 답글 취소 핸들러
+ */
+function handleReplyCancel() {
+  // 파일 업로드 상태 정리
+  destroyUploader(`comment-reply-${comment.commentId}`);
+
+  isReplyDialogOpen = false;
+  replyContent = '';
 }
 ```
 
@@ -1269,6 +1971,8 @@ async function handleReplySubmit() {
 ```
 
 ```typescript
+import { getUploadedUrls, destroyUploader } from '../lib/services/fileUploadState';
+
 async function handleEditSubmit() {
   // 1. 내용 검증
   if (!editContent.trim()) {
@@ -1276,10 +1980,8 @@ async function handleEditSubmit() {
     return;
   }
 
-  // 2. 업로드된 파일 URL 목록 가져오기
-  const fileUploadList = document.querySelector(`file-upload-list[id="comment-edit-${comment.commentId}"]`);
-  // @ts-ignore
-  const urls = fileUploadList?.getUrls ? fileUploadList.getUrls() : [];
+  // 2. 업로드된 파일 URL 목록 가져오기 (fileUploadState에서 직접 가져오기)
+  const urls = getUploadedUrls(`comment-edit-${comment.commentId}`);
 
   // 3. Firebase에 댓글 업데이트
   const result = await updateComment(comment.commentId, {
@@ -1289,11 +1991,26 @@ async function handleEditSubmit() {
 
   // 4. 결과 처리
   if (result.success) {
+    // 파일 업로드 상태 정리
+    destroyUploader(`comment-edit-${comment.commentId}`);
+
     alert('댓글이 수정되었습니다');
     isEditDialogOpen = false;
+    editContent = '';
   } else {
     alert('댓글 수정에 실패했습니다: ' + result.error);
   }
+}
+
+/**
+ * 댓글 수정 취소 핸들러
+ */
+function handleEditCancel() {
+  // 파일 업로드 상태 정리
+  destroyUploader(`comment-edit-${comment.commentId}`);
+
+  isEditDialogOpen = false;
+  editContent = '';
 }
 ```
 
@@ -1571,20 +2288,102 @@ unsubscribe();
 - 사용자가 로그인되어 있는지 확인 (`$login.uid` 존재 여부)
 - 브라우저 콘솔에서 에러 메시지 확인
 
-### 2. URL을 가져올 수 없음
+### 2. Portal 사용 시 URL을 가져올 수 없음 (중요!)
 
-**원인**: `getUrls()` 메서드가 등록되지 않았거나 DOM 요소를 찾을 수 없음
+**원인**: Portal 패턴(`use:portal`)으로 모달을 `document.body`로 이동시키면, `document.querySelector()`가 Web Component를 찾지 못함
 
-**해결**:
-- `FileUploadList` 컴포넌트가 마운트되었는지 확인
-- `id` prop이 올바르게 설정되었는지 확인
-- DOM 쿼리에서 올바른 `id`를 사용했는지 확인
+**증상**:
+```typescript
+const fileUploadList = document.querySelector('file-upload-list[id="post-create"]');
+console.log(fileUploadList); // null ← 문제!
+```
+
+**해결책**: DOM 쿼리 대신 `fileUploadState`에서 직접 URL을 가져오기
 
 ```typescript
-// 올바른 방법
-const element = document.querySelector('file-upload-list[id="post-create"]');
+// ❌ 잘못된 방법 (Portal 사용 시 실패)
+const fileUploadList = document.querySelector('file-upload-list[id="post-create"]');
 // @ts-ignore
-const urls = element?.getUrls?.() || [];
+const urls = fileUploadList?.getUrls ? fileUploadList.getUrls() : [];
+
+// ✅ 올바른 방법 (모든 경우에 작동)
+import { getUploadedUrls, destroyUploader } from '../lib/services/fileUploadState';
+
+// URL 가져오기
+const urls = getUploadedUrls('post-create');
+
+// 제출 성공 후 상태 정리
+if (result.success) {
+  destroyUploader('post-create');
+}
+
+// 취소 시에도 상태 정리
+function handleCancel() {
+  destroyUploader('post-create');
+  isDialogOpen = false;
+}
+```
+
+**적용 대상**:
+- PostListPage.svelte (새 게시글 작성)
+- PostItem.svelte (댓글 작성, 게시글 수정)
+- CommentItem.svelte (답글 작성, 댓글 수정)
+
+### 3. Svelte 5 $destroy() 에러
+
+**원인**: Svelte 5에서 Web Component가 DOM에서 제거될 때 `$destroy()` 메서드 호출 시도
+
+**에러 메시지**:
+```
+Uncaught (in promise) Svelte error: component_api_changed
+Calling `$destroy()` on a component instance is no longer valid in Svelte 5
+```
+
+**해결책**: FileUploadList.wc.svelte에서 `onDestroy` 훅 제거
+
+```typescript
+// ❌ Svelte 5 Web Component에서는 사용 금지
+import { onMount, onDestroy } from 'svelte';
+
+onDestroy(() => {
+  if (unsubscribe) {
+    unsubscribe();
+  }
+});
+
+// ✅ Svelte 5 Web Component에서는 onDestroy 제거
+import { onMount } from 'svelte';
+
+/**
+ * Svelte 5 Web Component 정리 처리
+ *
+ * Svelte 5에서는 onDestroy() 대신 Web Component의 disconnectedCallback()을 사용합니다.
+ * Web Component가 DOM에서 제거될 때 Svelte가 자동으로 정리하므로 onDestroy는 제거했습니다.
+ *
+ * 참고: https://svelte.dev/docs/svelte/v5-migration-guide#Components-are-no-longer-classes
+ */
+// onDestroy는 Svelte 5 Web Component에서 $destroy() 에러를 발생시키므로 제거
+// 구독 해제는 Web Component가 제거될 때 자동으로 처리됩니다.
+```
+
+**적용 파일**:
+- FileUploadList.wc.svelte
+
+### 4. 두 컴포넌트가 상태를 공유하지 않음
+
+**원인**: `id` prop이 서로 다름
+
+**해결**:
+- `FileUploadTrigger`와 `FileUploadList`의 `id` prop이 정확히 동일한지 확인
+
+```html
+<!-- 올바른 예 -->
+<file-upload-trigger id="post-create"></file-upload-trigger>
+<file-upload-list id="post-create"></file-upload-list>
+
+<!-- 잘못된 예 -->
+<file-upload-trigger id="post-create"></file-upload-trigger>
+<file-upload-list id="post-upload"></file-upload-list> <!-- ❌ id 불일치 -->
 ```
 
 ### 3. 두 컴포넌트가 상태를 공유하지 않음
@@ -1604,20 +2403,74 @@ const urls = element?.getUrls?.() || [];
 <file-upload-list id="post-upload"></file-upload-list> <!-- ❌ id 불일치 -->
 ```
 
-### 4. 편집 모드에서 기존 파일이 표시되지 않음
+### 5. 편집 모드에서 기존 파일이 표시되지 않음
 
-**원인**: `initial-urls` prop이 올바르게 전달되지 않음
+**원인 1**: Svelte 5 Web Component에서 `initial-urls` 속성이 `initialUrls` prop으로 자동 매핑되지 않음
+
+**해결**:
+- `$props()`에서 kebab-case 속성을 명시적으로 매핑해야 합니다
+
+```typescript
+// ❌ 잘못된 방법 (작동하지 않음)
+let {
+  id = '',
+  initialUrls = '',  // initial-urls 속성을 받지 못함
+} = $props();
+
+// ✅ 올바른 방법 (kebab-case 명시적 매핑)
+let {
+  id = '',
+  'initial-urls': initialUrls = '',  // ✅
+}: {
+  id?: string;
+  'initial-urls'?: string;
+} = $props();
+```
+
+**원인 2**: `initial-urls` prop에 JSON 문자열이 올바르게 전달되지 않음
 
 **해결**:
 - `initial-urls` prop에 JSON 문자열로 전달
 - 빈 배열도 처리되도록 `|| []` 사용
 
 ```html
-<!-- 올바른 방법 -->
+<!-- ✅ 올바른 방법 -->
 <file-upload-list
   id="post-edit"
   initial-urls={JSON.stringify(post.urls || [])}
 ></file-upload-list>
+
+<!-- ❌ 잘못된 방법 (JSON 문자열이 아님) -->
+<file-upload-list
+  id="post-edit"
+  initial-urls={post.urls}
+></file-upload-list>
+```
+
+### 6. 메모리 누수 방지
+
+**원인**: 모달을 닫을 때 파일 업로드 상태가 정리되지 않음
+
+**해결**: 모달 닫기 및 취소 핸들러에서 `destroyUploader()` 호출
+
+```typescript
+import { destroyUploader } from '../lib/services/fileUploadState';
+
+// 제출 성공 후 정리
+async function handleSubmit() {
+  const result = await createPost(...);
+
+  if (result.success) {
+    destroyUploader('post-create'); // ✅ 상태 정리
+    isDialogOpen = false;
+  }
+}
+
+// 취소 시 정리
+function handleCancel() {
+  destroyUploader('post-create'); // ✅ 상태 정리
+  isDialogOpen = false;
+}
 ```
 
 ## 정리
@@ -1630,6 +2483,69 @@ const urls = element?.getUrls?.() || [];
 ✅ **타입 안전성**: TypeScript 인터페이스로 타입 체크
 ✅ **Firebase 통합**: Storage 업로드 및 RTDB URL 저장 자동화
 ✅ **편집 지원**: 기존 파일 로드 및 수정 기능
+✅ **Portal 호환**: Portal 패턴과 함께 사용 시에도 안정적으로 작동
+✅ **Svelte 5 호환**: Svelte 5 Web Component 표준 준수
 
 이 시스템을 활용하여 SNS 웹 애플리케이션의 다양한 기능에서 파일 업로드를 쉽게 구현할 수 있습니다.
+
+## 중요한 구현 규칙 (필수)
+
+### 1. URL 가져오기는 항상 fileUploadState 사용
+
+❌ **잘못된 방법** (Portal 사용 시 실패):
+```typescript
+const element = document.querySelector('file-upload-list[id="post-create"]');
+const urls = element?.getUrls?.() || [];
+```
+
+✅ **올바른 방법** (모든 경우에 작동):
+```typescript
+import { getUploadedUrls } from '../lib/services/fileUploadState';
+const urls = getUploadedUrls('post-create');
+```
+
+### 2. 상태 정리는 항상 destroyUploader 사용
+
+모달을 닫거나 제출이 완료되면 반드시 `destroyUploader()`를 호출하여 메모리 누수를 방지합니다:
+
+```typescript
+import { destroyUploader } from '../lib/services/fileUploadState';
+
+// 제출 성공 후
+if (result.success) {
+  destroyUploader('post-create');
+}
+
+// 취소 시
+function handleCancel() {
+  destroyUploader('post-create');
+}
+```
+
+### 3. Svelte 5 Web Component에서는 onDestroy 사용 금지
+
+FileUploadList.wc.svelte 등 Web Component 파일에서는 `onDestroy` 훅을 사용하지 않습니다. Svelte가 자동으로 정리합니다.
+
+---
+
+**Last Updated**: 2025-01-06
+**Version**: 1.2.0 (Svelte 5 kebab-case 속성 매핑 개선)
+
+### 변경 이력
+
+- **v1.2.0** (2025-01-06): Svelte 5 kebab-case 속성 매핑 개선
+  - **신규 섹션 추가**: "Svelte 5 Web Component 속성 매핑" 설명
+  - FileUploadList.wc.svelte Props에서 kebab-case 명시적 매핑 설명 (`'initial-urls': initialUrls`)
+  - FileUploadTrigger.wc.svelte 상세 구현 로직 추가
+  - FileUploadList.wc.svelte 상세 구현 로직 추가 (간소화된 onMount 로직 포함)
+  - 문제 해결 섹션 업데이트 (kebab-case 매핑 이슈 추가)
+  - 개선 사항: DOM querySelector 대신 `$props()`의 kebab-case 매핑 사용으로 코드 간소화
+
+- **v1.1.0** (2025-11-06): Portal 호환성 개선 및 Svelte 5 업데이트
+  - `getUploadedUrls()` 직접 호출 방식으로 변경 (Portal 호환)
+  - `destroyUploader()` 메모리 누수 방지 추가
+  - FileUploadList.wc.svelte에서 `onDestroy` 제거 (Svelte 5 호환)
+  - 문제 해결 섹션 대폭 강화
+
+- **v1.0.0**: 초기 파일 업로드 웹 컴포넌트 시스템 구현
 

@@ -1,0 +1,90 @@
+rules_version = '2';
+
+/**
+ * Firebase Storage 보안 규칙
+ *
+ * 파일 업로드 제한:
+ * - 이미지 (jpg, jpeg, png, gif, webp, bmp, svg): 최대 10MB
+ * - 동영상 (mp4만 허용): 최대 50MB
+ * - 문서/압축 (zip, pdf, txt, doc, docx, ppt, pptx, csv, xls, xlsx, rar): 최대 15MB
+ *
+ * 업로드 경로: /users/{userId}/{category}/{filename}
+ * - category: posts, comments, profile 등
+ */
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    /**
+     * 사용자별 파일 업로드 규칙
+     * 경로: /users/{userId}/{category}/{filename}
+     */
+    match /users/{userId}/{category}/{filename} {
+      /**
+       * 읽기 권한: 모든 인증된 사용자
+       */
+      allow read: if request.auth != null;
+
+      /**
+       * 쓰기 권한: 본인만 업로드 가능
+       */
+      allow write: if request.auth != null
+                   && request.auth.uid == userId
+                   && isValidFile();
+
+      /**
+       * 삭제 권한: 본인만 삭제 가능
+       */
+      allow delete: if request.auth != null
+                    && request.auth.uid == userId;
+
+      /**
+       * 파일 검증 함수
+       *
+       * @returns 파일이 허용된 타입이고 용량 제한을 만족하는지 여부
+       */
+      function isValidFile() {
+        // 파일 크기와 MIME 타입 가져오기
+        let fileSize = request.resource.size;
+        let contentType = request.resource.contentType;
+
+        // 이미지 파일 검증 (최대 10MB)
+        let isImage = contentType.matches('image/jpeg')
+                   || contentType.matches('image/png')
+                   || contentType.matches('image/gif')
+                   || contentType.matches('image/webp')
+                   || contentType.matches('image/bmp')
+                   || contentType.matches('image/svg\\+xml');
+        let isValidImage = isImage && fileSize <= 10 * 1024 * 1024; // 10MB
+
+        // 동영상 파일 검증 (mp4만, 최대 50MB)
+        let isVideo = contentType.matches('video/mp4');
+        let isValidVideo = isVideo && fileSize <= 50 * 1024 * 1024; // 50MB
+
+        // 문서/압축 파일 검증 (최대 15MB)
+        let isDocument = contentType.matches('application/zip')
+                      || contentType.matches('application/pdf')
+                      || contentType.matches('text/plain')
+                      || contentType.matches('application/msword')
+                      || contentType.matches('application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+                      || contentType.matches('application/vnd.ms-powerpoint')
+                      || contentType.matches('application/vnd.openxmlformats-officedocument.presentationml.presentation')
+                      || contentType.matches('text/csv')
+                      || contentType.matches('application/vnd.ms-excel')
+                      || contentType.matches('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+                      || contentType.matches('application/x-rar-compressed')
+                      || contentType.matches('application/vnd.rar');
+        let isValidDocument = isDocument && fileSize <= 15 * 1024 * 1024; // 15MB
+
+        // 파일이 허용된 타입 중 하나이고 용량 제한을 만족하는지 확인
+        return isValidImage || isValidVideo || isValidDocument;
+      }
+    }
+
+    /**
+     * 기본 규칙: 다른 모든 경로는 거부
+     */
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

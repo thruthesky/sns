@@ -23,6 +23,7 @@ export interface Post {
   updatedAt: Timestamp;
   likeCount: number;
   commentCount: number;
+  urls?: string[]; // 첨부 파일 URL 목록 (선택)
 }
 
 /**
@@ -49,6 +50,7 @@ export interface CreatePostParams {
 export interface UpdatePostParams {
   title?: string;
   content?: string;
+  urls?: string[]; // 첨부 파일 URL 목록 (선택)
 }
 
 /**

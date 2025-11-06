@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   /**
    * 댓글 아이템 컴포넌트
    *
@@ -7,21 +7,28 @@
    * 수정/삭제 기능을 제공합니다 (작성자 본인만 가능).
    */
   import { rtdb, createRealtimeStore } from "../lib/stores/database.js";
-  import { t } from "../lib/stores/i18n.ts";
-  import { createChildComment, updateComment, deleteComment } from "../lib/services/comment.js";
+  import { t } from "../lib/stores/i18n";
+  import {
+    createChildComment,
+    updateComment,
+    deleteComment,
+  } from "../lib/services/comment.js";
   import { toggleLike } from "../lib/services/like.js";
-  import { showToast } from "../lib/stores/toast.ts";
+  import { showToast } from "../lib/stores/toast";
   import { Pencil, Trash2 } from "lucide-svelte";
-  // 파일 업로드 웹 컴포넌트 import
-  import '../lib/components/FileUploadTrigger.wc.svelte';
-  import '../lib/components/FileUploadList.wc.svelte';
+  // 파일 업로드 웹 컴포넌트 및 상태 관리 import
+  import "../lib/components/FileUploadTrigger.wc.svelte";
+  import "../lib/components/FileUploadList.wc.svelte";
+  import {
+    getUploadedUrls,
+    destroyUploader,
+  } from "../lib/services/fileUploadState";
   import { portal } from "../lib/utils/portal";
+  // AlertDialog 웹 컴포넌트 import
+  import "../lib/components/AlertDialog.wc.svelte";
 
   // Props
-  let {
-    comment,
-    userId = null
-  } = $props();
+  let { comment, userId = null } = $props();
 
   // 댓글 작성자 정보를 실시간으로 구독
   const userStore = createRealtimeStore(`users/${comment.uid}`);
@@ -30,7 +37,7 @@
   // 통합 좋아요 구조: /likes/comment-{commentId}-{uid}
   // 노드가 없으면 0(좋아요 안 누름)을 기본값으로 사용
   // ⚠️ commentId가 '-'로 시작하면 제거 (Firebase 오래된 push 키 형식 대응)
-  const cleanCommentId = comment.commentId.startsWith('-')
+  const cleanCommentId = comment.commentId.startsWith("-")
     ? comment.commentId.substring(1)
     : comment.commentId;
   const myLikeStore = userId
@@ -39,17 +46,17 @@
 
   // 답글 작성 모달 상태 관리
   let isReplyDialogOpen = $state(false);
-  let replyContent = $state('');
+  let replyContent = $state("");
   let isSubmitting = $state(false);
 
   // 댓글 수정 모달 상태 관리
   let isEditDialogOpen = $state(false);
-  let editContent = $state('');
+  let editContent = $state("");
   let isEditSubmitting = $state(false);
 
   // 경고 알림 다이얼로그 상태 관리
   let isAlertDialogOpen = $state(false);
-  let alertMessage = $state('');
+  let alertMessage = $state("");
 
   /**
    * 좋아요 버튼 클릭 핸들러 (토글 방식)
@@ -64,7 +71,7 @@
 
     try {
       // 2. 좋아요 토글 (추가 또는 취소)
-      const result = await toggleLike('comment', comment.commentId, userId);
+      const result = await toggleLike("comment", comment.commentId, userId);
 
       // 3. 결과 처리
       if (result.success) {
@@ -75,7 +82,7 @@
         }
       } else {
         // result.error는 i18n 키
-        showToast($t(result.error), "error");
+        showToast($t(result.error || "error.unknown"), "error");
       }
     } catch (error) {
       console.error("좋아요 오류:", error);
@@ -112,32 +119,33 @@
     isSubmitting = true;
 
     try {
-      // 3. 업로드된 파일 URL 목록 가져오기
-      const fileUploadList = document.querySelector(`file-upload-list[id="comment-reply-${comment.commentId}"]`);
-      // @ts-ignore - FileUploadList 컴포넌트의 getUrls() 메서드 호출
-      const urls = fileUploadList?.getUrls ? fileUploadList.getUrls() : [];
+      // 3. 업로드된 파일 URL 목록 가져오기 (fileUploadState에서 직접 가져오기)
+      const urls = getUploadedUrls(`comment-reply-${comment.commentId}`);
 
       // 4. Firebase에 답글 저장 (Flat Style 구조)
       // 참고: postId와 commentCount는 Firebase Cloud Functions에서 자동으로 관리됨
       const result = await createChildComment({
-        parentCommentId: comment.commentId,  // 부모 댓글 ID
-        userId: userId,                      // 작성자 UID
-        content: replyContent,               // 답글 내용
-        urls: urls.length > 0 ? urls : undefined  // 파일 URL 목록
+        parentCommentId: comment.commentId, // 부모 댓글 ID
+        userId: userId, // 작성자 UID
+        content: replyContent, // 답글 내용
+        urls: urls.length > 0 ? urls : undefined, // 파일 URL 목록
       });
 
       // 5. 결과 처리
       if (result.success) {
+        // 파일 업로드 상태 정리
+        destroyUploader(`comment-reply-${comment.commentId}`);
+
         showToast($t("댓글이작성되었습니다"), "success");
         isReplyDialogOpen = false;
-        replyContent = '';
+        replyContent = "";
       } else {
         // result.error는 i18n 키 (예: 'error.db.permissionDenied')
-        showToast($t(result.error), "error");
+        showToast($t(result.error || "error.unknown"), "error");
       }
     } catch (error) {
       // 예상치 못한 에러 발생 시 기본 에러 메시지 표시
-      console.error('답글 생성 오류:', error);
+      console.error("답글 생성 오류:", error);
       showToast($t("error.unknown"), "error");
     } finally {
       isSubmitting = false;
@@ -148,8 +156,11 @@
    * 답글 작성 취소 핸들러
    */
   function handleReplyCancel() {
+    // 파일 업로드 상태 정리
+    destroyUploader(`comment-reply-${comment.commentId}`);
+
     isReplyDialogOpen = false;
-    replyContent = '';
+    replyContent = "";
   }
 
   /**
@@ -182,28 +193,29 @@
     isEditSubmitting = true;
 
     try {
-      // 3. 업로드된 파일 URL 목록 가져오기
-      const fileUploadList = document.querySelector(`file-upload-list[id="comment-edit-${comment.commentId}"]`);
-      // @ts-ignore - FileUploadList 컴포넌트의 getUrls() 메서드 호출
-      const urls = fileUploadList?.getUrls ? fileUploadList.getUrls() : [];
+      // 3. 업로드된 파일 URL 목록 가져오기 (fileUploadState에서 직접 가져오기)
+      const urls = getUploadedUrls(`comment-edit-${comment.commentId}`);
 
       // 4. Firebase에 댓글 업데이트
       const result = await updateComment(comment.commentId, {
         content: editContent,
-        urls: urls.length > 0 ? urls : undefined
+        urls: urls.length > 0 ? urls : undefined,
       });
 
       // 5. 결과 처리
       if (result.success) {
+        // 파일 업로드 상태 정리
+        destroyUploader(`comment-edit-${comment.commentId}`);
+
         showToast($t("댓글이수정되었습니다"), "success");
         isEditDialogOpen = false;
-        editContent = '';
+        editContent = "";
       } else {
         // result.error는 i18n 키
-        showToast($t(result.error), "error");
+        showToast($t(result.error || "error.unknown"), "error");
       }
     } catch (error) {
-      console.error('댓글 수정 오류:', error);
+      console.error("댓글 수정 오류:", error);
       showToast($t("error.unknown"), "error");
     } finally {
       isEditSubmitting = false;
@@ -214,8 +226,11 @@
    * 댓글 수정 취소 핸들러
    */
   function handleEditCancel() {
+    // 파일 업로드 상태 정리
+    destroyUploader(`comment-edit-${comment.commentId}`);
+
     isEditDialogOpen = false;
-    editContent = '';
+    editContent = "";
   }
 
   /**
@@ -244,11 +259,64 @@
         // 리스트는 Firebase 실시간 구독으로 자동 업데이트됨
       } else {
         // result.error는 i18n 키
-        showToast($t(result.error), "error");
+        showToast($t(result.error || "error.unknown"), "error");
       }
     } catch (error) {
-      console.error('댓글 삭제 오류:', error);
+      console.error("댓글 삭제 오류:", error);
       showToast($t("error.unknown"), "error");
+    }
+  }
+
+  /**
+   * 파일이 이미지인지 확인하는 헬퍼 함수
+   * URL 확장자 기반으로 판별 (대소문자 무시)
+   *
+   * @param url - 파일 URL
+   * @returns 이미지 파일 여부
+   */
+  function isImageFile(url: string): boolean {
+    const lowerUrl = url.toLowerCase();
+    return (
+      lowerUrl.includes(".jpg") ||
+      lowerUrl.includes(".jpeg") ||
+      lowerUrl.includes(".png") ||
+      lowerUrl.includes(".gif") ||
+      lowerUrl.includes(".webp")
+    );
+  }
+
+  /**
+   * 파일이 동영상인지 확인하는 헬퍼 함수
+   * URL 확장자 기반으로 판별 (대소문자 무시)
+   *
+   * @param url - 파일 URL
+   * @returns 동영상 파일 여부
+   */
+  function isVideoFile(url: string): boolean {
+    const lowerUrl = url.toLowerCase();
+    return (
+      lowerUrl.includes(".mp4") ||
+      lowerUrl.includes(".webm") ||
+      lowerUrl.includes(".mov") ||
+      lowerUrl.includes(".avi") ||
+      lowerUrl.includes(".mkv")
+    );
+  }
+
+  /**
+   * URL에서 파일명을 추출하는 헬퍼 함수
+   *
+   * @param url - 파일 URL
+   * @returns 파일명
+   */
+  function getFileName(url: string): string {
+    try {
+      const urlObj = new URL(url);
+      const pathname = urlObj.pathname;
+      const fileName = pathname.split("/").pop();
+      return fileName || "file";
+    } catch (error) {
+      return "file";
     }
   }
 </script>
@@ -288,16 +356,57 @@
   <!-- 댓글 내용 -->
   <p class="comment-content">{comment.content}</p>
 
+  <!-- 첨부 파일 미리보기 영역: 댓글 내용 아래, 액션 버튼 위에 표시 -->
+  {#if comment.urls && comment.urls.length > 0}
+    <div class="comment-files-preview">
+      {#each comment.urls as url (url)}
+        {#if isImageFile(url)}
+          <!-- 이미지 파일: 미리보기 표시 -->
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="file-item image-item"
+          >
+            <img src={url} alt="첨부 이미지" class="file-image" />
+          </a>
+        {:else if isVideoFile(url)}
+          <!-- 동영상 파일: video 태그로 재생 -->
+          <div class="file-item video-item">
+            <video src={url} controls class="file-video">
+              <track kind="captions" />
+              브라우저가 비디오를 지원하지 않습니다.
+            </video>
+          </div>
+        {:else}
+          <!-- 기타 파일: 다운로드 링크 -->
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="file-item download-item"
+          >
+            <div class="file-icon">📎</div>
+            <div class="file-name">{getFileName(url)}</div>
+          </a>
+        {/if}
+      {/each}
+    </div>
+  {/if}
+
   <!-- 댓글 액션 버튼 영역 -->
   <div class="comment-actions">
     <!-- 좋아요 버튼 -->
     {#if userId}
       <button
-        class="action-button like-button {($myLikeStore?.data ?? 0) >= 1 ? 'liked' : ''}"
+        class="action-button like-button {($myLikeStore?.data ?? 0) >= 1
+          ? 'liked'
+          : ''}"
         onclick={handleLike}
         title={$t("좋아요")}
       >
-        <span class="emoji">{($myLikeStore?.data ?? 0) >= 1 ? "❤️" : "🤍"}</span>
+        <span class="emoji">{($myLikeStore?.data ?? 0) >= 1 ? "❤️" : "🤍"}</span
+        >
         <span class="text">{$t("좋아요")}</span>
         {#if comment.likeCount > 0}
           <span class="count">{comment.likeCount}</span>
@@ -315,14 +424,22 @@
 
     <!-- 수정 버튼 (작성자만 표시, 아이콘만) -->
     {#if userId && userId === comment.uid}
-      <button class="action-button edit-button" onclick={handleEditClick} title={$t("수정")}>
+      <button
+        class="action-button edit-button"
+        onclick={handleEditClick}
+        title={$t("수정")}
+      >
         <Pencil size={14} />
       </button>
     {/if}
 
     <!-- 삭제 버튼 (작성자만 표시, 아이콘만) -->
     {#if userId && userId === comment.uid}
-      <button class="action-button delete-button" onclick={handleDeleteClick} title={$t("삭제")}>
+      <button
+        class="action-button delete-button"
+        onclick={handleDeleteClick}
+        title={$t("삭제")}
+      >
         <Trash2 size={14} />
       </button>
     {/if}
@@ -347,34 +464,36 @@
           rows="5"
           autofocus
         ></textarea>
-
-        <!-- 파일 업로드 트리거 -->
-        <div class="file-upload-section">
-          <file-upload-trigger
-            id="comment-reply-{comment.commentId}"
-            category="comments"
-            multiple="true"
-            buttonText={$t("이미지첨부")}
-          ></file-upload-trigger>
-        </div>
-
-        <!-- 파일 목록 -->
-        <file-upload-list id="comment-reply-{comment.commentId}"></file-upload-list>
       </div>
 
-      <!-- 모달 푸터 -->
+      <!-- 모달 푸터 (이미지 업로드 버튼 + 취소/전송 버튼) -->
       <div class="modal-footer">
-        <button class="btn-cancel" onclick={handleReplyCancel}>
-          {$t("취소")}
-        </button>
-        <button
-          class="btn-submit"
-          onclick={handleReplySubmit}
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? $t("전송중") : $t("전송")}
-        </button>
+        <!-- 이미지 업로드 버튼 (왼쪽) -->
+        <file-upload-trigger
+          id="comment-reply-{comment.commentId}"
+          category="comments"
+          multiple="true"
+          buttonText={$t("이미지첨부")}
+        ></file-upload-trigger>
+
+        <!-- 취소/전송 버튼 그룹 (오른쪽) -->
+        <div class="button-group">
+          <button class="btn-cancel" onclick={handleReplyCancel}>
+            {$t("취소")}
+          </button>
+          <button
+            class="btn-submit"
+            onclick={handleReplySubmit}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? $t("전송중") : $t("전송")}
+          </button>
+        </div>
       </div>
+
+      <!-- 파일 목록 (모달 푸터 아래) -->
+      <file-upload-list id="comment-reply-{comment.commentId}"
+      ></file-upload-list>
     </div>
   </div>
 {/if}
@@ -397,37 +516,38 @@
           rows="5"
           autofocus
         ></textarea>
-
-        <!-- 파일 업로드 트리거 -->
-        <div class="file-upload-section">
-          <file-upload-trigger
-            id="comment-edit-{comment.commentId}"
-            category="comments"
-            multiple="true"
-            buttonText={$t("이미지첨부")}
-          ></file-upload-trigger>
-        </div>
-
-        <!-- 파일 목록 -->
-        <file-upload-list
-          id="comment-edit-{comment.commentId}"
-          initial-urls={JSON.stringify(comment.urls || [])}
-        ></file-upload-list>
       </div>
 
-      <!-- 모달 푸터 -->
+      <!-- 모달 푸터 (이미지 업로드 버튼 + 취소/수정 버튼) -->
       <div class="modal-footer">
-        <button class="btn-cancel" onclick={handleEditCancel}>
-          {$t("취소")}
-        </button>
-        <button
-          class="btn-submit"
-          onclick={handleEditSubmit}
-          disabled={isEditSubmitting}
-        >
-          {isEditSubmitting ? $t("수정중") : $t("수정")}
-        </button>
+        <!-- 이미지 업로드 버튼 (왼쪽) -->
+        <file-upload-trigger
+          id="comment-edit-{comment.commentId}"
+          category="comments"
+          multiple="true"
+          buttonText={$t("이미지첨부")}
+        ></file-upload-trigger>
+
+        <!-- 취소/수정 버튼 그룹 (오른쪽) -->
+        <div class="button-group">
+          <button class="btn-cancel" onclick={handleEditCancel}>
+            {$t("취소")}
+          </button>
+          <button
+            class="btn-submit"
+            onclick={handleEditSubmit}
+            disabled={isEditSubmitting}
+          >
+            {isEditSubmitting ? $t("수정중") : $t("수정")}
+          </button>
+        </div>
       </div>
+
+      <!-- 파일 목록 (모달 푸터 아래) -->
+      <file-upload-list
+        id="comment-edit-{comment.commentId}"
+        initial-urls={JSON.stringify(comment.urls || [])}
+      ></file-upload-list>
     </div>
   </div>
 {/if}
@@ -440,8 +560,12 @@
     title={$t("알림")}
     message={alertMessage}
     confirmText={$t("확인")}
-    onconfirm={() => { isAlertDialogOpen = false; }}
-    onclose={() => { isAlertDialogOpen = false; }}
+    onconfirm={() => {
+      isAlertDialogOpen = false;
+    }}
+    onclose={() => {
+      isAlertDialogOpen = false;
+    }}
   />
 {/if}
 
@@ -643,7 +767,9 @@
   .modal {
     background-color: #ffffff;
     border-radius: 0.5rem;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    box-shadow:
+      0 20px 25px -5px rgba(0, 0, 0, 0.1),
+      0 10px 10px -5px rgba(0, 0, 0, 0.04);
     max-width: 500px;
     width: 90%;
     max-height: calc(100vh - 2rem); /* 상하 여백을 고려한 최대 높이 */
@@ -714,10 +840,18 @@
   .modal-footer {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
-    gap: 0.75rem;
+    justify-content: space-between; /* 왼쪽(이미지 버튼)/오른쪽(취소/전송) 배치 */
+    gap: 1rem;
     padding: 1rem 1.5rem;
     border-top: 1px solid #e5e7eb;
+  }
+
+  /* 취소/전송 버튼 그룹 */
+  .button-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-left: auto; /* 오른쪽 정렬 */
   }
 
   /* 취소 버튼 */
@@ -758,5 +892,99 @@
   .btn-submit:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+  }
+
+  /* === 댓글 첨부 파일 미리보기 스타일 === */
+
+  /* 파일 미리보기 컨테이너: 그리드 레이아웃 (반응형, 게시글보다 작게) */
+  .comment-files-preview {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+    gap: 0.5rem;
+    margin: 0.5rem 0;
+    padding: 0.5rem;
+    background-color: #f0f0f0;
+    border-radius: 0.375rem;
+    border: 1px solid #e5e7eb;
+  }
+
+  /* 개별 파일 아이템 (이미지, 동영상, 다운로드) */
+  .comment-files-preview .file-item {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 0.25rem;
+    overflow: hidden;
+    background-color: #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    transition: all 0.2s ease;
+  }
+
+  /* 이미지 아이템 */
+  .comment-files-preview .file-item.image-item:hover {
+    transform: scale(1.08);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  }
+
+  /* 이미지 */
+  .comment-files-preview .file-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* 동영상 */
+  .comment-files-preview .file-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 0.25rem;
+  }
+
+  /* 동영상 아이템 */
+  .comment-files-preview .file-item.video-item {
+    background-color: #000000;
+  }
+
+  /* 다운로드 아이템 */
+  .comment-files-preview .file-item.download-item {
+    flex-direction: column;
+    padding: 0.375rem;
+    background-color: #ffffff;
+    border: 1px solid #d1d5db;
+    gap: 0.2rem;
+  }
+
+  .comment-files-preview .file-item.download-item:hover {
+    background-color: #f9fafb;
+    border-color: #3b82f6;
+    transform: translateY(-2px);
+    box-shadow: 0 3px 6px rgba(59, 130, 246, 0.2);
+  }
+
+  /* 파일 아이콘 (다운로드용, 댓글은 게시글보다 작게) */
+  .comment-files-preview .file-icon {
+    font-size: 1.5rem;
+    opacity: 0.5;
+  }
+
+  /* 파일명 (다운로드용, 댓글은 게시글보다 작게) */
+  .comment-files-preview .file-name {
+    font-size: 0.6rem;
+    color: #6b7280;
+    text-align: center;
+    word-break: break-all;
+    line-height: 1.2;
+    max-height: 2.4em;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .comment-files-preview .file-item.download-item:hover .file-name {
+    color: #3b82f6;
   }
 </style>

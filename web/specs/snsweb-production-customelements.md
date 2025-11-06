@@ -1099,4 +1099,165 @@ Firebase Console에서 자주 쿼리하는 필드에 인덱스를 추가합니�
 
 ---
 
+# UI 컴포넌트 가이드
+
+이 섹션에서는 프로젝트에서 사용하는 주요 UI 컴포넌트들의 사용법과 특징을 설명합니다.
+
+---
+
+## AlertDialog 컴포넌트
+
+`AlertDialog`는 사용자에게 알림 메시지를 표시하는 모달 다이얼로그 컴포넌트입니다.
+
+### 주요 특징
+
+- ✅ **Portal 기반 렌더링**: 항상 `document.body`에 직접 렌더링되어 전체 화면 기준으로 정중앙에 표시됩니다
+- ✅ **부모 요소 독립성**: 부모 요소의 `overflow`, `position`, `z-index` 설정에 영향받지 않습니다
+- ✅ **4가지 타입 지원**: `success`, `error`, `info`, `warning`
+- ✅ **커스터마이징 가능**: 제목, 메시지, 버튼 텍스트 모두 변경 가능
+- ✅ **이벤트 발생**: `confirm`, `close` 커스텀 이벤트 디스패치
+- ✅ **접근성**: `role="alertdialog"`, `aria-modal="true"` 등 ARIA 속성 지원
+
+### Portal을 사용하는 이유
+
+AlertDialog는 **반드시 Portal을 사용하여 `document.body`에 직접 렌더링**됩니다. 이는 다음과 같은 이유 때문입니다:
+
+1. **전체 화면 표시 보장**: 부모 요소의 `overflow: hidden` 설정으로 인한 잘림 현상 방지
+2. **정확한 중앙 정렬**: 뷰포트 전체를 기준으로 정중앙 배치
+3. **z-index 충돌 방지**: 부모 요소의 `z-index` 컨텍스트에서 독립
+4. **일관된 UX**: 어디서 호출하든 항상 동일한 위치와 크기로 표시
+
+### Portal 구현 방식
+
+AlertDialog는 Svelte 5의 `$effect`와 `bind:this`를 사용하여 Portal을 구현합니다:
+
+```javascript
+// 내부 구현 (참고용)
+let backdropElement: HTMLDivElement | null = null;
+
+$effect(() => {
+  if (isOpen && backdropElement) {
+    // backdrop 요소를 body의 최상위로 이동
+    document.body.appendChild(backdropElement);
+
+    // 클린업: 컴포넌트 언마운트 시 또는 닫힐 때 제거
+    return () => {
+      if (backdropElement && document.body.contains(backdropElement)) {
+        document.body.removeChild(backdropElement);
+      }
+    };
+  }
+});
+```
+
+### 사용 예시
+
+#### 기본 사용법
+
+```svelte
+<script>
+  let showDialog = $state(false);
+
+  function openDialog() {
+    showDialog = true;
+  }
+
+  function handleConfirm() {
+    console.log('확인 버튼 클릭');
+    showDialog = false;
+  }
+
+  function handleClose() {
+    console.log('다이얼로그 닫기');
+    showDialog = false;
+  }
+</script>
+
+<button onclick={openDialog}>알림 표시</button>
+
+<alert-dialog
+  open={showDialog ? 'true' : 'false'}
+  type="error"
+  title="오류"
+  message="댓글이 있어 수정할 수 없습니다."
+  confirmText="확인"
+  onconfirm={handleConfirm}
+  onclose={handleClose}
+></alert-dialog>
+```
+
+#### 이벤트 리스너 방식 (일반 HTML/JavaScript)
+
+```html
+<alert-dialog
+  id="myAlert"
+  open="true"
+  type="success"
+  title="성공"
+  message="작업이 완료되었습니다."
+></alert-dialog>
+
+<script>
+  const dialog = document.querySelector('#myAlert');
+
+  dialog.addEventListener('confirm', (e) => {
+    console.log('확인 버튼 클릭');
+    dialog.setAttribute('open', 'false');
+  });
+
+  dialog.addEventListener('close', (e) => {
+    console.log('다이얼로그 닫기');
+    dialog.setAttribute('open', 'false');
+  });
+</script>
+```
+
+### Props
+
+| Prop | 타입 | 기본값 | 설명 |
+|------|------|--------|------|
+| `open` | `string` | `'false'` | 다이얼로그 표시 여부 (`'true'` 또는 `'false'`) |
+| `type` | `'success' \| 'error' \| 'info' \| 'warning'` | `'info'` | 알림 타입 (색상과 아이콘 변경) |
+| `title` | `string` | `''` | 다이얼로그 제목 |
+| `message` | `string` | `''` | 다이얼로그 내용 |
+| `confirmText` | `string` | `'확인'` | 확인 버튼 텍스트 |
+| `onconfirm` | `() => void` | `undefined` | 확인 버튼 클릭 시 콜백 (Svelte 컴포넌트용) |
+| `onclose` | `() => void` | `undefined` | 다이얼로그 닫기 시 콜백 (Svelte 컴포넌트용) |
+
+### 이벤트
+
+| 이벤트 | 타입 | 설명 |
+|-------|------|------|
+| `confirm` | `CustomEvent` | 확인 버튼 클릭 시 발생 |
+| `close` | `CustomEvent` | 다이얼로그 닫기 시 발생 (배경 클릭, X 버튼 클릭) |
+
+### 타입별 스타일
+
+- **success**: 녹색 아이콘 + 녹색 버튼 (작업 성공)
+- **error**: 빨간색 아이콘 + 빨간색 버튼 (오류 발생)
+- **info**: 파란색 아이콘 + 파란색 버튼 (정보 안내)
+- **warning**: 노란색 아이콘 + 노란색 버튼 (경고 메시지)
+
+### 접근성
+
+- `role="alertdialog"`: 스크린 리더가 알림 다이얼로그로 인식
+- `aria-modal="true"`: 모달 다이얼로그임을 명시
+- `aria-labelledby="alert-title"`: 제목과 연결
+- `aria-describedby="alert-message"`: 메시지와 연결
+- 닫기 버튼에 `aria-label="닫기"` 추가
+
+### 주의사항
+
+- ⚠️ `open` prop은 **문자열**로 전달됩니다 (`'true'` 또는 `'false'`)
+- ⚠️ Portal로 인해 AlertDialog는 항상 `document.body`의 자식으로 렌더링됩니다
+- ⚠️ 배경 클릭 시 자동으로 닫히므로, 중요한 확인이 필요한 경우 배경 클릭 핸들러를 수정해야 할 수 있습니다
+- ✅ 여러 AlertDialog를 동시에 열 수 있지만, 가독성을 위해 한 번에 하나만 표시하는 것을 권장합니다
+
+### 참고 파일
+
+- 구현: [src/lib/components/AlertDialog.wc.svelte](../src/lib/components/AlertDialog.wc.svelte)
+- 사용 예시: 댓글 수정 시 하위 댓글 존재 여부 확인
+
+---
+
 # Svelte 커스텀 엘리먼트 개발 규칙

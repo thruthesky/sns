@@ -37,6 +37,10 @@
   } from '$lib/services/fileUploadState';
   import { t } from '$lib/stores/i18n';
   import { login } from '$lib/utils/firebase-login-user.svelte';
+  import {
+    validateFile,
+    ACCEPT_STRING,
+  } from '$lib/services/fileValidation';
 
   /**
    * Props (HTML 속성은 항상 문자열로 전달됨)
@@ -105,12 +109,26 @@
       return;
     }
 
+    // 파일 검증
+    const filesArray = Array.from(files);
+    for (const file of filesArray) {
+      const validation = validateFile(file);
+      if (!validation.valid) {
+        alert(validation.error);
+        // 파일 입력 초기화
+        if (input) {
+          input.value = '';
+        }
+        return;
+      }
+    }
+
     // 파일 업로드 시작
     isUploading = true;
 
     try {
       // 선택한 모든 파일 업로드
-      const uploadPromises = Array.from(files).map((file) =>
+      const uploadPromises = filesArray.map((file) =>
         uploadSingleFile(file)
       );
 
@@ -171,7 +189,7 @@
     type="file"
     bind:this={fileInput}
     onchange={handleFileChange}
-    accept="image/jpeg,image/png,image/webp"
+    accept={ACCEPT_STRING}
     multiple={isMultiple}
     style="display: none;"
     aria-label={displayButtonText}

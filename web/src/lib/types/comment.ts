@@ -21,6 +21,7 @@ export interface Comment {
   commentCount: number; // 자식 댓글(대댓글) 개수 (Cloud Functions에서 자동 관리)
   createdAt: Timestamp;
   updatedAt: Timestamp;
+  urls?: string[]; // 첨부 파일 URL 목록 (선택)
 }
 
 /**
@@ -47,6 +48,14 @@ export interface CreateChildCommentParams {
   parentCommentId: FirebaseKey;
   userId: UserId;
   content: string;
+  urls?: string[]; // 첨부 파일 URL 목록 (선택)
+}
+
+/**
+ * 댓글 수정 파라미터
+ */
+export interface UpdateCommentParams {
+  content?: string;
   urls?: string[]; // 첨부 파일 URL 목록 (선택)
 }
 
