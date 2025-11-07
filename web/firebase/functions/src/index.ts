@@ -22,6 +22,7 @@ import {PostData, CommentData, UserData} from "./types";
 import {handlePostCreate, handlePostDelete} from "./handlers/post.handler";
 import {handleCommentCreate, handleCommentDelete} from "./handlers/comment.handler";
 import {handleLikeCreate, handleLikeCancel} from "./handlers/like.handler";
+import {handleReportCreate, handleReportDelete} from "./handlers/report.handler";
 import {handleUserCreate} from "./handlers/user.handler";
 
 // Firebase Admin 초기화
@@ -179,6 +180,58 @@ export const onCancelLike = onValueDeleted("/likes/{likeId}", async (event) => {
 
   // 비즈니스 로직 핸들러 호출
   return await handleLikeCancel(likeId);
+});
+
+/**
+ * 신고 추가 시 게시글 또는 댓글의 reportCount 자동 업데이트 (Flat Style)
+ *
+ * 트리거 경로: /reports/{reportId}
+ *   - reportId 형식: "post-<post-id>-<uid>" 또는 "comment-<comment-id>-<uid>"
+ *   - 예: "post-abc123-user456", "comment-xyz789-user456"
+ *
+ * 업데이트 경로: /posts/{postId}/reportCount 또는 /comments/{commentId}/reportCount
+ *
+ * 동작 방식:
+ * 1. 사용자가 신고를 하면 /reports/{type}-{nodeId}-{uid}에 신고 데이터 저장
+ * 2. 이 함수가 자동으로 트리거됨
+ * 3. reportId를 파싱하여 타입(post/comment)과 nodeId 추출
+ * 4. increment(1)을 사용하여 게시글/댓글의 reportCount 1 증가
+ * 5. /stats/counters/report 전체 신고 통계 1 증가
+ * 6. 모든 자식 노드를 읽지 않으므로 효율적이고 동시성 안전함
+ */
+export const onReportCreate = onValueCreated("/reports/{reportId}", async (event) => {
+  const reportId = event.params.reportId as string;
+
+  logger.info("신고 추가 감지 (통합 신고)", {reportId});
+
+  // 비즈니스 로직 핸들러 호출
+  return await handleReportCreate(reportId);
+});
+
+/**
+ * 신고 취소 시 게시글 또는 댓글의 reportCount 자동 감소 (Flat Style)
+ *
+ * 트리거 경로: /reports/{reportId}
+ *   - reportId 형식: "post-<post-id>-<uid>" 또는 "comment-<comment-id>-<uid>"
+ *   - 예: "post-abc123-user456", "comment-xyz789-user456"
+ *
+ * 업데이트 경로: /posts/{postId}/reportCount 또는 /comments/{commentId}/reportCount
+ *
+ * 동작 방식:
+ * 1. 사용자가 신고를 취소하면 /reports/{type}-{nodeId}-{uid}가 삭제됨
+ * 2. 이 함수가 자동으로 트리거됨
+ * 3. reportId를 파싱하여 타입(post/comment)과 nodeId 추출
+ * 4. increment(-1)을 사용하여 게시글/댓글의 reportCount 1 감소
+ * 5. /stats/counters/report 전체 신고 통계 1 감소
+ * 6. 모든 자식 노드를 읽지 않으므로 효율적이고 동시성 안전함
+ */
+export const onReportDelete = onValueDeleted("/reports/{reportId}", async (event) => {
+  const reportId = event.params.reportId as string;
+
+  logger.info("신고 취소 감지 (통합 신고)", {reportId});
+
+  // 비즈니스 로직 핸들러 호출
+  return await handleReportDelete(reportId);
 });
 
 /**

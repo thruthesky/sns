@@ -9,16 +9,19 @@
   import { auth } from "../lib/utils/firebase.js";
   import { createPost } from "../lib/services/forum.js";
   import { POST_CATEGORIES } from "../lib/types/category";
-  import { setPageTitle } from "../lib/stores/pageTitle.ts";
-  import { showToast } from "../lib/stores/toast.ts";
-  import { t } from "../lib/stores/i18n.ts";
+  import { setPageTitle } from "../lib/stores/pageTitle";
+  import { showToast } from "../lib/stores/toast";
+  import { t } from "../lib/stores/i18n";
   import DatabaseListView from "../lib/components/DatabaseListView.svelte";
   import PostItem from "./PostItem.svelte";
   import type { PostCategory } from "../lib/types/post";
   // 파일 업로드 웹 컴포넌트 및 상태 관리 import
-  import '../lib/components/FileUploadTrigger.wc.svelte';
-  import '../lib/components/FileUploadList.wc.svelte';
-  import { getUploadedUrls, destroyUploader } from '../lib/services/fileUploadState';
+  import "../lib/components/FileUploadTrigger.wc.svelte";
+  import "../lib/components/FileUploadList.wc.svelte";
+  import {
+    getUploadedUrls,
+    destroyUploader,
+  } from "../lib/services/fileUploadState";
 
   // 인증 상태
   let userId = $state<string | null>(null);
@@ -93,7 +96,7 @@
    */
   function handleCancel() {
     // 파일 업로드 상태 정리
-    destroyUploader('post-create');
+    destroyUploader("post-create");
 
     isDialogOpen = false;
     postCategory = "";
@@ -132,9 +135,12 @@
     try {
       // 3. 업로드된 파일 URL 목록 가져오기 (fileUploadState에서 직접 가져오기)
       // Portal 사용으로 인해 DOM querySelector가 실패할 수 있으므로, 상태에서 직접 가져옵니다.
-      const urls = getUploadedUrls('post-create');
-      console.log('[PostListPage] 업로드된 파일 URLs (fileUploadState):', urls);
-      console.log('[PostListPage] createPost 호출 - urls 파라미터:', urls.length > 0 ? urls : undefined);
+      const urls = getUploadedUrls("post-create");
+      console.log("[PostListPage] 업로드된 파일 URLs (fileUploadState):", urls);
+      console.log(
+        "[PostListPage] createPost 호출 - urls 파라미터:",
+        urls.length > 0 ? urls : undefined
+      );
 
       // 4. Firebase RTDB에 게시글 저장 (파일 URL 포함)
       const result = await createPost(
@@ -148,7 +154,7 @@
 
       if (result.success) {
         // 5. 파일 업로드 상태 정리
-        destroyUploader('post-create');
+        destroyUploader("post-create");
 
         // 6. 모달 닫기 및 초기화
         isDialogOpen = false;
@@ -816,17 +822,18 @@
 
   /* 모바일 최적화: 화면 너비 640px 이하 */
   @media (max-width: 640px) {
-    /* 컨테이너 패딩 최소화 */
+    /* 컨테이너 패딩 최소화: 좌우 여백 0으로 설정 */
     .post-list-container {
-      padding: 1rem 0.75rem 1.5rem;
+      padding: 1rem 0 1.5rem;
       gap: 0.875rem;
     }
 
     /* 도구 모음 압축: 카테고리 탭과 글쓰기 버튼이 같은 줄에 표시 */
     .toolbar {
-      padding: 0.75rem 0.75rem;
+      padding: 0.75rem 0.5rem;
       gap: 0.5rem;
       align-items: stretch;
+      border-radius: 0; /* 모바일에서는 전체 너비 사용을 위해 border-radius 제거 */
     }
 
     /* 왼쪽 도구 모음 영역: 남은 공간을 모두 차지하여 카테고리 탭 확장 */
@@ -857,7 +864,7 @@
   /* 매우 작은 화면: 480px 이하 */
   @media (max-width: 480px) {
     .post-list-container {
-      padding: 0.875rem 0.5rem 1.25rem;
+      padding: 0.875rem 0 1.25rem;
       gap: 0.75rem;
     }
 
@@ -866,6 +873,7 @@
       padding: 0.625rem 0.5rem;
       gap: 0.4rem;
       align-items: stretch;
+      border-radius: 0; /* 모바일에서는 전체 너비 사용을 위해 border-radius 제거 */
     }
 
     /* 왼쪽 도구 모음: flex 1로 확장하여 글쓰기 버튼 우측 배치 */

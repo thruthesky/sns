@@ -14,8 +14,11 @@
     deleteComment,
   } from "../lib/services/comment.js";
   import { toggleLike } from "../lib/services/like.js";
+  import { addReport, removeReport, checkReportStatus } from "../lib/services/report.js";
   import { showToast } from "../lib/stores/toast";
+  import { onMount } from "svelte";
   import { Pencil, Trash2 } from "lucide-svelte";
+  import ReportModal from "../lib/components/ReportModal.svelte";
   // 파일 업로드 웹 컴포넌트 및 상태 관리 import
   import "../lib/components/FileUploadTrigger.wc.svelte";
   import "../lib/components/FileUploadList.wc.svelte";
@@ -57,6 +60,10 @@
   // 경고 알림 다이얼로그 상태 관리
   let isAlertDialogOpen = $state(false);
   let alertMessage = $state("");
+
+  // 신고 모달 상태 관리
+  let isReported = $state(false); // 현재 사용자가 이미 신고했는지 여부
+  let showReportModal = $state(false); // 신고 모달 표시 여부
 
   /**
    * 좋아요 버튼 클릭 핸들러 (토글 방식)
@@ -319,6 +326,111 @@
       return "file";
     }
   }
+
+  /**
+   * 컴포넌트 마운트 시 신고 상태 확인
+   */
+  onMount(() => {
+    // 신고 상태 확인 (로그인한 경우에만)
+    if (userId) {
+      checkReportStatus("comment", comment.commentId, userId).then((status) => {
+        isReported = status.isReported;
+      });
+    }
+  });
+
+  /**
+   * 신고 버튼 클릭 핸들러
+   * 로그인 여부 확인 후, 이미 신고했으면 취소 확인, 아니면 모달 표시
+   */
+  function handleReportClick() {
+    // 1. 로그인 확인
+    if (!userId) {
+      alert($t("로그인필요"));
+      window.location.href = "/user/login";
+      return;
+    }
+
+    // 2. 이미 신고한 경우: 신고 취소 확인
+    if (isReported) {
+      if (confirm($t("신고를취소하시겠습니까"))) {
+        handleReportRemove();
+      }
+    } else {
+      // 3. 신고하지 않은 경우: 신고 모달 표시
+      showReportModal = true;
+    }
+  }
+
+  /**
+   * 신고 제출 핸들러
+   * ReportModal에서 사유와 메시지를 받아 Firebase에 저장
+   *
+   * @param reason - 신고 사유 ('abuse', 'fake-news', 'spam', 'inappropriate', 'other')
+   * @param message - 상세 메시지 (선택 사항)
+   */
+  async function handleReportSubmit(reason: string, message: string) {
+    // 1. 로그인 확인 (이중 체크)
+    if (!userId) {
+      showToast($t("로그인필요"), "error");
+      return;
+    }
+
+    try {
+      // 2. Firebase에 신고 추가
+      const result = await addReport("comment", comment.commentId, userId, reason as any, message);
+
+      // 3. 결과 처리
+      if (result.success) {
+        showToast($t("신고가접수되었습니다"), "success");
+        isReported = true;
+        showReportModal = false;
+      } else {
+        // result.error는 i18n 키
+        showToast($t(result.error || "error.unknown"), "error");
+      }
+    } catch (error) {
+      console.error("신고 추가 오류:", error);
+      showToast($t("error.unknown"), "error");
+    }
+  }
+
+  /**
+   * 신고 취소 핸들러
+   * Firebase에서 신고 데이터 삭제
+   */
+  async function handleReportRemove() {
+    // 1. 로그인 확인 (이중 체크)
+    if (!userId) {
+      showToast($t("로그인필요"), "error");
+      return;
+    }
+
+    try {
+      // 2. Firebase에서 신고 삭제
+      const result = await removeReport("comment", comment.commentId, userId);
+
+      // 3. 결과 처리
+      if (result.success) {
+        showToast($t("신고가취소되었습니다"), "success");
+        isReported = false;
+      } else {
+        // result.error는 i18n 키
+        showToast($t(result.error || "error.unknown"), "error");
+      }
+    } catch (error) {
+      console.error("신고 취소 오류:", error);
+      showToast($t("error.unknown"), "error");
+    }
+  }
+
+  /**
+   * 신고 모달 취소 핸들러
+   * 모달만 닫음
+   */
+  function handleReportCancel() {
+    showReportModal = false;
+  }
 </script>
 
 <div
@@ -419,6 +531,18 @@
       <button class="action-button reply-button" onclick={handleReplyClick}>
         <span class="emoji">💬</span>
         <span class="text">{$t("답글")}</span>
+      </button>
+    {/if}
+
+    <!-- 신고 버튼 -->
+    {#if userId}
+      <button
+        class="action-button report-button {isReported ? 'reported' : ''}"
+        onclick={handleReportClick}
+        title={$t("신고")}
+      >
+        <span class="emoji">{isReported ? "🚩" : "🚨"}</span>
+        <span class="text">{$t("신고")}</span>
       </button>
     {/if}
 
@@ -569,6 +693,14 @@
   />
 {/if}
 
+<!-- 신고 모달 다이얼로그 -->
+<ReportModal
+  bind:show={showReportModal}
+  type="comment"
+  onSubmit={handleReportSubmit}
+  onCancel={handleReportCancel}
+/>
+
 <style>
   /* 댓글 아이템 */
   .comment-item {
@@ -678,10 +810,11 @@
     font-size: 0.75rem;
   }
 
-  /* 모바일에서 좋아요/답글 버튼의 이모지 숨기기 */
+  /* 모바일에서 좋아요/답글/신고 버튼의 이모지 숨기기 */
   @media (max-width: 768px) {
     .like-button .emoji,
-    .reply-button .emoji {
+    .reply-button .emoji,
+    .report-button .emoji {
       display: none;
     }
   }
@@ -716,6 +849,28 @@
   .reply-button:hover {
     background-color: #dbeafe;
     color: #2563eb;
+  }
+
+  /* 신고 버튼 */
+  .report-button {
+    color: #6b7280;
+  }
+
+  .report-button:hover {
+    background-color: #fef3c7;
+    color: #d97706;
+  }
+
+  /* 신고한 버튼 강조 표시 */
+  .report-button.reported {
+    background-color: #fef3c7;
+    color: #d97706;
+    font-weight: 600;
+  }
+
+  .report-button.reported:hover {
+    background-color: #fde68a;
+    color: #b45309;
   }
 
   /* 수정 버튼 (아이콘만 표시, 오른쪽 정렬) */

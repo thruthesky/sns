@@ -18,6 +18,7 @@
   import PostDetail from "./PostDetail.svelte";
   import ChatList from "./ChatList.svelte";
   import Settings from "./Settings.svelte";
+  import AdminPage from "./AdminPage.svelte";
   import About from "./About.svelte";
   import Help from "./Help.svelte";
   import Terms from "./Terms.svelte";
@@ -26,6 +27,8 @@
   import GenerateTestPosts from "./GenerateTestPosts.svelte";
   import DevHistory from "./DevHistory.svelte";
   import DevSed from "./DevSed.svelte";
+  import AdminReportListPage from "./AdminReportListPage.svelte";
+  import MyReportListPage from "./MyReportListPage.svelte";
   import Toast from "../lib/components/Toast.svelte";
   import RightSidebar from "./RightSidebar.svelte";
 
@@ -73,6 +76,15 @@
     {:else if currentPath === "/settings"}
       <!-- 설정 페이지 -->
       <Settings />
+    {:else if currentPath === "/admin"}
+      <!-- 관리자 페이지 -->
+      <AdminPage />
+    {:else if currentPath === "/admin/reports"}
+      <!-- 관리자 신고 목록 페이지 -->
+      <AdminReportListPage />
+    {:else if currentPath === "/my/reports"}
+      <!-- 내 신고 목록 페이지 -->
+      <MyReportListPage />
     {:else if currentPath === "/about"}
       <!-- 앱 정보 페이지 -->
       <About />
@@ -125,6 +137,13 @@
   @media (max-width: 1024px) {
     .content-with-sidebar {
       padding-right: 20px;
+    }
+  }
+
+  /* 모바일 화면 (768px 이하): 좌우 여백 최소화 */
+  @media (max-width: 768px) {
+    .content-with-sidebar {
+      padding: 0;
     }
   }
 </style>

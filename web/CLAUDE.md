@@ -12,7 +12,11 @@ SNS 개발 지침
 이를 통해 CLAUDE.md는 간결하게 유지하고, 상세한 정보는 각 주제별 문서에서 확인할 수 있습니다.
 
 # 워크플로우
-- [ ] **🔥 필수: 모든 개발 작업 전에 [specs/snsweb-index.md](specs/snsweb-index.md) 문서를 먼저 확인해야 합니다.** 이 문서는 모든 개발 문서의 색인이며, 필요한 문서 또는 기술 내용을 찾기 위한 중앙 참조점입니다.
+- [ ] **🔥 필수: 모든 개발 작업 전에 [specs/index.md](specs/index.md) 문서를 먼저 확인해야 합니다.** 이 문서는 모든 개발 문서의 색인이며, 필요한 문서 또는 기술 내용을 찾기 위한 중앙 참조점입니다.
+- [ ] **🔥 필수: [specs/instructions.md](specs/instructions.md) 문서를 반드시 참고해야 합니다.** 이 문서는 SED (Spec-Exact Development)의 핵심 지침을 포함하고 있으며, 각 spec 파일을 어떻게 활용해야 하는지에 대한 상세한 설명이 있습니다.
+  - [ ] Index-Driven Development: index.md를 먼저 읽고, 관련 문서를 식별하고, workflow를 따르는 원칙
+  - [ ] Dependency Resolution: YAML 헤더 파싱, dependencies 로드, step 기반 실행 순서
+  - [ ] Specification Obedience: AI가 사양서를 정확히 따라야 하는 원칙
 - [ ] 프로젝트 루트의 specs/ 폴더에 있는 관련 문서를 먼저 참고하여, 개발자에게 어떤 문서를 참고하는지 알려준다.
 - [ ] 각 문서에 명시된 워크플로를 준수해야 한다.
 - [ ] **Firebase Cloud Functions 개발** 시에는 반드시 다음 문서들을 참고해야 합니다:
@@ -224,16 +228,16 @@ MCP 는 컨텍스트 윈도우의 토큰 낭비로 인해, 필요한 경우에�
 
 # 개발 문서 레퍼런스 목록
 
-## 🔥 필수: 모든 개발 문서 색인은 [specs/snsweb-index.md](specs/snsweb-index.md)를 참조하세요
+## 🔥 필수: 모든 개발 문서 색인은 [specs/index.md](specs/index.md)를 참조하세요
 
-**[specs/snsweb-index.md](specs/snsweb-index.md) 문서는 다음을 포함합니다:**
+**[specs/index.md](specs/index.md) 문서는 다음을 포함합니다:**
 - ✅ 모든 개발 문서의 DTOC (Document Table of Contents) 표
 - ✅ 각 문서의 주요 주제 및 핵심 포인트 요약
 - ✅ 상황별 참고 문서 매핑 표
 - ✅ 개발 시작 시 권장 문서 읽기 순서
 - ✅ 문서 간 의존성 및 참조 관계
 
-**왜 snsweb-index.md를 사용해야 하나요?**
+**왜 index.md를 사용해야 하나요?**
 - 📖 모든 문서를 한눈에 파악할 수 있습니다
 - 🎯 필요한 문서를 빠르게 찾을 수 있습니다
 - 🔄 문서 업데이트 시 중앙에서 관리됩니다
@@ -243,7 +247,7 @@ MCP 는 컨텍스트 윈도우의 토큰 낭비로 인해, 필요한 경우에�
 
 ## 핵심 문서 빠른 참조
 
-아래는 가장 자주 참조하는 핵심 문서들입니다. 상세한 목록은 **반드시** [specs/snsweb-index.md](specs/snsweb-index.md)를 확인하세요.
+아래는 가장 자주 참조하는 핵심 문서들입니다. 상세한 목록은 **반드시** [specs/index.md](specs/index.md)를 확인하세요.
 
 ### 📚 웹 개발 핵심 문서
 - **[specs/sns-custom-elements.md](specs/sns-custom-elements.md)** - Svelte Custom Elements 개발 (필수)
@@ -263,7 +267,7 @@ MCP 는 컨텍스트 윈도우의 토큰 낭비로 인해, 필요한 경우에�
 
 **모든 개발 문서의 전체 목록, 상세 설명, 참고 시점, 워크플로우 등은 아래 문서를 확인하세요:**
 
-### 🔥 [specs/snsweb-index.md](specs/snsweb-index.md) ← 모든 문서의 색인
+### 🔥 [specs/index.md](specs/index.md) ← 모든 문서의 색인
 
 이 문서는 다음을 포함합니다:
 - 전체 문서 DTOC 표 (주제, 핵심 포인트 요약)
@@ -289,6 +293,7 @@ MCP 는 컨텍스트 윈도우의 토큰 낭비로 인해, 필요한 경우에�
 - `/post/list` - 게시물 목록 페이지
 - `/post/detail/:id` - 게시물 상세 페이지 (`:id`는 게시물 고유 ID)
 - `/settings` - 설정 페이지
+- `/admin` - 관리자 페이지
 - `/about` - 앱 정보 페이지
 - `/help` - 도움말 페이지
 - `/terms` - 이용 약관 페이지

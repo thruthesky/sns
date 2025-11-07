@@ -128,32 +128,37 @@ dependencies: []
     - [order 필드 형식](#order-필드-형식)
     - [클라이언트/서버 역할 분리](#클라이언트서버-역할-분리-4)
     - [관련 가이드](#관련-가이드-4)
-  - [통계 (stats)](#통계-stats)
+  - [신고 (reports)](#신고-reports)
     - [데이터 구조](#데이터-구조-5)
+    - [특징](#특징-1)
+    - [클라이언트/서버 역할 분리](#클라이언트서버-역할-분리-5)
+    - [관련 가이드](#관련-가이드-5)
+  - [통계 (stats)](#통계-stats)
+    - [데이터 구조](#데이터-구조-6)
     - [동작 방식](#동작-방식)
       - [1. 게시글 생성 시 post 카운터 증가](#1-게시글-생성-시-post-카운터-증가)
       - [2. 게시글 삭제 시 post 카운터 감소](#2-게시글-삭제-시-post-카운터-감소)
       - [3. 댓글 생성 시 comment 카운터 증가](#3-댓글-생성-시-comment-카운터-증가)
       - [4. 댓글 삭제 시 comment 카운터 감소](#4-댓글-삭제-시-comment-카운터-감소)
-    - [클라이언트/서버 역할 분리](#클라이언트서버-역할-분리-5)
+    - [클라이언트/서버 역할 분리](#클라이언트서버-역할-분리-6)
     - [주의사항](#주의사항)
-    - [관련 가이드](#관련-가이드-5)
+    - [관련 가이드](#관련-가이드-6)
   - [카테고리 통계 (categories)](#카테고리-통계-categories)
-    - [데이터 구조](#데이터-구조-6)
+    - [데이터 구조](#데이터-구조-7)
     - [데이터 예시](#데이터-예시)
     - [Cloud Functions 동기화](#cloud-functions-동기화)
       - [1. 게시글 작성 시 postCount 증가](#1-게시글-작성-시-postcount-증가)
       - [2. 댓글 작성 시 commentCount 증가](#2-댓글-작성-시-commentcount-증가)
       - [3. 게시글 삭제 시 postCount 감소](#3-게시글-삭제-시-postcount-감소)
       - [4. 댓글 삭제 시 commentCount 감소](#4-댓글-삭제-시-commentcount-감소)
-    - [클라이언트/서버 역할 분리](#클라이언트서버-역할-분리-6)
-    - [주의사항](#주의사항-1)
-    - [관련 가이드](#관련-가이드-6)
-  - [친구 관계 (friends, followers, following)](#친구-관계-friends-followers-following)
-    - [데이터 구조](#데이터-구조-7)
-    - [설명](#설명)
     - [클라이언트/서버 역할 분리](#클라이언트서버-역할-분리-7)
+    - [주의사항](#주의사항-1)
     - [관련 가이드](#관련-가이드-7)
+  - [친구 관계 (friends, followers, following)](#친구-관계-friends-followers-following)
+    - [데이터 구조](#데이터-구조-8)
+    - [설명](#설명)
+    - [클라이언트/서버 역할 분리](#클라이언트서버-역할-분리-8)
+    - [관련 가이드](#관련-가이드-8)
   - [주요 설계 원칙](#주요-설계-원칙)
     - [1. Flat Style 구조](#1-flat-style-구조)
     - [2. 속성 분리](#2-속성-분리)
@@ -184,6 +189,7 @@ Firebase Realtime Database (루트)
 ├── posts/                    # 게시글
 ├── likes/                    # 게시글 및 댓글 좋아요 (통합)
 ├── comments/                 # 댓글
+├── reports/                  # 게시글 및 댓글 신고 (통합)
 ├── categories/               # 카테고리 통계 (Cloud Functions 관리)
 ├── friends/                  # 친구 관계
 ├── followers/                # 팔로워 (나를 팔로우하는 사용자)
@@ -330,7 +336,8 @@ Firebase Authentication의 다음 필드들은 `/users/<uid>` 노드에 **저장
     ├── createdAt: 1698473000000
     ├── updatedAt: 1698473000000
     ├── likeCount: 0  # Cloud Functions로 관리
-    └── commentCount: 0  # Cloud Functions로 관리
+    ├── commentCount: 0  # Cloud Functions로 관리
+    └── reportCount: 0  # Cloud Functions로 관리
 ```
 
 ### 카테고리
@@ -343,7 +350,7 @@ Firebase Authentication의 다음 필드들은 `/users/<uid>` 노드에 **저장
 
 게시글의 경우:
 - **클라이언트는** `uid`, `title`, `content`, `author`, `category`, `order`, `createdAt`, `updatedAt` 를 저장할 수 있고,
-- **서버는** `likeCount`, `commentCount` 만 저장할 수 있습니다. (Cloud Functions가 자동으로 관리)
+- **서버는** `likeCount`, `commentCount`, `reportCount` 만 저장할 수 있습니다. (Cloud Functions가 자동으로 관리)
 
 ### 관련 가이드
 
@@ -414,6 +421,7 @@ Firebase Authentication의 다음 필드들은 `/users/<uid>` 노드에 **저장
     ├── order: "<post-id>-00001,0000,000,..."  # postId 접두사가 포함된 정렬용 문자열
     ├── parentId: null  # 부모 댓글 ID (첫 레벨은 null)
     ├── likeCount: 0  # 좋아요 개수 (Cloud Functions로 관리)
+    ├── reportCount: 0  # 신고 개수 (Cloud Functions로 관리)
     ├── createdAt: 1698473000000
     └── updatedAt: 1698473000000
 ```
@@ -453,13 +461,75 @@ post-abc123-00002,0000,000,...  # 두 번째 댓글
 
 댓글의 경우:
 - **클라이언트는** `postId`, `uid`, `content`, `depth`, `order`, `parentId`, `createdAt`, `updatedAt` 를 저장할 수 있고,
-- **서버는** `likeCount` 만 저장할 수 있습니다. (Cloud Functions가 자동으로 관리)
+- **서버는** `likeCount`, `reportCount` 만 저장할 수 있습니다. (Cloud Functions가 자동으로 관리)
 
 ### 관련 가이드
 
 - **📖 구현 가이드**: [댓글 개발 가이드](./sns-web-comments.md) - 댓글 작성, 트리 구조, order 필드, 대댓글 구현
 - **📖 댓글 좋아요**: [좋아요 개발 가이드](./sns-web-likes.md) - 댓글 좋아요 추가/취소, likeCount 관리
 - **📖 Cloud Functions**: [Firebase Cloud Functions 개발 가이드](./sns-firebase-cloud-functions.md) - commentCount 자동 관리
+
+---
+
+## 신고 (reports)
+
+게시글과 댓글의 신고를 통합하여 단일 레벨 노드 구조로 관리합니다.
+
+### 데이터 구조
+
+```
+/reports/
+  ├── post-<post-id>-<uid>/
+  │   ├── type: "post"
+  │   ├── nodeId: "<post-id>"
+  │   ├── uid: "<uid>"
+  │   ├── reason: "abuse"                    # 신고 사유
+  │   ├── message: "상세 설명"                # 선택적 메시지
+  │   └── createdAt: 1698473000000
+  ├── comment-<comment-id>-<uid>/
+  │   ├── type: "comment"
+  │   ├── nodeId: "<comment-id>"
+  │   ├── uid: "<uid>"
+  │   ├── reason: "spam"
+  │   ├── message: ""
+  │   └── createdAt: 1698473100000
+  └── ...
+```
+
+### 특징
+
+- **통합 구조**: 게시글과 댓글의 신고를 하나의 `/reports/` 노드에서 통합 관리
+- **키 형식**: `{type}-{nodeId}-{uid}` 형식으로 노드 타입과 ID를 명확하게 구분
+  - 게시글 신고: `/reports/post-<post-id>-<uid>`
+    - 형식 예: `post-abc123-user456`
+  - 댓글 신고: `/reports/comment-<comment-id>-<uid>`
+    - 형식 예: `comment-xyz789-user456`
+  - 첫 번째 하이픈으로 타입(post/comment) 식별 가능
+  - 두 번째 하이픈으로 nodeId(postId/commentId) 분리 가능
+  - 마지막 부분은 사용자 UID
+- **신고 사유 (reason)**: 5가지 타입 지원
+  - `abuse`: 욕설, 시비, 모욕, 명예훼손
+  - `fake-news`: 가짜 뉴스, 잘못된 정보
+  - `spam`: 스팸, 악용
+  - `inappropriate`: 카테고리에 맞지 않는 글 등록
+  - `other`: 기타
+- **중복 방지**: 동일한 사용자가 동일한 게시글/댓글을 중복 신고할 수 없음 (키 구조로 자동 방지)
+- **reportCount 관리**: Cloud Functions에서 자동으로 각 게시글/댓글의 reportCount 갱신
+  - reportId를 파싱하여 타입과 nodeId 추출 가능
+
+### 클라이언트/서버 역할 분리
+
+신고의 경우:
+- **클라이언트는** `/reports/post-<post-id>-<uid>` 또는 `/reports/comment-<comment-id>-<uid>` 노드를 추가/삭제할 수 있고,
+- **서버는** 해당 게시글 또는 댓글의 `reportCount` 필드를 자동으로 업데이트합니다. (Cloud Functions)
+- **클라이언트는 reportCount 필드를 직접 수정하지 않습니다.**
+
+### 관련 가이드
+
+- **📖 구현 가이드**: [신고 기능 개발 가이드](./snsweb-forum-report.md) - 신고 추가/취소, 신고 사유 선택, 관리자 대시보드
+- **📖 게시글**: [데이터베이스 구조 가이드 - 게시판](#게시판-posts) - 게시글 저장 구조
+- **📖 댓글**: [데이터베이스 구조 가이드 - 댓글](#댓글-comments) - 댓글 저장 구조
+- **📖 Cloud Functions**: [Firebase Cloud Functions 개발 가이드](./sns-firebase-cloud-functions.md) - reportCount 자동 관리
 
 ---
 

@@ -8,7 +8,6 @@ homepage: https://github.com/thruthesky/
 funding: ""
 license: SED Specification License v1.0
 dependencies: []
-"프로젝트 이름": snsweb
 ---
 
 ## Overview

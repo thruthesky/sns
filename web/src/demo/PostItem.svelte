@@ -13,8 +13,10 @@
   } from "../lib/services/comment";
   import { toggleLike } from "../lib/services/like";
   import { updatePost, deletePost } from "../lib/services/forum";
+  import { addReport, removeReport, checkReportStatus } from "../lib/services/report";
   import { onMount } from "svelte";
   import CommentItem from "./CommentItem.svelte";
+  import ReportModal from "../lib/components/ReportModal.svelte";
   import { Edit, Trash2 } from "lucide-svelte";
   import type { PostWithId, PostCategory } from "../lib/types/post";
   import type { CommentWithId } from "../lib/types/comment";
@@ -79,6 +81,10 @@
   let showComments = $state<boolean>(true); // 댓글 목록 표시/숨김 상태 (기본값: true로 댓글이 기본적으로 열림)
   let showAllComments = $state<boolean>(false); // 모든 댓글 표시 여부 (기본값: false로 마지막 5개만 표시)
 
+  // 신고 모달 상태 관리
+  let isReported = $state<boolean>(false); // 현재 사용자가 이미 신고했는지 여부
+  let showReportModal = $state<boolean>(false); // 신고 모달 표시 여부
+
   // 댓글 미리보기 개수 (마지막 5개만 초기에 표시)
   const COMMENT_PREVIEW_COUNT = 5;
 
@@ -106,10 +112,10 @@
   }
 
   /**
-   * 컴포넌트 마운트 시 댓글 리스너 등록
+   * 컴포넌트 마운트 시 댓글 리스너 등록 및 신고 상태 확인
    */
   onMount(() => {
-    // 댓글 실시간 구독 (Flat style: postId만 필요)
+    // 1. 댓글 실시간 구독 (Flat style: postId만 필요)
     // newComments의 타입을 명시하여 타입 안전성 확보
     const unsubscribeComments = listenToComments(
       itemData.postId,
@@ -117,6 +123,13 @@
         comments = newComments;
       }
     );
+
+    // 2. 신고 상태 확인 (로그인한 경우에만)
+    if (userId) {
+      checkReportStatus("post", itemData.postId, userId).then((status) => {
+        isReported = status.isReported;
+      });
+    }
 
     // 언마운트 시 리스너 해제
     return () => {
@@ -375,6 +388,99 @@
   }
 
   /**
+   * 신고 버튼 클릭 핸들러
+   * 로그인 여부 확인 후, 이미 신고했으면 취소 확인, 아니면 모달 표시
+   */
+  function handleReportClick() {
+    // 1. 로그인 확인
+    if (!userId) {
+      alert($t("로그인필요"));
+      window.location.href = "/user/login";
+      return;
+    }
+
+    // 2. 이미 신고한 경우: 신고 취소 확인
+    if (isReported) {
+      if (confirm($t("신고를취소하시겠습니까"))) {
+        handleReportRemove();
+      }
+    } else {
+      // 3. 신고하지 않은 경우: 신고 모달 표시
+      showReportModal = true;
+    }
+  }
+
+  /**
+   * 신고 제출 핸들러
+   * ReportModal에서 사유와 메시지를 받아 Firebase에 저장
+   *
+   * @param reason - 신고 사유 ('abuse', 'fake-news', 'spam', 'inappropriate', 'other')
+   * @param message - 상세 메시지 (선택 사항)
+   */
+  async function handleReportSubmit(reason: string, message: string) {
+    // 1. 로그인 확인 (이중 체크)
+    if (!userId) {
+      showToast($t("로그인필요"), "error");
+      return;
+    }
+
+    try {
+      // 2. Firebase에 신고 추가
+      const result = await addReport("post", itemData.postId, userId, reason as any, message);
+
+      // 3. 결과 처리
+      if (result.success) {
+        showToast($t("신고가접수되었습니다"), "success");
+        isReported = true;
+        showReportModal = false;
+      } else {
+        // result.error는 i18n 키
+        showToast($t(result.error || "error.unknown"), "error");
+      }
+    } catch (error: unknown) {
+      console.error("신고 추가 오류:", error);
+      showToast($t("error.unknown"), "error");
+    }
+  }
+
+  /**
+   * 신고 취소 핸들러
+   * Firebase에서 신고 데이터 삭제
+   */
+  async function handleReportRemove() {
+    // 1. 로그인 확인 (이중 체크)
+    if (!userId) {
+      showToast($t("로그인필요"), "error");
+      return;
+    }
+
+    try {
+      // 2. Firebase에서 신고 삭제
+      const result = await removeReport("post", itemData.postId, userId);
+
+      // 3. 결과 처리
+      if (result.success) {
+        showToast($t("신고가취소되었습니다"), "success");
+        isReported = false;
+      } else {
+        // result.error는 i18n 키
+        showToast($t(result.error || "error.unknown"), "error");
+      }
+    } catch (error: unknown) {
+      console.error("신고 취소 오류:", error);
+      showToast($t("error.unknown"), "error");
+    }
+  }
+
+  /**
+   * 신고 모달 취소 핸들러
+   * 모달만 닫음
+   */
+  function handleReportCancel() {
+    showReportModal = false;
+  }
+
+  /**
    * 파일이 이미지인지 확인하는 헬퍼 함수
    * URL 확장자 기반으로 판별 (대소문자 무시)
    *
@@ -503,7 +609,8 @@
         title={$t("댓글")}
         onclick={handleCommentClick}
       >
-        💬 {$t("댓글")}
+        <span class="icon">💬</span>
+        {$t("댓글")}
         {#if comments.length > 0}
           <span class="count">{comments.length}</span>
         {/if}
@@ -514,7 +621,7 @@
         title={$t("좋아요")}
         onclick={handleLike}
       >
-        {($myLikeStore?.data ?? 0) >= 1 ? "❤️" : "🤍"}
+        <span class="icon">{($myLikeStore?.data ?? 0) >= 1 ? "❤️" : "🤍"}</span>
         {$t("좋아요")}
         {#if itemData.likeCount > 0}
           <span class="count">{itemData.likeCount}</span>
@@ -522,11 +629,17 @@
       </button>
 
       <button class="action-btn" title={$t("채팅")}>
-        💬 {$t("채팅")}
+        <span class="icon">💬</span>
+        {$t("채팅")}
       </button>
 
-      <button class="action-btn" title={$t("신고")}>
-        🚨 {$t("신고")}
+      <button
+        class="action-btn {isReported ? 'reported' : ''}"
+        title={$t("신고")}
+        onclick={handleReportClick}
+      >
+        <span class="icon">{isReported ? "🚩" : "🚨"}</span>
+        {$t("신고")}
       </button>
     </div>
 
@@ -609,6 +722,14 @@
     onclose={handleAlertConfirm}
   ></alert-dialog>
 {/if}
+
+<!-- 신고 모달 다이얼로그 -->
+<ReportModal
+  bind:show={showReportModal}
+  type="post"
+  onSubmit={handleReportSubmit}
+  onCancel={handleReportCancel}
+/>
 
 <!-- 댓글 작성 모달 다이얼로그 -->
 {#if isCommentDialogOpen}
@@ -870,6 +991,18 @@
   .action-btn.liked:hover {
     background-color: #fecaca;
     color: #b91c1c;
+  }
+
+  /* 신고한 버튼 강조 표시 */
+  .action-btn.reported {
+    background-color: #fef3c7;
+    color: #d97706;
+    font-weight: 600;
+  }
+
+  .action-btn.reported:hover {
+    background-color: #fde68a;
+    color: #b45309;
   }
 
   .count {
@@ -1202,5 +1335,35 @@
 
   .file-item.download-item:hover .file-name {
     color: #3b82f6;
+  }
+
+  /* === 반응형 스타일 === */
+
+  /* 모바일 화면 (768px 이하): 아이콘 숨김, 텍스트만 표시 */
+  @media (max-width: 768px) {
+    .action-btn .icon {
+      display: none;
+    }
+
+    /* PostItem 좌우 여백 최소화 */
+    .post-item {
+      padding: 1.25rem 0.75rem;
+      border-radius: 0;
+      margin: 0;
+    }
+  }
+
+  /* 매우 작은 화면 (480px 이하): 여백 더욱 최소화 */
+  @media (max-width: 480px) {
+    .post-item {
+      padding: 1rem 0.5rem;
+      border-radius: 0;
+      margin: 0;
+    }
+  }
+
+  /* 데스크톱 화면 (769px 이상): 아이콘과 텍스트 모두 표시 */
+  @media (min-width: 769px) {
+    /* 아이콘과 텍스트 모두 표시 (기본 동작) */
   }
 </style>

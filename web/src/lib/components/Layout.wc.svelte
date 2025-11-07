@@ -77,6 +77,13 @@
     overflow-x: hidden;
   }
 
+  /* 모바일 화면 (768px 미만): 좌우 여백 최소화 */
+  @media (max-width: 767px) {
+    .main-content {
+      padding: 1.5rem 0; /* 상하만 여백, 좌우는 0 */
+    }
+  }
+
   @media (min-width: 768px) {
     .main-content {
       max-width: calc(100% - 16rem); /* LeftSidebar 너비 제외 */

@@ -39,6 +39,8 @@ export interface PostData {
   likeCount?: number;
   /** 댓글 개수 (Cloud Functions에서 자동 관리) */
   commentCount?: number;
+  /** 신고 개수 (Cloud Functions에서 자동 관리) */
+  reportCount?: number;
 }
 
 /**
@@ -63,6 +65,8 @@ export interface CommentData {
   likeCount?: number;
   /** 자식 댓글(대댓글) 개수 (Cloud Functions에서 자동 관리) */
   commentCount?: number;
+  /** 신고 개수 (Cloud Functions에서 자동 관리) */
+  reportCount?: number;
 }
 
 /**
@@ -95,6 +99,48 @@ export interface UserData {
  */
 export interface ParsedLikeId {
   /** 좋아요 타입 (post | comment) */
+  type: "post" | "comment";
+  /** 노드 ID (postId 또는 commentId) */
+  nodeId: string;
+  /** 사용자 UID */
+  uid: string;
+}
+
+/**
+ * 신고 사유 타입
+ * - abuse: 욕설, 시비, 모욕, 명예훼손
+ * - fake-news: 가짜 뉴스, 잘못된 정보
+ * - spam: 스팸, 악용
+ * - inappropriate: 카테고리에 맞지 않는 글 등록
+ * - other: 기타
+ */
+export type ReportReason = "abuse" | "fake-news" | "spam" | "inappropriate" | "other";
+
+/**
+ * 신고 데이터 인터페이스
+ * Firebase Realtime Database의 /reports/ 노드에 저장되는 데이터 구조
+ */
+export interface ReportData {
+  /** 신고 대상 타입 (post | comment) */
+  type?: "post" | "comment";
+  /** 게시글 ID 또는 댓글 ID */
+  nodeId?: string;
+  /** 신고자 사용자 UID */
+  uid?: string;
+  /** 신고 사유 */
+  reason?: ReportReason;
+  /** 상세 설명 (선택 사항) */
+  message?: string;
+  /** 신고 생성 시간 (Unix timestamp, 밀리초) */
+  createdAt?: number;
+}
+
+/**
+ * reportId 파싱 결과 인터페이스
+ * 형식: "post-<post-id>-<uid>" 또는 "comment-<comment-id>-<uid>"
+ */
+export interface ParsedReportId {
+  /** 신고 타입 (post | comment) */
   type: "post" | "comment";
   /** 노드 ID (postId 또는 commentId) */
   nodeId: string;
