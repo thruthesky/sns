@@ -337,6 +337,7 @@
   "신고_실패": "Failed to submit report: {error}",
   "신고_이미함": "You have already reported this post/comment.",
   "신고_로그인필요": "You must be logged in to report.",
+  "신고로그인필요": "Please login to report",
   "관리자_신고목록": "Report List",
   "신고_없음": "No reported posts/comments.",
   "신고_유형": "Type",

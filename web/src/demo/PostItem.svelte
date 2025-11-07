@@ -394,7 +394,7 @@
   function handleReportClick() {
     // 1. 로그인 확인
     if (!userId) {
-      alert($t("로그인필요"));
+      alert($t("신고로그인필요"));
       window.location.href = "/user/login";
       return;
     }
