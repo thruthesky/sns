@@ -4,8 +4,6 @@
    *
    * AI 기반 개발 패러다임인 SED의 개념과 원칙을 설명합니다.
    */
-
-  import { t } from "../lib/stores/i18n.ts";
 </script>
 
 <div class="sed-page">
@@ -27,13 +25,15 @@
       <h2 class="section-title">💡 개요</h2>
       <div class="content">
         <p>
-          <strong>SEDAI</strong>는 AI가 명세(Specification)를 벗어나지 않고 정확히 따라
-          솔루션을 구현하는 개발 방법론입니다.
+          <strong>SEDAI</strong>는 AI가 명세(Specification)를 벗어나지 않고
+          정확히 따라 솔루션을 구현하는 개발 방법론입니다.
         </p>
 
         <p>
-          <strong>2025년 11월 4일 송재호</strong>가 만든 이 방식은 모호한 요구사항 대신
-          <strong>완전하고 정밀한 설계도</strong>를 요구함으로써 기존 AI 보조 개발의 한계를 해결합니다.
+          <strong>2025년 11월 4일 송재호</strong>가 만든 이 방식은 모호한
+          요구사항 대신
+          <strong>완전하고 정밀한 설계도</strong>를 요구함으로써 기존 AI 보조
+          개발의 한계를 해결합니다.
         </p>
 
         <div class="info-box" style="margin-top: 1.5rem;">
@@ -58,10 +58,12 @@
 
         <div class="code-block">
           <div class="code-header">설치 및 실행</div>
-          <pre><code>npm install -g sedai
+          <pre><code
+              >npm install -g sedai
 # 또는
 npx sedai --help
-npx spec init</code></pre>
+npx spec init</code
+            ></pre>
         </div>
       </div>
     </div>
@@ -74,17 +76,22 @@ npx spec init</code></pre>
         <h3 class="principle-title">1. Spec-Exactness (명세 정확성)</h3>
         <ul class="principle-list">
           <li>개발은 오직 명세에 정의된 내용만 구현합니다.</li>
-          <li>불완전한 명세는 즉시 "Spec Error"를 발생시키고 작업을 중단합니다.</li>
-          <li>AI는 의도를 추론하거나 해석할 수 없으며, 오직 작성된 지시사항만 실행합니다.</li>
+          <li>
+            불완전한 명세는 즉시 "Spec Error"를 발생시키고 작업을 중단합니다.
+          </li>
+          <li>
+            AI는 의도를 추론하거나 해석할 수 없으며, 오직 작성된 지시사항만
+            실행합니다.
+          </li>
         </ul>
       </div>
 
       <div class="principle-card">
-        <h3 class="principle-title">2. Spec Completeness Scoring (명세 완성도 점수)</h3>
+        <h3 class="principle-title">
+          2. Spec Completeness Scoring (명세 완성도 점수)
+        </h3>
         <ul class="principle-list">
-          <li>
-            AI는 개발 시작 전 명세를 0~100점으로 평가합니다.
-          </li>
+          <li>AI는 개발 시작 전 명세를 0~100점으로 평가합니다.</li>
           <li>
             작업은 <strong>90점 이상</strong>일 때만 진행됩니다.
           </li>
@@ -102,32 +109,44 @@ npx spec init</code></pre>
 
         <div class="code-block" style="margin-top: 1rem;">
           <div class="code-header">예시: 명세 점수 부족 시 에러</div>
-          <pre><code>SpecError: Insufficient specification to execute.
+          <pre><code
+              >SpecError: Insufficient specification to execute.
 Reason: Database schema, authentication flow, or encryption detail missing.
 Required Spec Score: ≥90
-Current Score: 42</code></pre>
+Current Score: 42</code
+            ></pre>
         </div>
       </div>
 
       <div class="principle-card">
-        <h3 class="principle-title">3. Specification Authority (명세의 권위)</h3>
+        <h3 class="principle-title">
+          3. Specification Authority (명세의 권위)
+        </h3>
         <ul class="principle-list">
           <li>모호한 문장은 무시되며 구현되지 않습니다.</li>
           <li>명세는 법이 되지만, 개발자는 편집 권한을 유지합니다.</li>
-          <li>AI는 업데이트를 제안할 수 있지만 일방적으로 명세를 수정할 수 없습니다.</li>
+          <li>
+            AI는 업데이트를 제안할 수 있지만 일방적으로 명세를 수정할 수
+            없습니다.
+          </li>
         </ul>
       </div>
 
       <div class="principle-card">
-        <h3 class="principle-title">4. What Must Be Specified (명세해야 할 것들)</h3>
+        <h3 class="principle-title">
+          4. What Must Be Specified (명세해야 할 것들)
+        </h3>
         <p>완전한 명세는 다음을 명시적으로 문서화해야 합니다:</p>
         <ul class="principle-list">
           <li><strong>클래스 및 함수 이름:</strong> 정확한 식별자</li>
-          <li><strong>구현 세부사항:</strong> 알고리즘, 계산식, 비즈니스 로직</li>
+          <li>
+            <strong>구현 세부사항:</strong> 알고리즘, 계산식, 비즈니스 로직
+          </li>
           <li><strong>데이터 구조:</strong> 변수명, 타입, 데이터 흐름</li>
           <li><strong>제어 흐름:</strong> 조건문, 반복문, 에러 처리</li>
           <li>
-            <strong>완전한 소스 코드:</strong> 정확한 패턴을 보여주는 실행 가능한 예제
+            <strong>완전한 소스 코드:</strong> 정확한 패턴을 보여주는 실행 가능한
+            예제
           </li>
         </ul>
       </div>
@@ -150,8 +169,8 @@ Current Score: 42</code></pre>
 
         <h4 class="subsection-title">📋 상세 명세 작성</h4>
         <p class="phase-step-description">
-          모든 줄거리 항목을 설계도 수준의 세부사항으로 변환하되, 중복을 제거하고
-          필수 요소만 유지합니다.
+          모든 줄거리 항목을 설계도 수준의 세부사항으로 변환하되, 중복을
+          제거하고 필수 요소만 유지합니다.
         </p>
       </div>
 
@@ -162,17 +181,18 @@ Current Score: 42</code></pre>
         <div class="spec-component">
           <h4 class="component-title">💾 데이터베이스 명세</h4>
           <p>
-            DBMS 버전, 호스팅 환경, OS, 네트워크 구성, 접근 계정, SQL 설정, 테이블
-            구조, 인덱스, 외래키, 트랜잭션 격리 수준, 백업 정책, 유틸리티를
-            포함해야 합니다.
+            DBMS 버전, 호스팅 환경, OS, 네트워크 구성, 접근 계정, SQL 설정,
+            테이블 구조, 인덱스, 외래키, 트랜잭션 격리 수준, 백업 정책,
+            유틸리티를 포함해야 합니다.
           </p>
         </div>
 
         <div class="spec-component">
           <h4 class="component-title">🎯 기능 명세</h4>
           <p>
-            사용자 등록, 게시판, 결제 처리, 알림 등에 대한 상세 요구사항—API, 유효성
-            검증 규칙, 암호화 방법, 에러 처리, 서드파티 통합을 포함합니다.
+            사용자 등록, 게시판, 결제 처리, 알림 등에 대한 상세 요구사항—API,
+            유효성 검증 규칙, 암호화 방법, 에러 처리, 서드파티 통합을
+            포함합니다.
           </p>
         </div>
 
@@ -180,8 +200,8 @@ Current Score: 42</code></pre>
           <h4 class="component-title">🛣️ 라우팅 명세</h4>
           <p>
             모든 경로는 명시적이어야 합니다 (예: <code>/auth/signup</code>,
-            <code>/dashboard</code>). 리다이렉트 조건, 예외 흐름, 접근 제어와 함께
-            완전한 여정 맵을 문서화합니다.
+            <code>/dashboard</code>). 리다이렉트 조건, 예외 흐름, 접근 제어와
+            함께 완전한 여정 맵을 문서화합니다.
           </p>
         </div>
 
@@ -201,7 +221,8 @@ Current Score: 42</code></pre>
 
           <div class="code-block" style="margin-top: 1rem;">
             <div class="code-header">함수 명세 예시</div>
-            <pre style="white-space: pre-wrap; color: #cbd5e1; line-height: 1.8;">함수명: handleLikeCreate
+            <pre
+              style="white-space: pre-wrap; color: #cbd5e1; line-height: 1.8;">함수명: handleLikeCreate
 역할: 좋아요 추가 시 likeCount 증가 및 통계 업데이트
 파라미터: likeId: string (필수)
 반환값: Promise&lt;&#123; success: boolean; type?: string; error?: string &#125;&gt;
@@ -230,7 +251,9 @@ Current Score: 42</code></pre>
         <div class="spec-component highlight-component">
           <h4 class="component-title">🧪 테스트 명세 (가장 중요)</h4>
           <ul class="sub-list">
-            <li>테스트 프레임워크 버전 (Vitest, Testing Library, Playwright)</li>
+            <li>
+              테스트 프레임워크 버전 (Vitest, Testing Library, Playwright)
+            </li>
             <li>환경 설정 (Docker, CI/CD 파이프라인 구성)</li>
             <li>Unit 테스트 목표 (≥80% 커버리지, 최소 200개 케이스)</li>
             <li>여러 브라우저에서 E2E 시나리오</li>
@@ -247,21 +270,17 @@ Current Score: 42</code></pre>
     <div class="section ip-section">
       <h2 class="section-title">©️ 지적 재산권</h2>
       <div class="content">
-        <p>
-          AI가 공개적으로 사용 가능한 SED 명세를 엄격히 따를 때:
-        </p>
+        <p>AI가 공개적으로 사용 가능한 SED 명세를 엄격히 따를 때:</p>
         <ul class="principle-list">
           <li>
             <strong>저작권은 명세 작성자에게 귀속</strong>되며, AI에게 귀속되지
             않습니다.
           </li>
           <li>
-            근거: AI는 창작적 결정을 내리지 않으므로, 지적 재산권은 명세 자체에서
-            파생됩니다.
+            근거: AI는 창작적 결정을 내리지 않으므로, 지적 재산권은 명세
+            자체에서 파생됩니다.
           </li>
-          <li>
-            명세를 작성한 작성자가 구현 소스와 관계없이 창작자입니다.
-          </li>
+          <li>명세를 작성한 작성자가 구현 소스와 관계없이 창작자입니다.</li>
         </ul>
 
         <blockquote class="quote">
@@ -277,14 +296,17 @@ Current Score: 42</code></pre>
       <div class="principle-card">
         <h3 class="principle-title">파일 명명 패턴</h3>
         <div class="code-block">
-          <pre><code>&lt;project-name&gt;-&lt;module-name&gt;-&lt;function-name&gt;.md</code></pre>
+          <pre><code
+              >&lt;project-name&gt;-&lt;module-name&gt;-&lt;function-name&gt;.md</code
+            ></pre>
         </div>
       </div>
 
       <div class="principle-card">
         <h3 class="principle-title">YAML 헤더 템플릿</h3>
         <div class="code-block">
-          <pre><code>---
+          <pre><code
+              >---
 name: 프로젝트 이름 (영문, 숫자, 하이픈, ≤255자)
 version: 시맨틱 버저닝
 description: 프로젝트 개요 (≤4096자)
@@ -293,7 +315,8 @@ email: 작성자 이메일 (≤64자)
 license: MIT, GPL, SED Specification License 등
 step: 실행 순서 (10, 20, 30...)
 dependencies: 필요한 다른 명세들
----</code></pre>
+---</code
+            ></pre>
         </div>
       </div>
 
@@ -324,7 +347,8 @@ dependencies: 필요한 다른 명세들
 
       <div class="code-block">
         <div class="code-header">사용 가능한 명령어</div>
-        <pre><code>spec init [options]          # 새 프로젝트 초기화
+        <pre><code
+            >spec init [options]          # 새 프로젝트 초기화
   -n, --name &lt;name&gt;         # 프로젝트 이름
   -s, --summary &lt;summary&gt;    # 설명
   -a, --author &lt;author&gt;      # 작성자 이름
@@ -332,14 +356,15 @@ dependencies: 필요한 다른 명세들
 
 spec doctor [options]        # 명세 검증 (곧 출시)
 spec validate &lt;file&gt;         # 단일 파일 검증 (곧 출시)
-spec score &lt;file&gt;            # 명세 완성도 계산 (곧 출시)</code></pre>
+spec score &lt;file&gt;            # 명세 완성도 계산 (곧 출시)</code
+          ></pre>
       </div>
 
       <div class="info-box" style="margin-top: 1.5rem;">
         <strong>💡 현재 상태:</strong><br />
-        - <strong>완전 구현:</strong> 대화형 및 비대화형 모드의 <code
-          >spec init</code
-        > 명령<br />
+        - <strong>완전 구현:</strong> 대화형 및 비대화형 모드의
+        <code>spec init</code>
+        명령<br />
         - <strong>곧 출시:</strong> <code>spec doctor</code>,
         <code>spec validate</code>, <code>spec score</code> 명령
       </div>
@@ -366,8 +391,7 @@ spec score &lt;file&gt;            # 명세 완성도 계산 (곧 출시)</code>
         <div class="highlight-box" style="margin-top: 1.5rem;">
           <strong>명세 소유권 철학:</strong><br />
           다른 사람의 명세를 수정할 수 있지만, 최종 명세는 여러분의 이해와 가치를
-          반영해야 합니다. 인간 의사결정자는 무엇이 만들어질지에 대한 책임을
-          유지합니다.
+          반영해야 합니다. 인간 의사결정자는 무엇이 만들어질지에 대한 책임을 유지합니다.
         </div>
       </div>
     </div>
@@ -380,7 +404,9 @@ spec score &lt;file&gt;            # 명세 완성도 계산 (곧 출시)</code>
           <div class="slogan-icon">🧠</div>
           <div class="slogan-text">
             "AI does not imagine. It executes."<br />
-            <span class="slogan-sub">(AI는 상상하지 않는다. 실행할 뿐이다.)</span>
+            <span class="slogan-sub"
+              >(AI는 상상하지 않는다. 실행할 뿐이다.)</span
+            >
           </div>
         </div>
         <div class="slogan-card">
@@ -394,9 +420,7 @@ spec score &lt;file&gt;            # 명세 완성도 계산 (곧 출시)</code>
           <div class="slogan-icon">⚙️</div>
           <div class="slogan-text">
             "No assumption. No improvisation. Only implementation."<br />
-            <span class="slogan-sub"
-              >(가정 없음. 즉흥 없음. 오직 구현만.)</span
-            >
+            <span class="slogan-sub">(가정 없음. 즉흥 없음. 오직 구현만.)</span>
           </div>
         </div>
       </div>

@@ -211,6 +211,33 @@ AI 응답:
   - [specs/sns-web.md](specs/sns-web.md)
   - [specs/sns-custom-elements.md](specs/sns-custom-elements.md)
 
+### 개발 서버 실행
+
+프로젝트는 두 가지 개발 서버를 제공합니다:
+
+1. **데모 앱 (Demo App)**
+   ```bash
+   npm run dev
+   ```
+   - 포트: 5173
+   - 위치: `src/demo/`
+   - 목적: Custom Elements 개발 및 테스트
+
+2. **Site1 (Custom Elements 통합 테스트)**
+   ```bash
+   npm run dev:site1
+   ```
+   - 포트: 5174
+   - 위치: `src/site1/`
+   - 목적: 기존 정적 HTML 페이지에 Custom Elements를 통합하는 방법 테스트
+   - 사용 사례: PHILGO 커뮤니티 사이트 데모
+   - 상세 문서: [specs/snsweb-development-quickstart.md](specs/snsweb-development-quickstart.md) 참조
+
+**Site1의 특징:**
+- Svelte 앱이 아닌 순수 HTML + Custom Elements
+- 기존 웹사이트에 Custom Elements를 `<script>` 태그로 간단히 통합
+- Custom Elements의 재사용성 및 실제 통합 시나리오 검증
+
 ## 앱 개발
 
 - **소스 코드 위치**: `/app` 폴더

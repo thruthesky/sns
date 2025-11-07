@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PHILGO - 커뮤니티</title>
+
+  <!-- Firebase 설정 -->
+  <script type="module">
+    // Firebase 환경변수 설정 (전역 변수로 노출)
+    window.FIREBASE_CONFIG = {
+      apiKey: "AIzaSyCCyUXaFEzfqhIiKmxvvOJXdHAdrqQIhGw",
+      authDomain: "philgo-e9d83.firebaseapp.com",
+      databaseURL: "https://philgo-e9d83-default-rtdb.firebaseio.com",
+      projectId: "philgo-e9d83",
+      storageBucket: "philgo-e9d83.firebasestorage.app",
+      messagingSenderId: "1069277471729",
+      appId: "1:1069277471729:web:31b9afa67d9e7db4fb7dc4"
+    };
+  </script>
+
+  <!-- Google reCAPTCHA (Phone Login에 필요) -->
+  <script src="https://www.google.com/recaptcha/api.js?render=explicit" async defer></script>
+
+  <!-- SNS Custom Elements 라이브러리 -->
+  <script type="module" src="../../dist/sns-components.es.js"></script>
+
+  <style>
+    /* 전역 스타일 초기화 */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      color: #333;
+      background-color: #f5f5f5;
+    }
+
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+
+    /* 상단 유틸리티 바 */
+    .top-utility {
+      background-color: #f8f8f8;
+      border-bottom: 1px solid #e0e0e0;
+      padding: 8px 0;
+    }
+
+    .top-utility-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 20px;
+      font-size: 12px;
+    }
+
+    .top-utility-left span {
+      margin-right: 15px;
+      color: #666;
+    }
+
+    .top-utility-right a {
+      margin-left: 15px;
+      color: #666;
+    }
+
+    .top-utility-right a:hover {
+      color: #ff6b35;
+    }
+
+    /* 헤더 영역 */
+    .header {
+      background-color: #fff;
+      padding: 20px 0;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .header-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 20px;
+    }
+
+    /* 로고 */
+    .logo {
+      font-size: 36px;
+      font-weight: 700;
+      color: #333;
+    }
+
+    .logo span {
+      color: #ff6b35;
+    }
+
+    /* 검색 영역 */
+    .search-container {
+      flex: 1;
+      max-width: 500px;
+      margin: 0 40px;
+    }
+
+    .search-box {
+      display: flex;
+      border: 2px solid #ff6b35;
+      border-radius: 25px;
+      overflow: hidden;
+    }
+
+    .search-box input {
+      flex: 1;
+      border: none;
+      padding: 12px 20px;
+      font-size: 14px;
+      outline: none;
+    }
+
+    .search-box button {
+      background-color: #ff6b35;
+      border: none;
+      padding: 0 25px;
+      color: #fff;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .search-box button:hover {
+      background-color: #e5552f;
+    }
+
+    /* 헤더 우측 광고 배너 placeholder */
+    .header-ad {
+      width: 200px;
+      height: 60px;
+      background-color: #e0e0e0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #999;
+      font-size: 12px;
+      border-radius: 5px;
+    }
+
+    /* 메인 네비게이션 */
+    .main-nav {
+      background-color: #fff;
+      border-bottom: 2px solid #ff6b35;
+    }
+
+    .main-nav-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      padding: 0 20px;
+    }
+
+    .main-nav-item {
+      padding: 15px 25px;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .main-nav-item:hover {
+      background-color: #ff6b35;
+      color: #fff;
+    }
+
+    .main-nav-item.active {
+      background-color: #ff6b35;
+      color: #fff;
+    }
+
+    /* 서브 네비게이션 */
+    .sub-nav {
+      background-color: #fff;
+      border-bottom: 1px solid #e0e0e0;
+      padding: 10px 0;
+    }
+
+    .sub-nav-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      padding: 0 20px;
+      gap: 5px 20px;
+    }
+
+    .sub-nav-item {
+      font-size: 13px;
+      color: #666;
+      padding: 5px 0;
+      cursor: pointer;
+    }
+
+    .sub-nav-item:hover {
+      color: #ff6b35;
+    }
+
+    /* 메인 레이아웃 - 3단 구조 */
+    .main-layout {
+      max-width: 1200px;
+      margin: 20px auto;
+      display: flex;
+      gap: 20px;
+      padding: 0 20px;
+    }
+
+    /* 왼쪽 사이드바 */
+    .left-sidebar {
+      width: 160px;
+      flex-shrink: 0;
+    }
+
+    .ad-banner {
+      width: 100%;
+      height: 600px;
+      background-color: #e0e0e0;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #999;
+      font-size: 12px;
+      border-radius: 5px;
+      text-align: center;
+      padding: 10px;
+    }
+
+    /* 메인 콘텐츠 영역 */
+    .main-content {
+      flex: 1;
+      background-color: #fff;
+      border-radius: 5px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    /* 커뮤니티 헤더 */
+    .community-header {
+      padding: 20px 25px;
+      border-bottom: 2px solid #ff6b35;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .community-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .community-title h1 {
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .community-stats {
+      font-size: 12px;
+      color: #999;
+    }
+
+    .write-btn {
+      background-color: #ff6b35;
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .write-btn:hover {
+      background-color: #e5552f;
+    }
+
+    /* 인기 회원 섹션 */
+    .popular-members {
+      padding: 20px 25px;
+      border-bottom: 1px solid #e0e0e0;
+      background-color: #f9f9f9;
+    }
+
+    .popular-members-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .members-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .member-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px;
+      background-color: #fff;
+      border-radius: 5px;
+      font-size: 13px;
+    }
+
+    .member-rank {
+      width: 20px;
+      font-weight: 600;
+      color: #ff6b35;
+    }
+
+    .member-avatar {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background-color: #e0e0e0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: #999;
+    }
+
+    .member-name {
+      flex: 1;
+      font-weight: 500;
+    }
+
+    .member-points {
+      color: #ff6b35;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    /* 게시글 목록 */
+    .post-list {
+      padding: 20px 25px;
+    }
+
+    .post-item {
+      padding: 20px 0;
+      border-bottom: 1px solid #f0f0f0;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .post-item:hover {
+      background-color: #f9f9f9;
+    }
+
+    .post-title {
+      font-size: 16px;
+      font-weight: 500;
+      margin-bottom: 8px;
+      color: #333;
+    }
+
+    .post-title:hover {
+      color: #ff6b35;
+    }
+
+    .post-meta {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      font-size: 12px;
+      color: #999;
+    }
+
+    .post-author {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .post-author-badge {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background-color: #e0e0e0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: #999;
+    }
+
+    .post-stats {
+      display: flex;
+      gap: 10px;
+    }
+
+    .post-stats span {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    /* 우측 사이드바 */
+    .right-sidebar {
+      width: 160px;
+      flex-shrink: 0;
+    }
+
+    /* 반응형 */
+    @media (max-width: 1024px) {
+      .main-layout {
+        flex-direction: column;
+      }
+
+      .left-sidebar,
+      .right-sidebar {
+        width: 100%;
+      }
+
+      .ad-banner {
+        height: 150px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .header-container {
+        flex-direction: column;
+        gap: 15px;
+      }
+
+      .search-container {
+        max-width: 100%;
+        margin: 0;
+      }
+
+      .header-ad {
+        display: none;
+      }
+
+      .main-nav-container {
+        overflow-x: auto;
+        white-space: nowrap;
+      }
+
+      .sub-nav-container {
+        overflow-x: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- 상단 유틸리티 바 -->
+  <div class="top-utility">
+    <div class="top-utility-container">
+      <div class="top-utility-left">
+        <span>🏠 전문단체 커뮤니티 채널</span>
+      </div>
+      <div class="top-utility-right">
+        <a href="#" id="login-btn">로그인</a>
+        <a href="#">문의하기</a>
+        <a href="#">맵</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 헤더 영역 -->
+  <div class="header">
+    <div class="header-container">
+      <!-- 로고 -->
+      <div class="logo">
+        PHIL<span>GO</span>
+      </div>
+
+      <!-- 검색 영역 -->
+      <div class="search-container">
+        <div class="search-box">
+          <input type="text" placeholder="필리핀의 모든 것을 담았습니다">
+          <button>검색</button>
+        </div>
+      </div>
+
+      <!-- 헤더 광고 배너 -->
+      <div class="header-ad">
+        광고 배너<br>
+        (200x60)
+      </div>
+    </div>
+  </div>
+
+  <!-- 메인 네비게이션 -->
+  <div class="main-nav">
+    <div class="main-nav-container">
+      <div class="main-nav-item">정보</div>
+      <div class="main-nav-item">뉴스</div>
+      <div class="main-nav-item">인스톡</div>
+      <div class="main-nav-item">정문단법</div>
+      <div class="main-nav-item active">커뮤니티</div>
+      <div class="main-nav-item">회원장터</div>
+      <div class="main-nav-item">개인/구직</div>
+      <div class="main-nav-item">여행</div>
+      <div class="main-nav-item">골프</div>
+      <div class="main-nav-item">학원</div>
+      <div class="main-nav-item">이민</div>
+      <div class="main-nav-item">학습지</div>
+      <div class="main-nav-item">렌트카</div>
+      <div class="main-nav-item">맛집</div>
+      <div class="main-nav-item">부동산</div>
+    </div>
+  </div>
+
+  <!-- 서브 네비게이션 -->
+  <div class="sub-nav">
+    <div class="sub-nav-container">
+      <div class="sub-nav-item">남녀</div>
+      <div class="sub-nav-item">속보</div>
+      <div class="sub-nav-item">공지</div>
+      <div class="sub-nav-item">갤럽법</div>
+      <div class="sub-nav-item">자유로드</div>
+      <div class="sub-nav-item">마냥과</div>
+      <div class="sub-nav-item">세부</div>
+      <div class="sub-nav-item">맨드로</div>
+      <div class="sub-nav-item">캄보디아</div>
+      <div class="sub-nav-item">취미</div>
+      <div class="sub-nav-item">비즈니스</div>
+      <div class="sub-nav-item">여권비자</div>
+      <div class="sub-nav-item">코별</div>
+      <div class="sub-nav-item">경품</div>
+      <div class="sub-nav-item">인사말집</div>
+      <div class="sub-nav-item">하박</div>
+      <div class="sub-nav-item">유머</div>
+      <div class="sub-nav-item">행복</div>
+      <div class="sub-nav-item">사랑찾기</div>
+    </div>
+  </div>
+
+  <!-- 메인 레이아웃 -->
+  <div class="main-layout">
+    <!-- 왼쪽 사이드바 -->
+    <aside class="left-sidebar">
+      <div class="ad-banner">광고 배너<br>(160x600)</div>
+      <div class="ad-banner">광고 배너<br>(160x600)</div>
+    </aside>
+
+    <!-- 메인 콘텐츠 -->
+    <main class="main-content">
+      <!-- 커뮤니티 헤더 -->
+      <div class="community-header">
+        <div class="community-title">
+          <h1>커뮤니티</h1>
+          <div class="community-stats">
+            게시자: 2,496 | 글: 99,804
+          </div>
+        </div>
+        <button class="write-btn">+ 글쓰기</button>
+      </div>
+
+      <!-- 인기 회원 섹션 -->
+      <div class="popular-members">
+        <div class="popular-members-title">
+          ⭐ 포인트 랭킹 50
+        </div>
+        <div class="members-list">
+          <div class="member-item">
+            <div class="member-rank">1</div>
+            <div class="member-avatar">👤</div>
+            <div class="member-name">스즈미</div>
+            <div class="member-points">💎 200P</div>
+          </div>
+          <div class="member-item">
+            <div class="member-rank">2</div>
+            <div class="member-avatar">👤</div>
+            <div class="member-name">Kamm</div>
+            <div class="member-points">💎 200P</div>
+          </div>
+          <div class="member-item">
+            <div class="member-rank">3</div>
+            <div class="member-avatar">👤</div>
+            <div class="member-name">한밤비자</div>
+            <div class="member-points">💎 200P</div>
+          </div>
+          <div class="member-item">
+            <div class="member-rank">4</div>
+            <div class="member-avatar">👤</div>
+            <div class="member-name">열그리</div>
+            <div class="member-points">💎 100P</div>
+          </div>
+          <div class="member-item">
+            <div class="member-rank">5</div>
+            <div class="member-avatar">👤</div>
+            <div class="member-name">양형혜스초보</div>
+            <div class="member-points">💎 100P</div>
+          </div>
+          <div class="member-item">
+            <div class="member-rank">6</div>
+            <div class="member-avatar">👤</div>
+            <div class="member-name">하야성남</div>
+            <div class="member-points">💎 100P</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 게시글 목록 (Custom Element로 교체) -->
+      <!-- Firebase Realtime Database에서 실시간으로 게시글을 가져와 표시합니다 -->
+      <post-list path="posts" limit="20"></post-list>
+
+      <!-- 원본 정적 게시글 목록 (백업용으로 주석처리) -->
+      <!--
+      <div class="post-list">
+        <div class="post-item">
+          <div class="post-title">코넥티을 피노이 규정이 발표됐다</div>
+          <div class="post-meta">
+            <div class="post-author">
+              <div class="post-author-badge">P</div>
+              <span>paxnostra</span>
+            </div>
+            <span>⏰ 05:18 PM</span>
+            <div class="post-stats"><span>👁️ 89</span></div>
+          </div>
+        </div>
+        ... (기타 게시글 생략)
+      </div>
+      -->
+    </main>
+
+    <!-- 우측 사이드바 -->
+    <aside class="right-sidebar">
+      <div class="ad-banner">광고 배너<br>(160x600)</div>
+      <div class="ad-banner">광고 배너<br>(160x600)</div>
+      <div class="ad-banner">광고 배너<br>(160x600)</div>
+      <div class="ad-banner">광고 배너<br>(160x600)</div>
+    </aside>
+  </div>
+
+  <!-- Phone Login Modal (숨김 상태로 시작) -->
+  <div id="login-modal" style="
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 10000;
+    justify-content: center;
+    align-items: center;
+  ">
+    <div style="
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      max-width: 400px;
+      width: 90%;
+      position: relative;
+    ">
+      <!-- 닫기 버튼 -->
+      <button id="close-modal-btn" style="
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        color: #999;
+      ">&times;</button>
+
+      <!-- 로그인 제목 -->
+      <h2 style="margin-bottom: 20px; text-align: center;">전화번호 로그인</h2>
+
+      <!-- Phone Login Custom Element -->
+      <phone-login></phone-login>
+    </div>
+  </div>
+
+  <!-- JavaScript -->
+  <script>
+    // 로그인 모달 제어
+    const loginBtn = document.getElementById('login-btn');
+    const loginModal = document.getElementById('login-modal');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+    const phoneLogin = document.querySelector('phone-login');
+
+    // 로그인 버튼 클릭 시 모달 열기
+    loginBtn?.addEventListener('click', (e) => {
+      e.preventDefault();
+      loginModal.style.display = 'flex';
+    });
+
+    // 닫기 버튼 클릭 시 모달 닫기
+    closeModalBtn?.addEventListener('click', () => {
+      loginModal.style.display = 'none';
+    });
+
+    // 모달 배경 클릭 시 닫기
+    loginModal?.addEventListener('click', (e) => {
+      if (e.target === loginModal) {
+        loginModal.style.display = 'none';
+      }
+    });
+
+    // 로그인 성공 시 모달 닫기
+    phoneLogin?.addEventListener('login-success', (e) => {
+      console.log('로그인 성공:', e.detail);
+      loginModal.style.display = 'none';
+      alert('로그인에 성공했습니다!');
+
+      // 로그인 버튼을 사용자 이름으로 변경 (선택사항)
+      if (loginBtn) {
+        loginBtn.textContent = '내 정보';
+      }
+    });
+
+    // 로그인 실패 시 에러 메시지 표시
+    phoneLogin?.addEventListener('login-error', (e) => {
+      console.error('로그인 실패:', e.detail);
+      alert('로그인에 실패했습니다: ' + (e.detail?.error || '알 수 없는 오류'));
+    });
+
+    // 게시글 클릭 이벤트 처리
+    const postList = document.querySelector('post-list');
+    postList?.addEventListener('post-click', (e) => {
+      console.log('게시글 클릭:', e.detail);
+      alert('게시글 제목: ' + (e.detail?.post?.title || '제목 없음'));
+      // 여기에 게시글 상세 페이지로 이동하는 로직 추가 가능
+    });
+  </script>
+
+</body>
+</html>

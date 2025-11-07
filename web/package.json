@@ -17,10 +17,13 @@
   ],
   "scripts": {
     "dev": "vite --config vite.demo.config.js",
+    "dev:site1": "vite --config vite.site1.config.js",
     "build": "npm run build:lib && npm run build:demo",
     "build:lib": "vite build",
     "build:demo": "vite build --config vite.demo.config.js",
+    "build:site1": "vite build --config vite.site1.config.js",
     "preview": "vite preview --config vite.demo.config.js",
+    "preview:site1": "vite preview --config vite.site1.config.js",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-check --tsconfig ./tsconfig.json --watch",
     "typecheck": "tsc --noEmit",
