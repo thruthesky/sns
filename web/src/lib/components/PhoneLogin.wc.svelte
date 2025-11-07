@@ -163,11 +163,19 @@
           .render()
           .then((widgetId) => {
             recaptchaWidgetId = widgetId;
-            console.log("reCAPTCHA rendered with widgetId:", widgetId);
+            console.log("✅ reCAPTCHA 렌더링 성공!");
+            console.log("  - Widget ID:", widgetId);
+            console.log("  - 컨테이너 ID:", recaptchaContainer?.id);
+            console.log("  - 현재 도메인:", window.location.hostname);
             resolve(widgetId);
           })
           .catch((renderError) => {
-            console.error("Failed to render reCAPTCHA:", renderError);
+            console.error("❌ reCAPTCHA 렌더링 실패!");
+            console.error("  - 에러:", renderError);
+            console.error("  - 에러 코드:", renderError.code);
+            console.error("  - 에러 메시지:", renderError.message);
+            console.error("  - 현재 도메인:", window.location.hostname);
+            console.error("  - 컨테이너 ID:", recaptchaContainer?.id);
             error = "reCAPTCHA 초기화에 실패했습니다.";
             reject(renderError);
           });
@@ -183,6 +191,15 @@
    * 컴포넌트 마운트 시 초기화
    */
   onMount(() => {
+    // 🔍 디버깅: 현재 환경 정보 출력
+    console.log("=== Phone Login Debug Info ===");
+    console.log("현재 도메인:", window.location.hostname);
+    console.log("현재 전체 URL:", window.location.href);
+    console.log("Firebase Auth Domain:", import.meta.env.VITE_FIREBASE_AUTH_DOMAIN);
+    console.log("Firebase Project ID:", import.meta.env.VITE_FIREBASE_PROJECT_ID);
+    console.log("reCAPTCHA 스크립트 로드:", typeof window.grecaptcha !== "undefined");
+    console.log("==============================");
+
     // Light DOM(document.body)에 reCAPTCHA 컨테이너 생성
     // Web Component의 Shadow DOM 외부에 배치하여 Google reCAPTCHA가 접근 가능하도록 함
     // Google reCAPTCHA는 document.getElementById()를 사용하므로 Light DOM 필수
@@ -202,6 +219,8 @@
 
     // recaptchaContainer를 Light DOM의 요소로 설정
     recaptchaContainer = lightDomContainer;
+
+    console.log("🔍 reCAPTCHA 컨테이너 생성:", lightDomContainer.id);
 
     // reCAPTCHA 초기화 실행
     setupRecaptcha();
@@ -250,7 +269,11 @@
       // 완전한 전화번호 생성 (국가 코드 + 전화번호)
       const fullPhoneNumber: string = `${selectedCountryCode}${phoneNumber}`;
 
-      console.log("Sending verification code to:", fullPhoneNumber);
+      console.log("📱 SMS 전송 시작...");
+      console.log("  - 전화번호:", fullPhoneNumber);
+      console.log("  - 현재 도메인:", window.location.hostname);
+      console.log("  - reCAPTCHA 준비:", recaptchaVerifier !== null);
+      console.log("  - reCAPTCHA Widget ID:", recaptchaWidgetId);
 
       // Firebase Phone Auth - SMS 전송
       // invisible reCAPTCHA는 이 함수 호출 시 자동으로 실행되어 백그라운드에서 검증됨
@@ -260,20 +283,29 @@
         recaptchaVerifier!
       );
 
-      console.log(
-        "Verification code sent successfully (invisible reCAPTCHA verified)"
-      );
+      console.log("✅ SMS 전송 성공! (reCAPTCHA 검증 완료)");
 
       // SMS 코드 입력 단계로 이동
       step = "code";
     } catch (e: any) {
-      console.error("SMS 전송 실패:", e);
+      console.error("❌ SMS 전송 실패!");
+      console.error("  - 에러 코드:", e.code);
+      console.error("  - 에러 메시지:", e.message);
+      console.error("  - 현재 도메인:", window.location.hostname);
+      console.error("  - Firebase Auth Domain:", import.meta.env.VITE_FIREBASE_AUTH_DOMAIN);
+      console.error("  - 전체 에러 객체:", e);
 
       // 에러 메시지 처리
       if (e.code === "auth/invalid-phone-number") {
         error = "잘못된 전화번호 형식입니다.";
       } else if (e.code === "auth/too-many-requests") {
         error = "너무 많은 요청이 발생했습니다. 나중에 다시 시도해주세요.";
+      } else if (e.code === "auth/captcha-check-failed") {
+        error = `reCAPTCHA 검증 실패: 도메인이 Firebase Console에 등록되어 있는지 확인해주세요. (현재 도메인: ${window.location.hostname})`;
+        console.error("🔥 reCAPTCHA 에러 해결 방법:");
+        console.error("  1. Firebase Console → Authentication → Settings → Authorized domains");
+        console.error(`  2. '${window.location.hostname}' 도메인을 추가하세요`);
+        console.error("  3. reCAPTCHA 버전이 v2인지 확인하세요 (Sign-in method → Phone)");
       } else {
         error = `SMS 전송 실패: ${e.message}`;
       }
